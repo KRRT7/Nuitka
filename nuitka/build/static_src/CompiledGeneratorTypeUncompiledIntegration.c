@@ -109,12 +109,9 @@ static void SET_CURRENT_EXCEPTION_STOP_ITERATION_EMPTY(PyThreadState *tstate) {
 }
 
 #if PYTHON_VERSION >= 0x350
-
-#if PYTHON_VERSION >= 0x3c0
 static PyObject *Nuitka_CreateStopAsyncIteration(PyThreadState *tstate) {
     return (PyObject *)Nuitka_BaseExceptionSingleArg_new(tstate, (PyTypeObject *)PyExc_StopAsyncIteration, NULL);
 }
-#endif
 
 static void SET_CURRENT_EXCEPTION_STOP_ASYNC_ITERATION(PyThreadState *tstate) {
 #if PYTHON_VERSION < 0x3c0
@@ -148,8 +145,6 @@ static void SET_CURRENT_EXCEPTION_GENERATOR_EXIT(PyThreadState *tstate) {
 
 #if PYTHON_VERSION >= 0x300
 static bool Nuitka_PyGen_FetchStopIterationValue(PyThreadState *tstate, PyObject **pvalue) {
-    assert(HAS_ERROR_OCCURRED(tstate));
-
 #if PYTHON_VERSION < 0x3c0
     PyObject *value = NULL;
 

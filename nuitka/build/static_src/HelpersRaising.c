@@ -215,14 +215,16 @@ void RAISE_EXCEPTION_WITH_CAUSE(PyThreadState *tstate, struct Nuitka_ExceptionPr
             return;
         }
 
-        Nuitka_Exception_SetCause(exception_state->exception_value, exception_cause);
+        // TODO: Avoid C API usage
+        PyException_SetCause(exception_state->exception_value, exception_cause);
+
         CHAIN_EXCEPTION(tstate, exception_state->exception_value);
     } else if (PyExceptionInstance_Check(exception_state->exception_type)) {
         exception_state->exception_value = exception_state->exception_type;
         exception_state->exception_type = PyExceptionInstance_Class(exception_state->exception_type);
         Py_INCREF(exception_state->exception_type);
 
-        Nuitka_Exception_SetCause(exception_state->exception_value, exception_cause);
+        PyException_SetCause(exception_state->exception_value, exception_cause);
         CHAIN_EXCEPTION(tstate, exception_state->exception_value);
     } else {
         Py_XDECREF(exception_cause);
@@ -236,7 +238,8 @@ void RAISE_EXCEPTION_WITH_CAUSE(PyThreadState *tstate, struct Nuitka_ExceptionPr
 #else
     ASSERT_NORMALIZED_EXCEPTION_VALUE(exception_state->exception_value);
 
-    Nuitka_Exception_SetCause(exception_state->exception_value, exception_cause);
+    // TODO: Avoid C API usage
+    PyException_SetCause(exception_state->exception_value, exception_cause);
     CHAIN_EXCEPTION(tstate, exception_state->exception_value);
 #endif
 }
@@ -348,8 +351,8 @@ bool RERAISE_EXCEPTION(PyThreadState *tstate, struct Nuitka_ExceptionPreservatio
 }
 
 // Raise NameError for a given variable name.
-void RAISE_CURRENT_EXCEPTION_NAME_ERROR(PyThreadState *tstate, struct Nuitka_ExceptionPreservationItem *exception_state,
-                                        PyObject *variable_name) {
+void RAISE_CURRENT_EXCEPTION_NAME_ERROR(PyThreadState *tstate, PyObject *variable_name,
+                                        struct Nuitka_ExceptionPreservationItem *exception_state) {
 #if PYTHON_VERSION < 0x300
     PyObject *exception_value_str =
         Nuitka_String_FromFormat("name '%s' is not defined", Nuitka_String_AsString_Unchecked(variable_name));
@@ -368,12 +371,18 @@ void RAISE_CURRENT_EXCEPTION_NAME_ERROR(PyThreadState *tstate, struct Nuitka_Exc
                                                                   exception_value);
 }
 
+#if PYTHON_VERSION < 0x340
+void RAISE_CURRENT_EXCEPTION_GLOBAL_NAME_ERROR(PyThreadState *tstate, PyObject *variable_name,
+                                               struct Nuitka_ExceptionPreservationItem *exception_state) {
 #if PYTHON_VERSION < 0x300
 void RAISE_CURRENT_EXCEPTION_GLOBAL_NAME_ERROR(PyThreadState *tstate,
                                                struct Nuitka_ExceptionPreservationItem *exception_state,
                                                PyObject *variable_name) {
     PyObject *exception_value_str =
         Nuitka_String_FromFormat("global name '%s' is not defined", Nuitka_String_AsString_Unchecked(variable_name));
+#else
+    PyObject *exception_value_str = Nuitka_String_FromFormat("global name '%U' is not defined", variable_name);
+#endif
     PyObject *exception_value = MAKE_EXCEPTION_FROM_TYPE_ARG0(tstate, PyExc_NameError, exception_value_str);
     Py_DECREF(exception_value_str);
 

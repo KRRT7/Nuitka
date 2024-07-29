@@ -1,9 +1,7 @@
 #     Copyright 2024, Kay Hayen, mailto:kay.hayen@gmail.com find license text at end of file
 
 
-""" Nodes related to raising and making exceptions.
-
-"""
+"""Nodes related to raising and making exceptions."""
 
 from nuitka.PythonVersions import python_version
 
@@ -306,7 +304,7 @@ class ExpressionCaughtExceptionTracebackRef(ExpressionCaughtMixin, ExpressionBas
 
 
 def makeBuiltinMakeExceptionNode(
-    exception_name, args, for_raise, name=None, path=None, obj=None, source_ref=None
+    exception_name, args, for_raise, name=None, path=None, source_ref=None
 ):
     assert type(exception_name) is str, exception_name
 
@@ -323,14 +321,6 @@ def makeBuiltinMakeExceptionNode(
             args=args,
             name=name,
             path=path,
-            for_raise=for_raise,
-            source_ref=source_ref,
-        )
-    elif exception_name == "AttributeError" and python_version >= 0x3A0:
-        return ExpressionBuiltinMakeExceptionAttributeError(
-            args=args,
-            name=name,
-            obj=obj,
             for_raise=for_raise,
             source_ref=source_ref,
         )

@@ -1,9 +1,7 @@
 #     Copyright 2024, Kay Hayen, mailto:kay.hayen@gmail.com find license text at end of file
 
 
-""" Exception handling.
-
-"""
+"""Exception handling."""
 
 from nuitka.PythonVersions import python_version
 
@@ -173,38 +171,29 @@ def generateExceptionPublishCode(statement, emit, context):
     emit("PUBLISH_CURRENT_EXCEPTION(tstate, &%s);" % keeper_exception_state_name)
 
 
-def _attachExceptionAttributeCode(
-    to_name,
-    attribute_expression,
-    c_type_name,
-    c_attribute_name,
-    base_name_str,
-    emit,
-    context,
-):
-    if attribute_expression is not None:
-        from .PythonAPICodes import getReferenceExportCode
+def _generateBuiltinMakeExceptionCode(to_name, expression, for_raise, emit, context):
+    # We try to make optimal code for various cases, pylint: disable=too-many-locals
 
-        exception_attribute_name = context.allocateTempName(
-            base_name_str + "_" + c_attribute_name
-        )
+    exception_attribute_name = context.allocateTempName(
+        base_name_str + "_" + c_attribute_name
+    )
 
-        generateExpressionCode(
-            to_name=exception_attribute_name,
-            expression=attribute_expression,
-            emit=emit,
-            context=context,
-            allow_none=True,
-        )
+    generateExpressionCode(
+        to_name=exception_attribute_name,
+        expression=attribute_expression,
+        emit=emit,
+        context=context,
+        allow_none=True,
+    )
 
-        getReferenceExportCode(exception_attribute_name, emit, context)
-        if context.needsCleanup(exception_attribute_name):
-            context.removeCleanupTempName(exception_attribute_name)
+    getReferenceExportCode(exception_attribute_name, emit, context)
+    if context.needsCleanup(exception_attribute_name):
+        context.removeCleanupTempName(exception_attribute_name)
 
-        emit(
-            "((%s *)%s)->%s = %s;"
-            % (c_type_name, to_name, c_attribute_name, exception_attribute_name)
-        )
+    emit(
+        "((%s *)%s)->%s = %s;"
+        % (c_type_name, to_name, c_attribute_name, exception_attribute_name)
+    )
 
 
 def _generateBuiltinMakeExceptionCode(to_name, expression, for_raise, emit, context):
@@ -309,6 +298,16 @@ def _generateBuiltinMakeExceptionCode(to_name, expression, for_raise, emit, cont
                 emit=emit,
                 context=context,
             )
+
+
+def generateBuiltinMakeExceptionCode(to_name, expression, emit, context):
+    _generateBuiltinMakeExceptionCode(
+        to_name=to_name,
+        expression=expression,
+        for_raise=expression.for_raise,
+        emit=emit,
+        context=context,
+    )
 
 
 def generateBuiltinMakeExceptionCode(to_name, expression, emit, context):

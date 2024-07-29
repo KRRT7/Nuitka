@@ -1,7 +1,7 @@
 #     Copyright 2024, Kay Hayen, mailto:kay.hayen@gmail.com find license text at end of file
 
 
-""" Tree nodes for built-in references.
+"""Tree nodes for built-in references.
 
 There is 2 major types of built-in references. One is the values from
 built-ins, the other is built-in exceptions. They work differently and
@@ -262,15 +262,12 @@ class ExpressionBuiltinExceptionRef(ExpressionBuiltinRefBase):
     def computeExpressionCall(self, call_node, call_args, call_kw, trace_collection):
         exception_name = self.getExceptionName()
 
-        def createBuiltinMakeExceptionNode(
-            args, name=None, path=None, obj=None, source_ref=None
-        ):
+        def createBuiltinMakeExceptionNode(args, name=None, path=None, source_ref=None):
             return makeBuiltinMakeExceptionNode(
                 exception_name=exception_name,
                 args=args,
                 name=name,
                 path=path,
-                obj=obj,
                 for_raise=False,
                 source_ref=source_ref,
             )
