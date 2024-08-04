@@ -6164,6 +6164,18 @@
         'from .testing import test, doctest': ''
       when: 'not use_pytest'
 
+    - no-follow:
+        'sympy.*.tests': 'ignore'
+        'simpy.*.*.tests': 'ignore'
+
+- module-name: 'sympy.external.importtools'
+  anti-bloat:
+    - description: 'remove disutils reference'
+      replacements_plain:
+        'from distutils.version import LooseVersion': ''
+        'if min_module_version:': 'if False:'
+
+
 - module-name: 'sympy.interactive.printing' # checksum: 712c2518
   anti-bloat:
     - description: 'remove IPython reference'
