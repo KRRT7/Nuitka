@@ -2140,7 +2140,7 @@
         prefixes:
           - 'libusb'
 
-- module-name: 'license_expression' # checksum: 810a705a
+- module-name: 'license-expression' # checksum: 810a705a
   data-files:
     dirs:
       - 'data'
@@ -6156,7 +6156,7 @@
     dirs:
       - 'vendor'
 
-- module-name: 'sympy' # checksum: 246a1729
+- module-name: 'sympy' # checksum: d91d6c32
   anti-bloat:
     - description: 'remove sympy.testing reference'
       replacements_plain:
@@ -6168,15 +6168,14 @@
         'sympy.*.tests': 'ignore'
         'simpy.*.*.tests': 'ignore'
 
-- module-name: 'sympy.external.importtools'
+- module-name: 'sympy.external.importtools' # checksum: 18b4ac8b
   anti-bloat:
     - description: 'remove disutils reference'
       replacements_plain:
         'from distutils.version import LooseVersion': ''
         'if min_module_version:': 'if False:'
 
-
-- module-name: 'sympy.interactive.printing' # checksum: 712c2518
+- module-name: 'sympy.interactive.printing' # checksum: c6cb4991
   anti-bloat:
     - description: 'remove IPython reference'
       replacements_plain:
@@ -6189,13 +6188,21 @@
         'from IPython.core.interactiveshell import InteractiveShell': 'raise ImportError'
       when: 'not use_ipython'
 
-- module-name: 'sympy.interactive.session' # checksum: 1c9a5216
+    - description: 'remove disutils reference'
+      replacements_plain:
+        'from distutils.version import LooseVersion as V': ''
+
+- module-name: 'sympy.interactive.session' # checksum: b1fd4079
   anti-bloat:
     - description: 'remove IPython reference'
       replacements_plain:
         'import IPython': 'raise ImportError'
         'from IPython import get_ipython': 'raise ImportError'
       when: 'not use_ipython'
+
+    - description: 'remove disutils reference'
+      replacements_plain:
+        'from distutils.version import LooseVersion as V': ''
 
 - module-name: 'sympy.utilities.decorator' # checksum: f8ef59fe
   anti-bloat:
