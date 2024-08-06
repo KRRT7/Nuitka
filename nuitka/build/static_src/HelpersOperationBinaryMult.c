@@ -58,7 +58,6 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_INT(PyObject *operand1, PyObj
             goto exit_result_ok_clong;
         }
     }
-
     {
         PyObject *operand1_object = operand1;
         PyObject *operand2_object = operand2;
@@ -71,7 +70,7 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_INT(PyObject *operand1, PyObj
     }
 
 exit_result_ok_clong:
-    result = Nuitka_PyInt_FromLong(clong_result);
+    result = Nuitka_LongFromCLong(clong_result);
     goto exit_result_ok;
 
 exit_result_object:
@@ -290,7 +289,6 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_INT(PyObject *operand1, Py
                 goto exit_result_ok_clong;
             }
         }
-
         {
             PyObject *operand1_object = operand1;
             PyObject *operand2_object = operand2;
@@ -303,7 +301,7 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_INT(PyObject *operand1, Py
         }
 
     exit_result_ok_clong:
-        result = Nuitka_PyInt_FromLong(clong_result);
+        result = Nuitka_LongFromCLong(clong_result);
         goto exit_result_ok;
 
     exit_result_object:
@@ -540,7 +538,6 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_OBJECT(PyObject *operand1, Py
                 goto exit_result_ok_clong;
             }
         }
-
         {
             PyObject *operand1_object = operand1;
             PyObject *operand2_object = operand2;
@@ -553,7 +550,7 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_OBJECT(PyObject *operand1, Py
         }
 
     exit_result_ok_clong:
-        result = Nuitka_PyInt_FromLong(clong_result);
+        result = Nuitka_LongFromCLong(clong_result);
         goto exit_result_ok;
 
     exit_result_object:
@@ -626,7 +623,6 @@ static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_INT_INT(PyObject *operand1, PyOb
             goto exit_result_ok_clong;
         }
     }
-
     {
         PyObject *operand1_object = operand1;
         PyObject *operand2_object = operand2;
@@ -868,7 +864,6 @@ static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_OBJECT_INT(PyObject *operand1, P
                 goto exit_result_ok_clong;
             }
         }
-
         {
             PyObject *operand1_object = operand1;
             PyObject *operand2_object = operand2;
@@ -1128,7 +1123,6 @@ static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_INT_OBJECT(PyObject *operand1, P
                 goto exit_result_ok_clong;
             }
         }
-
         {
             PyObject *operand1_object = operand1;
             PyObject *operand2_object = operand2;
@@ -3438,7 +3432,6 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_CLONG(PyObject *operand1, lon
             goto exit_result_ok_clong;
         }
     }
-
     {
         PyObject *operand1_object = operand1;
         PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
@@ -3453,7 +3446,7 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_CLONG(PyObject *operand1, lon
     }
 
 exit_result_ok_clong:
-    result = Nuitka_PyInt_FromLong(clong_result);
+    result = Nuitka_LongFromCLong(clong_result);
     goto exit_result_ok;
 
 exit_result_object:
@@ -3519,7 +3512,6 @@ static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_INT_CLONG(PyObject *operand1, lo
             goto exit_result_ok_clong;
         }
     }
-
     {
         PyObject *operand1_object = operand1;
         PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
@@ -5954,7 +5946,6 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_OBJECT(PyObject *operand1,
                 goto exit_result_ok_clong;
             }
         }
-
         {
             PyObject *operand1_object = operand1;
             PyObject *operand2_object = operand2;
@@ -5967,7 +5958,7 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_OBJECT(PyObject *operand1,
         }
 
     exit_result_ok_clong:
-        result = Nuitka_PyInt_FromLong(clong_result);
+        result = Nuitka_LongFromCLong(clong_result);
         goto exit_result_ok;
 
     exit_result_object:
@@ -6207,7 +6198,6 @@ static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_OBJECT_OBJECT(PyObject *operand1
                 goto exit_result_ok_clong;
             }
         }
-
         {
             PyObject *operand1_object = operand1;
             PyObject *operand2_object = operand2;

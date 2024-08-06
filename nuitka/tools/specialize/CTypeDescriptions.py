@@ -1,9 +1,7 @@
 #     Copyright 2024, Kay Hayen, mailto:kay.hayen@gmail.com find license text at end of file
 
 
-""" C type descriptions. For specific or general C types, provide code generation help.
-
-"""
+"""C type descriptions. For specific or general C types, provide code generation help."""
 
 import math
 from abc import abstractmethod
@@ -764,9 +762,7 @@ return %(return_value)s;""" % {
         if cls.type_name == "object":
             # Need to not use that, but pick one.
             assert False
-        elif cls.type_name == "int":
-            return "%s = Nuitka_PyInt_FromLong(%s);" % (result, operand)
-        elif cls.type_name == "long":
+        elif cls.type_name in ("int", "long"):
             return "%s = Nuitka_LongFromCLong(%s);" % (result, operand)
         elif cls.type_name == "nbool":
             return "%s = %s;" % (
@@ -1113,9 +1109,7 @@ class UnicodeDesc(ConcreteSequenceTypeBase):
     def getCheckValueCode(cls, operand):
         return """\
 CHECK_OBJECT(%(operand)s);
-assert(PyUnicode_CheckExact(%(operand)s));""" % {
-            "operand": operand
-        }
+assert(PyUnicode_CheckExact(%(operand)s));""" % {"operand": operand}
 
     @classmethod
     def getNewStyleNumberTypeCheckExpression(cls, operand):

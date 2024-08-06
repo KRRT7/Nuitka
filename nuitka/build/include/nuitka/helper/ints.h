@@ -13,6 +13,20 @@ extern PyObject *Nuitka_PyLong_FromLong(long ival);
 #define Nuitka_PyInt_FromLong(ival) PyInt_FromLong(ival)
 #endif
 
+typedef enum {
+    NUITKA_INT_UNASSIGNED = 0,
+    NUITKA_INT_OBJECT_VALID = 1,
+    NUITKA_INT_VALUE_VALID = 2,
+    NUITKA_INT_BOTH_VALID = 3
+} nuitka_int_validity;
+
+// Our "PyInt_FromLong" replacement, not done (yet?).
+#if PYTHON_VERSION >= 0x300
+#define Nuitka_PyInt_FromLong(ival) Nuitka_PyLong_FromLong(ival)
+#else
+#define Nuitka_PyInt_FromLong(ival) PyInt_FromLong(ival)
+#endif
+
 // We are using this mixed type for both Python2 and Python3, since then we
 // avoid the complexity of overflowed integers for Python2 to switch over.
 
@@ -34,10 +48,8 @@ typedef struct {
 #define IS_NILONG_OBJECT_VALUE_VALID(value) (((value)->validity & NUITKA_ILONG_OBJECT_VALID) != 0)
 #define IS_NILONG_C_VALUE_VALID(value) (((value)->validity & NUITKA_ILONG_CLONG_VALID) != 0)
 
-NUITKA_MAY_BE_UNUSED static void SET_NILONG_OBJECT_VALUE(nuitka_ilong *dual_value, PyObject *python_value) {
-    dual_value->validity = NUITKA_ILONG_OBJECT_VALID;
-    dual_value->python_value = python_value;
-}
+    if ((value->validity & NUITKA_ILONG_OBJECT_VALID) == 0) {
+        value->ilong_object = Nuitka_PyLong_FromLong(value->ilong_value);
 
 NUITKA_MAY_BE_UNUSED static void SET_NILONG_C_VALUE(nuitka_ilong *dual_value, long c_value) {
     dual_value->validity = NUITKA_ILONG_CLONG_VALID;
