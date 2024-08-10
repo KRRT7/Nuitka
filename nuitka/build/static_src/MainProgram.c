@@ -8,7 +8,7 @@
  * For multiprocessing, joblib, loky there is things here that will
  * allow them to fork properly with their intended entry points.
  *
- * spell-checker: ignore joblib loky anyio platlibdir
+ * spell-checker: ignore joblib loky anyio
  *
  */
 
@@ -32,7 +32,6 @@
 #define SYSFLAG_BYTES_WARNING 0
 #define SYSFLAG_UTF8 0
 #define SYSFLAG_UNBUFFERED 0
-#define SYSFLAG_DONTWRITEBYTECODE 0
 #define NUITKA_MAIN_MODULE_NAME "__main__"
 #define NUITKA_MAIN_IS_PACKAGE_BOOL false
 #define _NUITKA_ATTACH_CONSOLE_WINDOW 1
@@ -54,7 +53,7 @@
 #include "HelpersConsole.c"
 #endif
 
-extern PyCodeObject *code_objects_main;
+extern PyCodeObject *codeobj_main;
 
 /* For later use in "Py_GetArgcArgv" we expose the needed value  */
 #if PYTHON_VERSION >= 0x300
@@ -68,7 +67,7 @@ static int orig_argc;
 extern void copyFrozenModulesTo(struct _frozen *destination);
 
 // The original frozen modules list.
-#if PYTHON_VERSION < 0x300
+#if PYTHON_VERSION < 0x340
 static struct _frozen *old_frozen = NULL;
 #else
 static struct _frozen const *old_frozen = NULL;
@@ -386,7 +385,7 @@ static void setCommandLineParameters(int argc, wchar_t **argv) {
 #endif
 #ifdef _NUITKA_EXPERIMENTAL_DEBUG_SELF_FORKING
 #if _NUITKA_NATIVE_WCHAR_ARGV == 0
-    printf("Command line: ");
+    printf("Commandline: ");
     for (int i = 0; i < argc; i++) {
         if (i != 0) {
             printf(" ");
@@ -395,7 +394,7 @@ static void setCommandLineParameters(int argc, wchar_t **argv) {
     }
     printf("\n");
 #else
-    wprintf(L"Command line: '%lS' %d\n", GetCommandLineW(), argc);
+    wprintf(L"Commandline: '%lS' %d\n", GetCommandLineW(), argc);
 #endif
 #endif
 
@@ -1152,7 +1151,7 @@ static void changeStandardHandleTarget(FILE *std_handle, filename_char_t const *
 static void Nuitka_at_exit(void) { NUITKA_PRINT_TIMING("Nuitka_at_exit(): Called by C exit()"); }
 #endif
 
-#if !defined(_NUITKA_DEPLOYMENT_MODE) && !defined(_NUITKA_NO_DEPLOYMENT_SEGFAULT)
+#if !defined(_NUITKA_DEPLOYMENT_MODE) && !defined(_NUITKA_NO_DEPLOYMENT_SEGFAILT)
 #include <signal.h>
 static void nuitka_segfault_handler(int sig) {
     puts("Nuitka: A segmentation fault has occurred. This is highly unusual and can");
@@ -1170,19 +1169,6 @@ extern wchar_t const *getBinaryFilenameWideChars(bool resolve_symlinks);
 extern char const *getBinaryFilenameHostEncoded(bool resolve_symlinks);
 #endif
 
-// No longer in header files, but still usable.
-#if PYTHON_VERSION >= 0x3d0
-PyAPI_FUNC(void) PySys_AddWarnOption(const wchar_t *s);
-#endif
-
-// Preserve and provide the original argv[0] as recorded by the bootstrap stage.
-static environment_char_t const *original_argv0 = NULL;
-
-PyObject *getOriginalArgv0Object(void) {
-    assert(original_argv0 != NULL);
-    return Nuitka_String_FromFilename(original_argv0);
-}
-
 #ifdef _NUITKA_WINMAIN_ENTRY_POINT
 int __stdcall wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpCmdLine, int nCmdShow) {
     /* MSVC, MINGW64 */
@@ -1197,7 +1183,7 @@ int main(int argc, char **argv) {
 #endif
 
     // Installer a segfault handler that outputs a helpful message.
-#if !defined(_NUITKA_DEPLOYMENT_MODE) && !defined(_NUITKA_NO_DEPLOYMENT_SEGFAULT)
+#if !defined(_NUITKA_DEPLOYMENT_MODE) && !defined(_NUITKA_NO_DEPLOYMENT_SEGFAILT)
     signal(SIGSEGV, nuitka_segfault_handler);
 #endif
 
@@ -1288,7 +1274,7 @@ int main(int argc, char **argv) {
     Py_InspectFlag = 0;
     Py_InteractiveFlag = 0;
     Py_OptimizeFlag = SYSFLAG_OPTIMIZE;
-    Py_DontWriteBytecodeFlag = SYSFLAG_DONTWRITEBYTECODE;
+    Py_DontWriteBytecodeFlag = 0;
     Py_NoUserSiteDirectory = SYSFLAG_NO_SITE;
     Py_IgnoreEnvironmentFlag = 0;
     Py_VerboseFlag = SYSFLAG_VERBOSE;
@@ -1332,20 +1318,7 @@ int main(int argc, char **argv) {
 
 // Make sure, we use the absolute program path for argv[0]
 #if !defined(_NUITKA_ONEFILE_MODE) && _NUITKA_NATIVE_WCHAR_ARGV == 0
-    original_argv0 = argv[0];
     argv[0] = (char *)getBinaryFilenameHostEncoded(false);
-#endif
-
-#if defined(_NUITKA_ONEFILE_MODE)
-    {
-        environment_char_t const *parent_original_argv0 = getEnvironmentVariable("NUITKA_ORIGINAL_ARGV0");
-
-        if (parent_original_argv0 != NULL) {
-            original_argv0 = strdupFilename(parent_original_argv0);
-
-            unsetEnvironmentVariable("NUITKA_ORIGINAL_ARGV0");
-        }
-    }
 #endif
 
 #if PYTHON_VERSION >= 0x300 && _NUITKA_NATIVE_WCHAR_ARGV == 0
@@ -1359,11 +1332,8 @@ orig_argv = argv;
 #endif
 
 // Make sure, we use the absolute program path for argv[0]
-#if !defined(_NUITKA_ONEFILE_MODE) && _NUITKA_NATIVE_WCHAR_ARGV == 1
-    original_argv0 = argv[0];
-#if PYTHON_VERSION >= 0x300
+#if !defined(_NUITKA_ONEFILE_MODE) && _NUITKA_NATIVE_WCHAR_ARGV == 1 && PYTHON_VERSION >= 0x300
     orig_argv[0] = (wchar_t *)getBinaryFilenameWideChars(false);
-#endif
 #endif
 
     // Make sure the compiled path of Python is replaced.
@@ -1409,7 +1379,7 @@ orig_argv = argv;
 #endif
 
 // Workaround older Python not handling stream setup on redirected files properly.
-#if PYTHON_VERSION >= 0x300 && PYTHON_VERSION < 0x380
+#if PYTHON_VERSION >= 0x340 && PYTHON_VERSION < 0x380
     {
         char const *encoding = NULL;
 
@@ -1629,12 +1599,7 @@ orig_argv = argv;
 
 #if PYTHON_VERSION >= 0x300
     NUITKA_PRINT_TRACE("main(): Calling patchInspectModule().");
-
-// TODO: Python3.13 NoGIL: This is causing errors during bytecode import
-// that are unexplained.
-#if !defined(Py_GIL_DISABLED)
     patchInspectModule(tstate);
-#endif
 #endif
 
 #if PYTHON_VERSION >= 0x300 && SYSFLAG_NO_RANDOMIZATION == 1
@@ -1770,9 +1735,6 @@ orig_argv = argv;
         CALL_FUNCTION_NO_ARGS(tstate, main_function);
 
         int exit_code = HANDLE_PROGRAM_EXIT(tstate);
-
-        NUITKA_PRINT_TRACE("main(): Calling 'anyio.to_process' Py_Exit.");
-        Py_Exit(exit_code);
     } else {
 #endif
 #if defined(_NUITKA_ONEFILE_MODE) && defined(_WIN32)
