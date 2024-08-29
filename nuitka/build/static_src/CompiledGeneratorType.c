@@ -484,8 +484,7 @@ static void RAISE_RUNTIME_ERROR_RAISED_STOP_ITERATION(PyThreadState *tstate, cha
     Py_INCREF(saved_exception_state.exception_value);
     RAISE_EXCEPTION_WITH_CAUSE(tstate, &new_exception_state, saved_exception_state.exception_value);
 
-    Py_INCREF(saved_exception_state.exception_value);
-    PyException_SetContext(new_exception_state.exception_value, saved_exception_state.exception_value);
+    Nuitka_Exception_SetContext(new_exception_state.exception_value, saved_exception_state.exception_value);
 
     RELEASE_ERROR_OCCURRED_STATE_X(&saved_exception_state);
     RESTORE_ERROR_OCCURRED_STATE(tstate, &new_exception_state);
@@ -1618,7 +1617,7 @@ PyTypeObject Nuitka_Generator_Type = {
     0,                                  // tp_getattro (PyObject_GenericGetAttr)
     0,                                  // tp_setattro
     0,                                  // tp_as_buffer
-#if PYTHON_VERSION < 0x340
+#if PYTHON_VERSION < 0x300
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
 #else
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_HAVE_FINALIZE,

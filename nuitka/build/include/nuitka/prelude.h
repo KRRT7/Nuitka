@@ -336,22 +336,6 @@ NUITKA_MAY_BE_UNUSED static PyObject *Nuitka_TypeLookup(PyTypeObject *type, PyOb
 #define NUITKA_MODULE_ENTRY_FUNCTION PyObject *
 #endif
 
-/* Avoid gcc warnings about using an integer as a bool. This is a cherry-pick.
- *
- * This might apply to more versions. I am seeing this on 3.3.2, and it was
- * fixed for Python 2.x only later. We could include more versions. This is
- * only a problem with debug mode and therefore not too important maybe.
- */
-#if PYTHON_VERSION >= 0x300 && PYTHON_VERSION < 0x340
-
-#undef PyMem_MALLOC
-#define PyMem_MALLOC(n) ((size_t)(n) > (size_t)PY_SSIZE_T_MAX ? NULL : malloc(((n) != 0) ? (n) : 1))
-
-#undef PyMem_REALLOC
-#define PyMem_REALLOC(p, n) ((size_t)(n) > (size_t)PY_SSIZE_T_MAX ? NULL : realloc((p), ((n) != 0) ? (n) : 1))
-
-#endif
-
 #if PYTHON_VERSION < 0x300
 typedef long Py_hash_t;
 #endif
@@ -532,6 +516,8 @@ extern PyObject *Nuitka_dunder_compiled_value;
 #define TRACE_FILE_ISDIR(tstate, x, y) (false)
 
 #define TRACE_FILE_LISTDIR(tstate, x, y) (false)
+
+#define TRACE_FILE_STAT(tstate, x, y, z, r) (false)
 
 #endif
 
