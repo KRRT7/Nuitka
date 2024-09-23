@@ -50,26 +50,34 @@ def displayOutput(stdout, stderr):
 
 
 def checkNoPermissionError(output):
+    # Combine all error checks into a single, efficient process
+
     # Forms of permission errors.
-    for candidate in (
+    permission_errors = (
         b"Permission denied:",
         b"PermissionError:",
         b"DBPermissionsError:",
-    ):
-        if candidate in output:
+        b"clcache.__main__.CacheLockException",
+    )
+
+    for error in permission_errors:
+        if error in output:
             return False
 
-    # These are localized it seems, spell-checker: ignore totest
-    if re.search(
-        b"(WindowsError|FileNotFoundError|FileExistsError|WinError 145):"
-        b".*(@test|totest|xx|Error 145)",
-        output,
-    ):
-        return False
+    # Specific errors with additional context (localized checks).
+    localized_errors = (
+        b"WindowsError:",
+        b"FileNotFoundError:",
+        b"FileExistsError:",
+        b"WinError 145:",
+    )
+    context_checks = (b"@test", b"totest", b"xx", b"Error 145")
 
-    # Give those a retry as well.
-    if b"clcache.__main__.CacheLockException" in output:
-        return False
+    for loc_error in localized_errors:
+        if loc_error in output:
+            for context in context_checks:
+                if context in output:
+                    return False
 
     return True
 
