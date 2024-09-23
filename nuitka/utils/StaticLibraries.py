@@ -43,25 +43,18 @@ def locateStaticLinkLibrary(dll_name):
 
 
 def _locateStaticLinkLibrary(dll_name):
-    # singleton, pylint: disable=global-statement
-
-    #
     global _ldconf_paths
-
     if _ldconf_paths is None:
-        _ldconf_paths = OrderedSet()
-
-        for conf_filename in getFileList("/etc/ld.so.conf.d", only_suffixes=".conf"):
+        _ldconf_paths = set()
+        conf_files = getFileList("/etc/ld.so.conf.d", only_suffixes=".conf")
+        for conf_filename in conf_files:
             for conf_line in getFileContentByLine(conf_filename):
-                conf_line = conf_line.split("#", 1)[0]
-                conf_line = conf_line.strip()
-
-                if os.path.exists(conf_line):
+                conf_line = conf_line.split("#", 1)[0].strip()
+                if conf_line and os.path.exists(conf_line):
                     _ldconf_paths.add(conf_line)
 
     for ld_config_path in _ldconf_paths:
-        candidate = os.path.join(ld_config_path, "lib%s.a" % dll_name)
-
+        candidate = os.path.join(ld_config_path, f"lib{dll_name}.a")
         if os.path.exists(candidate):
             return candidate
 
