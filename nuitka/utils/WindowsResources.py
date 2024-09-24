@@ -16,6 +16,7 @@ multiple resources proved to be not possible.
 """
 
 import ctypes
+import ctypes.wintypes
 import os
 import struct
 
@@ -382,11 +383,7 @@ class VsFixedFileInfoStructure(ctypes.Structure):
 
 def convertStructureToBytes(c_value):
     """Convert ctypes structure to bytes for output."""
-
-    result = (ctypes.c_char * ctypes.sizeof(c_value)).from_buffer_copy(c_value)
-    r = b"".join(result)
-    assert len(result) == ctypes.sizeof(c_value)
-    return r
+    return bytes((ctypes.c_char * ctypes.sizeof(c_value)).from_buffer_copy(c_value))
 
 
 def _makeVersionInfoStructure(product_version, file_version, file_date, is_exe):
@@ -433,8 +430,8 @@ def _makeVersionStringEntry(key, value):
     value_size = len(value_data) + 2
     key_size = 6 + len(key_data) + 2
 
-    pad = b"\0\0" if key_size % 4 else b""
-    full_size = key_size + len(pad) + value_size
+    pad_len = (4 - key_size % 4) % 4
+    full_size = key_size + pad_len + value_size
 
     header_data = convertStructureToBytes(
         VersionResourceHeader(
@@ -444,21 +441,20 @@ def _makeVersionStringEntry(key, value):
         )
     )
 
-    return header_data + key_data + b"\0\0" + pad + value_data + b"\0\0"
+    pad = b"\0" * pad_len
+    return b"".join([header_data, key_data, b"\0\0", pad, value_data, b"\0\0"])
 
 
 def _makeVersionStringTable(values):
     block_name = _getVersionString("000004b0")
     size = 6 + len(block_name) + 2
-    pad = b"\0\0" if size % 4 else b""
+    pad_len = (4 - size % 4) % 4
 
     parts = []
     for key, value in values.items():
         chunk = _makeVersionStringEntry(key, value)
-
         if len(chunk) % 4:
             chunk += b"\0\0"
-
         parts.append(chunk)
 
     block_data = b"".join(parts)
@@ -472,7 +468,8 @@ def _makeVersionStringTable(values):
         )
     )
 
-    return header_data + block_name + b"\0\0" + pad + block_data
+    pad = b"\0" * pad_len
+    return b"".join([header_data, block_name, b"\0\0", pad, block_data])
 
 
 def _makeVersionStringBlock(values):
