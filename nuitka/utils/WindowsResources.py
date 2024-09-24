@@ -16,6 +16,7 @@ multiple resources proved to be not possible.
 """
 
 import ctypes
+import ctypes.wintypes
 import os
 import struct
 
@@ -382,11 +383,7 @@ class VsFixedFileInfoStructure(ctypes.Structure):
 
 def convertStructureToBytes(c_value):
     """Convert ctypes structure to bytes for output."""
-
-    result = (ctypes.c_char * ctypes.sizeof(c_value)).from_buffer_copy(c_value)
-    r = b"".join(result)
-    assert len(result) == ctypes.sizeof(c_value)
-    return r
+    return bytes((ctypes.c_char * ctypes.sizeof(c_value)).from_buffer_copy(c_value))
 
 
 def _makeVersionInfoStructure(product_version, file_version, file_date, is_exe):
@@ -497,21 +494,14 @@ def _makeVersionStringBlock(values):
 
 def _makeVarFileInfoStruct():
     block_name = _getVersionString("Translation")
-    size = 6 + len(block_name) + 2
-    pad = b"\0\0" if size % 4 else b""
+    block_data = struct.pack("hh", 0, 1200)  # Language and code page
 
-    values = [0, 1200]  # Language and code page
-    block_data = struct.pack("hh", *values)
-
-    block_size = len(block_data)
-    size += len(pad) + block_size
+    pad_len = (6 + len(block_name) + 2) % 4
+    pad = b"\0\0" if pad_len else b""
+    size = 6 + len(block_name) + 2 + len(pad) + len(block_data)
 
     header_data = convertStructureToBytes(
-        VersionResourceHeader(
-            full_length=size,
-            item_size=block_size,
-            type=0,
-        )
+        VersionResourceHeader(full_length=size, item_size=len(block_data), type=0)
     )
 
     return header_data + block_name + b"\0\0" + pad + block_data
@@ -519,20 +509,17 @@ def _makeVarFileInfoStruct():
 
 def _makeVarFileInfoBlock():
     block_name = _getVersionString("VarFileInfo")
-    size = 6 + len(block_name) + 2
-    pad = b"\0\0" if size % 4 else b""
-    block_data = _makeVarFileInfoStruct()
-    size += len(pad) + len(block_data)
+    var_file_info_struct = _makeVarFileInfoStruct()
+
+    pad_len = (6 + len(block_name) + 2) % 4
+    pad = b"\0\0" if pad_len else b""
+    size = 6 + len(block_name) + 2 + len(pad) + len(var_file_info_struct)
 
     header_data = convertStructureToBytes(
-        VersionResourceHeader(
-            full_length=size,
-            item_size=0,
-            type=1,
-        )
+        VersionResourceHeader(full_length=size, item_size=0, type=1)
     )
 
-    return header_data + block_name + b"\0\0" + pad + block_data
+    return header_data + block_name + b"\0\0" + pad + var_file_info_struct
 
 
 def makeVersionInfoResource(
