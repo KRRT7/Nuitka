@@ -16,6 +16,7 @@ multiple resources proved to be not possible.
 """
 
 import ctypes
+import ctypes.wintypes
 import os
 import struct
 
@@ -382,39 +383,29 @@ class VsFixedFileInfoStructure(ctypes.Structure):
 
 def convertStructureToBytes(c_value):
     """Convert ctypes structure to bytes for output."""
-
-    result = (ctypes.c_char * ctypes.sizeof(c_value)).from_buffer_copy(c_value)
-    r = b"".join(result)
-    assert len(result) == ctypes.sizeof(c_value)
-    return r
+    return bytes((ctypes.c_char * ctypes.sizeof(c_value)).from_buffer_copy(c_value))
 
 
 def _makeVersionInfoStructure(product_version, file_version, file_date, is_exe):
+    """Creates a VsFixedFileInfoStructure with the provided version information."""
     return VsFixedFileInfoStructure(
         dwSignature=0xFEEF04BD,
-        dwFileVersionMS=file_version[0] << 16 | (file_version[1] & 0xFFFF),
-        dwFileVersionLS=file_version[2] << 16 | (file_version[3] & 0xFFFF),
-        dwProductVersionMS=product_version[0] << 16 | (product_version[1] & 0xFFFF),
-        dwProductVersionLS=product_version[2] << 16 | (product_version[3] & 0xFFFF),
+        dwFileVersionMS=(file_version[0] << 16) | file_version[1],
+        dwFileVersionLS=(file_version[2] << 16) | file_version[3],
+        dwProductVersionMS=(product_version[0] << 16) | product_version[1],
+        dwProductVersionLS=(product_version[2] << 16) | product_version[3],
         dwFileFlagsMask=0x3F,
-        dwFileFlags=0,  # TODO: Could be interesting VS_FF_DEBUG and VS_FF_PRERELEASE.
-        dwFileOS=4,  # NT or higher, hasn't been changed in a long time.
-        dwFileType=1 if is_exe else 2,  #
-        dwFileSubtype=0,  # Not applicable for DLL or EXE, only drivers use this.
+        dwFileFlags=0,
+        dwFileOS=4,
+        dwFileType=1 if is_exe else 2,
+        dwFileSubtype=0,
         dwFileDateMS=file_date[0],
         dwFileDateLS=file_date[1],
     )
 
 
 def _getVersionString(value):
-    """Encodes string for version information string tables.
-
-    Arguments:
-        value - string to encode
-
-    Returns:
-        bytes - value encoded as utf-16le
-    """
+    """Encodes string for version information string tables."""
     return value.encode("utf-16le")
 
 
@@ -476,13 +467,12 @@ def _makeVersionStringTable(values):
 
 
 def _makeVersionStringBlock(values):
+    """Creates a version string block."""
     block_name = _getVersionString("StringFileInfo")
-    size = 6 + len(block_name) + 2
-    pad = b"\0\0" if size % 4 else b""
-
+    header_length = 6 + len(block_name) + 2
+    pad = b"\0\0" if header_length % 4 else b""
     block_data = _makeVersionStringTable(values)
-
-    size = size + len(pad) + len(block_data)
+    size = header_length + len(pad) + len(block_data)
 
     header_data = convertStructureToBytes(
         VersionResourceHeader(
@@ -491,7 +481,6 @@ def _makeVersionStringBlock(values):
             type=1,
         )
     )
-
     return header_data + block_name + b"\0\0" + pad + block_data
 
 
@@ -518,11 +507,12 @@ def _makeVarFileInfoStruct():
 
 
 def _makeVarFileInfoBlock():
+    """Creates a var file info block."""
     block_name = _getVersionString("VarFileInfo")
-    size = 6 + len(block_name) + 2
-    pad = b"\0\0" if size % 4 else b""
+    header_length = 6 + len(block_name) + 2
+    pad = b"\0\0" if header_length % 4 else b""
     block_data = _makeVarFileInfoStruct()
-    size += len(pad) + len(block_data)
+    size = header_length + len(pad) + len(block_data)
 
     header_data = convertStructureToBytes(
         VersionResourceHeader(
@@ -531,44 +521,38 @@ def _makeVarFileInfoBlock():
             type=1,
         )
     )
-
     return header_data + block_name + b"\0\0" + pad + block_data
 
 
 def makeVersionInfoResource(
     string_values, product_version, file_version, file_date, is_exe
 ):
-    # Every item has name and gets padded.
+    """Creates a version info resource."""
     block_name = _getVersionString("VS_VERSION_INFO")
-    size = 6 + len(block_name) + 2
-    pad1 = b"\0\0" if size % 4 else b""
+    header_length = 6 + len(block_name) + 2
+    pad1 = b"\0\0" if header_length % 4 else b""
 
-    # First create the static C structure data
     version_info = _makeVersionInfoStructure(
         product_version=product_version,
         file_version=file_version,
         file_date=file_date,
         is_exe=is_exe,
     )
-
     version_data = convertStructureToBytes(version_info)
-    version_size = len(version_data)
 
-    size += len(pad1) + version_size
+    size = header_length + len(pad1) + len(version_data)
     pad2 = b"\0\0" if size % 4 else b""
 
     block_data = _makeVersionStringBlock(string_values) + _makeVarFileInfoBlock()
-
     size += len(pad2) + len(block_data)
 
     header_data = convertStructureToBytes(
         VersionResourceHeader(
             full_length=size,
-            item_size=version_size,
+            item_size=len(version_data),
             type=0,
         )
     )
-
     return header_data + block_name + b"\0\0" + pad1 + version_data + pad2 + block_data
 
 
