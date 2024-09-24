@@ -16,6 +16,7 @@ multiple resources proved to be not possible.
 """
 
 import ctypes
+import ctypes.wintypes
 import os
 import struct
 
@@ -47,44 +48,31 @@ def getResourcesFromDLL(filename, resource_kinds, with_data=False):
         List of resources in the DLL, see with_data which controls scope.
 
     """
-    # Quite complex stuff, pylint: disable=too-many-locals
-
-    import ctypes.wintypes  # Not really redefined, but extended, pylint: disable=redefined-outer-name
-
-    if type(filename) is str and str is not bytes:
+    if isinstance(filename, str):
         LoadLibraryEx = ctypes.windll.kernel32.LoadLibraryExW
     else:
         LoadLibraryEx = ctypes.windll.kernel32.LoadLibraryExA
-
-    EnumResourceLanguages = ctypes.windll.kernel32.EnumResourceLanguagesA
-    FreeLibrary = ctypes.windll.kernel32.FreeLibrary
-
-    EnumResourceNameCallback = ctypes.WINFUNCTYPE(
-        ctypes.wintypes.BOOL,
-        ctypes.wintypes.HMODULE,
-        ctypes.wintypes.LONG,
-        ctypes.wintypes.LONG,
-        ctypes.wintypes.LONG,
-    )
 
     EnumResourceNames = ctypes.windll.kernel32.EnumResourceNamesA
     EnumResourceNames.argtypes = (
         ctypes.wintypes.HMODULE,
         ctypes.wintypes.LPVOID,
-        EnumResourceNameCallback,
+        ctypes.WINFUNCTYPE(
+            ctypes.wintypes.BOOL,
+            ctypes.wintypes.HMODULE,
+            ctypes.wintypes.LONG,
+            ctypes.wintypes.LONG,
+            ctypes.wintypes.LONG,
+        ),
         ctypes.wintypes.LPARAM,
     )
 
-    DONT_RESOLVE_DLL_REFERENCES = 0x1
-    LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE = 0x40
-    LOAD_LIBRARY_AS_IMAGE_RESOURCE = 0x20
+    EnumResourceLanguages = ctypes.windll.kernel32.EnumResourceLanguagesA
 
     hmodule = LoadLibraryEx(
         filename,
         0,
-        DONT_RESOLVE_DLL_REFERENCES
-        | LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE
-        | LOAD_LIBRARY_AS_IMAGE_RESOURCE,
+        0x1 | 0x40 | 0x20,
     )
 
     if hmodule == 0:
@@ -105,55 +93,55 @@ def getResourcesFromDLL(filename, resource_kinds, with_data=False):
         langs = []
 
         def callback2(hModule2, lpType2, lpName2, wLang, _lParam):
-            assert hModule2 == hModule
-            assert lpType2 == lpType
-            assert lpName2 == lpName
-
-            langs.append(wLang)
-
+            if hModule2 == hModule and lpType2 == lpType and lpName2 == lpName:
+                langs.append(wLang)
             return True
 
         EnumResourceLanguages(
             hModule, lpType, lpName, EnumResourceLanguagesCallback(callback2), 0
         )
-        # Always pick first one, we should get away with that. On very old Python,
-        # we do not find any, and pick 0.
-        try:
-            lang_id = langs[0]
-        except IndexError:
-            lang_id = 0
+
+        lang_id = langs[0] if langs else 0
 
         if with_data:
             hResource = ctypes.windll.kernel32.FindResourceA(hModule, lpName, lpType)
             size = ctypes.windll.kernel32.SizeofResource(hModule, hResource)
             hData = ctypes.windll.kernel32.LoadResource(hModule, hResource)
-
-            try:
-                ptr = ctypes.windll.kernel32.LockResource(hData)
-                result.append((lpType, lpName, lang_id, ctypes.string_at(ptr, size)))
-            finally:
-                ctypes.windll.kernel32.FreeResource(hData)
+            ptr = ctypes.windll.kernel32.LockResource(hData)
+            result.append((lpType, lpName, lang_id, ctypes.string_at(ptr, size)))
+            ctypes.windll.kernel32.FreeResource(hData)
         else:
             result.append((lpName, lang_id))
 
         return True
 
-    for resource_kind in resource_kinds:
-        EnumResourceNames(hmodule, resource_kind, EnumResourceNameCallback(callback), 0)
+    callback_func = ctypes.WINFUNCTYPE(
+        ctypes.wintypes.BOOL,
+        ctypes.wintypes.HMODULE,
+        ctypes.wintypes.LONG,
+        ctypes.wintypes.LONG,
+        ctypes.wintypes.LONG,
+    )(callback)
 
-    FreeLibrary(hmodule)
+    for resource_kind in resource_kinds:
+        EnumResourceNames(hmodule, resource_kind, callback_func, 0)
+
+    ctypes.windll.kernel32.FreeLibrary(hmodule)
     return result
 
 
 def _openFileWindowsResources(filename):
     fullpath = os.path.abspath(filename)
-    if type(filename) is str and str is bytes:
-        BeginUpdateResource = ctypes.windll.kernel32.BeginUpdateResourceA
-        BeginUpdateResource.argtypes = (ctypes.wintypes.LPCSTR, ctypes.wintypes.BOOL)
-    else:
-        BeginUpdateResource = ctypes.windll.kernel32.BeginUpdateResourceW
-        BeginUpdateResource.argtypes = (ctypes.wintypes.LPCWSTR, ctypes.wintypes.BOOL)
-
+    BeginUpdateResource = (
+        ctypes.windll.kernel32.BeginUpdateResourceW
+        if isinstance(filename, str)
+        else ctypes.windll.kernel32.BeginUpdateResourceA
+    )
+    BeginUpdateResource.argtypes = (
+        (ctypes.wintypes.LPCWSTR, ctypes.wintypes.BOOL)
+        if isinstance(filename, str)
+        else (ctypes.wintypes.LPCSTR, ctypes.wintypes.BOOL)
+    )
     BeginUpdateResource.restype = ctypes.wintypes.HANDLE
 
     update_handle = BeginUpdateResource(fullpath, False)
@@ -169,22 +157,15 @@ def _closeFileWindowsResources(update_handle):
     EndUpdateResource.argtypes = (ctypes.wintypes.HANDLE, ctypes.wintypes.BOOL)
     EndUpdateResource.restype = ctypes.wintypes.BOOL
 
-    ret = EndUpdateResource(update_handle, False)
-
-    if not ret:
+    if not EndUpdateResource(update_handle, False):
         raise ctypes.WinError()
 
 
 def _updateWindowsResource(update_handle, resource_kind, res_name, lang_id, data):
-    if data is None:
-        size = 0
-    else:
-        size = len(data)
-
-        assert type(data) is bytes
+    size = len(data) if data else 0
+    assert isinstance(data, bytes)
 
     UpdateResourceA = ctypes.windll.kernel32.UpdateResourceA
-
     UpdateResourceA.argtypes = (
         ctypes.wintypes.HANDLE,
         ctypes.wintypes.LPVOID,
@@ -194,9 +175,7 @@ def _updateWindowsResource(update_handle, resource_kind, res_name, lang_id, data
         ctypes.wintypes.DWORD,
     )
 
-    ret = UpdateResourceA(update_handle, resource_kind, res_name, lang_id, data, size)
-
-    if not ret:
+    if not UpdateResourceA(update_handle, resource_kind, res_name, lang_id, data, size):
         raise ctypes.WinError()
 
 
