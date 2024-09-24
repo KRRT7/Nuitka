@@ -16,6 +16,7 @@ multiple resources proved to be not possible.
 """
 
 import ctypes
+import ctypes.wintypes
 import os
 import struct
 
@@ -382,11 +383,7 @@ class VsFixedFileInfoStructure(ctypes.Structure):
 
 def convertStructureToBytes(c_value):
     """Convert ctypes structure to bytes for output."""
-
-    result = (ctypes.c_char * ctypes.sizeof(c_value)).from_buffer_copy(c_value)
-    r = b"".join(result)
-    assert len(result) == ctypes.sizeof(c_value)
-    return r
+    return bytes((ctypes.c_char * ctypes.sizeof(c_value)).from_buffer_copy(c_value))
 
 
 def _makeVersionInfoStructure(product_version, file_version, file_date, is_exe):
@@ -449,48 +446,45 @@ def _makeVersionStringEntry(key, value):
 
 def _makeVersionStringTable(values):
     block_name = _getVersionString("000004b0")
-    size = 6 + len(block_name) + 2
+    block_name_len = len(block_name)
+    size = 6 + block_name_len + 2
     pad = b"\0\0" if size % 4 else b""
 
     parts = []
     for key, value in values.items():
         chunk = _makeVersionStringEntry(key, value)
-
         if len(chunk) % 4:
             chunk += b"\0\0"
-
         parts.append(chunk)
 
     block_data = b"".join(parts)
     size += len(block_data)
 
-    header_data = convertStructureToBytes(
-        VersionResourceHeader(
-            full_length=size,
-            item_size=0,
-            type=1,
-        )
+    header = VersionResourceHeader(
+        full_length=size,
+        item_size=0,
+        type=1,
     )
+    header_data = bytes(header)
 
     return header_data + block_name + b"\0\0" + pad + block_data
 
 
 def _makeVersionStringBlock(values):
     block_name = _getVersionString("StringFileInfo")
-    size = 6 + len(block_name) + 2
+    block_name_len = len(block_name)
+    size = 6 + block_name_len + 2
     pad = b"\0\0" if size % 4 else b""
 
     block_data = _makeVersionStringTable(values)
+    size += len(pad) + len(block_data)
 
-    size = size + len(pad) + len(block_data)
-
-    header_data = convertStructureToBytes(
-        VersionResourceHeader(
-            full_length=size,
-            item_size=0,
-            type=1,
-        )
+    header = VersionResourceHeader(
+        full_length=size,
+        item_size=0,
+        type=1,
     )
+    header_data = bytes(header)
 
     return header_data + block_name + b"\0\0" + pad + block_data
 
