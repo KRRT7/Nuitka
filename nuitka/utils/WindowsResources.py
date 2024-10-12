@@ -382,11 +382,8 @@ class VsFixedFileInfoStructure(ctypes.Structure):
 
 def convertStructureToBytes(c_value):
     """Convert ctypes structure to bytes for output."""
-
-    result = (ctypes.c_char * ctypes.sizeof(c_value)).from_buffer_copy(c_value)
-    r = b"".join(result)
-    assert len(result) == ctypes.sizeof(c_value)
-    return r
+    result = ctypes.string_at(ctypes.addressof(c_value), ctypes.sizeof(c_value))
+    return result
 
 
 def _makeVersionInfoStructure(product_version, file_version, file_date, is_exe):
@@ -408,10 +405,8 @@ def _makeVersionInfoStructure(product_version, file_version, file_date, is_exe):
 
 def _getVersionString(value):
     """Encodes string for version information string tables.
-
     Arguments:
         value - string to encode
-
     Returns:
         bytes - value encoded as utf-16le
     """
