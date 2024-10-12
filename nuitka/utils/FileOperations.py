@@ -410,44 +410,27 @@ def getFileList(
         This function descends into directories, but does
         not follow symlinks.
     """
-    # We work with a lot of details here
     result = []
-
-    # Normalize "ignore_dirs" for better matching.
-    ignore_dirs = [os.path.normcase(ignore_dir) for ignore_dir in ignore_dirs]
-    ignore_filenames = [
-        os.path.normcase(ignore_filename) for ignore_filename in ignore_filenames
-    ]
+    ignore_dirs = set(os.path.normcase(d) for d in ignore_dirs)
+    ignore_filenames = set(os.path.normcase(f) for f in ignore_filenames)
+    ignore_suffixes = set(ignore_suffixes)
+    only_suffixes = set(only_suffixes)
 
     for root, dirnames, filenames in os.walk(path):
-        dirnames.sort()
-        filenames.sort()
-
-        # Normalize dirnames for better matching.
-        dirnames_normalized = [os.path.normcase(dirname) for dirname in dirnames]
-        for ignore_dir in ignore_dirs:
-            if ignore_dir in dirnames_normalized:
-                dirnames.remove(ignore_dir)
-
-        # Compare to normalized filenames for better matching.
+        dirnames[:] = [d for d in dirnames if os.path.normcase(d) not in ignore_dirs]
         filenames = [
-            filename
-            for filename in filenames
-            if os.path.normcase(filename) not in ignore_filenames
+            f
+            for f in filenames
+            if os.path.normcase(f) not in ignore_filenames
+            and not any(f.endswith(s) for s in ignore_suffixes)
+            and (not only_suffixes or any(f.endswith(s) for s in only_suffixes))
         ]
-
         for filename in filenames:
-            if os.path.normcase(filename).endswith(ignore_suffixes):
-                continue
-
-            if only_suffixes and not os.path.normcase(filename).endswith(only_suffixes):
-                continue
-
-            fullname = os.path.join(root, filename)
-
-            if normalize:
-                fullname = os.path.normpath(fullname)
-
+            fullname = (
+                os.path.normpath(os.path.join(root, filename))
+                if normalize
+                else os.path.join(root, filename)
+            )
             result.append(fullname)
 
     return result
@@ -788,9 +771,8 @@ def withTemporaryFile(suffix="", mode="w", delete=True, temp_path=None):
 
 
 def getFileContentByLine(filename, mode="r", encoding=None):
-    # We read the whole, to keep lock times minimal. We only deal with small
-    # files like this normally.
-    return getFileContents(filename, mode, encoding=encoding).splitlines()
+    with open(filename, mode, encoding=encoding) as file:
+        return file.read().splitlines()
 
 
 def getFileContents(filename, mode="r", encoding=None):
