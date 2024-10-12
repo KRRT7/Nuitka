@@ -29,6 +29,7 @@ from .Utils import (
     isMacOS,
     isWin32Windows,
 )
+import sysconfig
 
 _ldconf_paths = None
 
@@ -92,16 +93,14 @@ def isDebianSuitableForStaticLinking():
 
 
 def _getSysConfigVarLIBPL():
-    # Return the LIBPL config variable, or None if it's not set or retrievable
-    try:
-        import sysconfig
-
-        return sysconfig.get_config_var("LIBPL")
-
-    except ImportError:
-        # Cannot detect this properly for Python 2.6, but we don't care much
-        # about that anyway.
-        return None
+    global sysconfig
+    # Cache the sysconfig module to avoid repeated imports
+    if sysconfig is None:
+        try:
+            import sysconfig
+        except ImportError:
+            return None
+    return sysconfig.get_config_var("LIBPL")
 
 
 def _getSystemStaticLibPythonPath():
