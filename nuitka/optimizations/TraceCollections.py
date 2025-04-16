@@ -17,7 +17,7 @@ from nuitka import Variables
 from nuitka.__past__ import iterItems  # Python3 compatibility.
 from nuitka.containers.OrderedDicts import OrderedDict
 from nuitka.containers.OrderedSets import OrderedSet
-from nuitka.ModuleRegistry import addUsedModule
+from nuitka.ModuleRegistry import module_registry
 from nuitka.nodes.NodeMakingHelpers import getComputationResult
 from nuitka.nodes.shapes.StandardShapes import tshape_uninitialized
 from nuitka.Tracing import (
@@ -328,7 +328,7 @@ class CollectionStartPointMixin(CollectionUpdateMixin):
         # Make sure the owning module is added to the used set. This is most
         # important for helper functions, or modules, which otherwise have
         # become unused.
-        addUsedModule(
+        module_registry.addUsedModule(
             module=owning_module,
             using_module=None,
             usage_tag="function",

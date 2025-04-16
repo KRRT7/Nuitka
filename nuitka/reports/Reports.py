@@ -23,12 +23,7 @@ from nuitka.freezer.IncludedEntryPoints import getStandaloneEntryPoints
 from nuitka.freezer.Standalone import getRemovedUsedDllsInfo
 from nuitka.importing.Importing import getPackageSearchPath
 from nuitka.importing.Recursion import getRecursionDecisions
-from nuitka.ModuleRegistry import (
-    getDoneModules,
-    getModuleInclusionInfoByName,
-    getModuleInfluences,
-    getModuleOptimizationTimingInfos,
-)
+from nuitka.ModuleRegistry import module_registry
 from nuitka.Options import (
     getCompilationMode,
     getCompilationReportFilename,
@@ -87,40 +82,40 @@ def _getReportInputData(aborted):
     # many entries,
     # pylint: disable=possibly-unused-variable,too-many-branches,too-many-locals,too-many-statements
 
-    module_names = tuple(module.getFullName() for module in getDoneModules())
+    module_names = tuple(module.getFullName() for module in module_registry.getDoneModules())
 
     module_kinds = dict(
-        (module.getFullName(), module.__class__.__name__) for module in getDoneModules()
+        (module.getFullName(), module.__class__.__name__) for module in module_registry.getDoneModules()
     )
 
     module_sources = dict(
-        (module.getFullName(), module.source_ref) for module in getDoneModules()
+        (module.getFullName(), module.source_ref) for module in module_registry.getDoneModules()
     )
 
     module_inclusion_infos = dict(
-        (module.getFullName(), getModuleInclusionInfoByName(module.getFullName()))
-        for module in getDoneModules()
+        (module.getFullName(), module_registry.getModuleInclusionInfoByName(module.getFullName()))
+        for module in module_registry.getDoneModules()
     )
 
     module_plugin_influences = dict(
-        (module.getFullName(), getModuleInfluences(module.getFullName()))
-        for module in getDoneModules()
+        (module.getFullName(), module_registry.getModuleInfluences(module.getFullName()))
+        for module in module_registry.getDoneModules()
     )
 
     module_timing_infos = dict(
-        (module.getFullName(), getModuleOptimizationTimingInfos(module.getFullName()))
-        for module in getDoneModules()
+        (module.getFullName(), module_registry.getModuleOptimizationTimingInfos(module.getFullName()))
+        for module in module_registry.getDoneModules()
     )
 
     module_usages = dict(
         (module.getFullName(), tuple(module.getUsedModules()))
-        for module in getDoneModules()
+        for module in module_registry.getDoneModules()
     )
 
     module_distributions = {}
     distribution_modules = {}
 
-    for module in getDoneModules():
+    for module in module_registry.getDoneModules():
         module_distributions[module.getFullName()] = getDistributionsFromModuleName(
             module.getFullName()
         )
@@ -131,7 +126,7 @@ def _getReportInputData(aborted):
             distribution_modules[_distribution].add(module.getFullName())
 
     module_distribution_usages = {}
-    for module in getDoneModules():
+    for module in module_registry.getDoneModules():
         module_distribution_usages[module.getFullName()] = OrderedSet()
 
         for _module_usage in module_usages[module.getFullName()]:
@@ -146,7 +141,7 @@ def _getReportInputData(aborted):
 
     module_distribution_names = dict(
         (module.getFullName(), module.getUsedDistributions())
-        for module in getDoneModules()
+        for module in module_registry.getDoneModules()
     )
 
     all_distributions = tuple(
@@ -172,7 +167,7 @@ def _getReportInputData(aborted):
         for dist in all_distributions
     )
 
-    module_exclusions = dict((module.getFullName(), {}) for module in getDoneModules())
+    module_exclusions = dict((module.getFullName(), {}) for module in module_registry.getDoneModules())
 
     # TODO: The module filename, and other things can be None. Once we change to
     # namedtuples, we need to adapt the type check.

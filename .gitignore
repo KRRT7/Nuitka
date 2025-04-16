@@ -74,3 +74,4 @@ doxygen-*
 Nuitka-*
 nuitka/tools/podman/containers/requirements-devel.txt
 nuitka/build/inline_copy/downloads
+.venv/

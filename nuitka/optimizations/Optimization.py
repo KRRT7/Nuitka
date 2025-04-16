@@ -10,7 +10,7 @@ make others possible.
 
 import inspect
 
-from nuitka import ModuleRegistry, Options, Variables
+from nuitka import Options, Variables
 from nuitka.importing.Importing import addExtraSysPaths
 from nuitka.importing.Recursion import considerUsedModules
 from nuitka.plugins.Plugins import Plugins
@@ -22,6 +22,7 @@ from nuitka.Progress import (
 from nuitka.Tracing import general, optimization_logger, progress_logger
 from nuitka.utils.MemoryUsage import MemoryWatch, reportMemoryUsage
 from nuitka.utils.Timing import TimerReport
+from nuitka.ModuleRegistry import module_registry
 
 from . import Graphs
 from .BytecodeDemotion import demoteCompiledModuleToBytecode
@@ -187,8 +188,8 @@ def _restartProgress():
         setupProgressBar(
             stage="PASS %d" % pass_count,
             unit="module",
-            total=ModuleRegistry.getRemainingModulesCount()
-            + ModuleRegistry.getDoneModulesCount(),
+            total=module_registry.getRemainingModulesCount()
+            + module_registry.getDoneModulesCount(),
             min_total=last_total,
         )
 
@@ -199,15 +200,15 @@ def _traceProgressModuleStart(current_module):
 Optimizing module '{module_name}', {remaining:d} more modules to go \
 after that.""".format(
             module_name=current_module.getFullName(),
-            remaining=ModuleRegistry.getRemainingModulesCount(),
+            remaining=module_registry.getRemainingModulesCount(),
         ),
         other_logger=progress_logger,
     )
 
     reportProgressBar(
         item=current_module.getFullName(),
-        total=ModuleRegistry.getRemainingModulesCount()
-        + ModuleRegistry.getDoneModulesCount(),
+        total=module_registry.getRemainingModulesCount()
+        + module_registry.getDoneModulesCount(),
         update=False,
     )
 
@@ -228,8 +229,8 @@ after that.""".format(
 def _traceProgressModuleEnd(current_module):
     reportProgressBar(
         item=current_module.getFullName(),
-        total=ModuleRegistry.getRemainingModulesCount()
-        + ModuleRegistry.getDoneModulesCount(),
+        total=module_registry.getRemainingModulesCount()
+        + module_registry.getDoneModulesCount(),
         update=True,
     )
 
@@ -255,7 +256,8 @@ def makeOptimizationPass():
 
     finished = True
 
-    ModuleRegistry.startTraversal()
+    module_registry.startTraversal()
+
 
     _restartProgress()
 
@@ -263,7 +265,7 @@ def makeOptimizationPass():
     stdlib_phase_done = False
 
     while True:
-        current_module = ModuleRegistry.nextModule()
+        current_module = module_registry.nextModule()
 
         if current_module is None:
             if main_module is not None and pass_count == 1:
@@ -287,7 +289,7 @@ def makeOptimizationPass():
         ) as module_timer:
             changed, micro_passes = optimizeModule(current_module)
 
-        ModuleRegistry.addModuleOptimizationTimeInformation(
+        module_registry.addModuleOptimizationTimeInformation(
             module_name=module_name,
             pass_number=pass_count,
             time_used=module_timer.getDelta(),
@@ -303,7 +305,7 @@ def makeOptimizationPass():
     # Unregister collection traces from now unused code, dropping the trace
     # collections of functions no longer used. This must be done after global
     # optimization due to cross module usages.
-    for current_module in ModuleRegistry.getDoneModules():
+    for current_module in module_registry.getDoneModules():
         if current_module.isCompiledPythonModule():
             for unused_function in current_module.getUnusedFunctions():
                 Variables.updateVariablesFromCollection(
@@ -333,7 +335,7 @@ def optimizeModules(output_filename):
 
     # Demote compiled modules to bytecode, now that imports had a chance to be resolved, and
     # dependencies were handled.
-    for module in ModuleRegistry.getDoneModules():
+    for module in module_registry.getDoneModules():
         if (
             module.isCompiledPythonModule()
             and module.getCompilationMode() == "bytecode"

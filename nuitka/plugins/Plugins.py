@@ -28,7 +28,7 @@ from nuitka.containers.OrderedSets import OrderedSet
 from nuitka.Errors import NuitkaSyntaxError
 from nuitka.freezer.IncludedDataFiles import IncludedDataFile
 from nuitka.freezer.IncludedEntryPoints import IncludedEntryPoint
-from nuitka.ModuleRegistry import addUsedModule
+from nuitka.ModuleRegistry import module_registry
 from nuitka.PythonVersions import python_version
 from nuitka.Tracing import plugins_logger, printLine
 from nuitka.utils.CommandLineOptions import OurOptionGroup
@@ -489,7 +489,7 @@ class Plugins(object):
                     using_module_name=module.module_name,
                 )
 
-                addUsedModule(
+                module_registry.addUsedModule(
                     module=imported_module,
                     using_module=module,
                     usage_tag="plugin:" + plugin.plugin_name,
@@ -543,7 +543,7 @@ class Plugins(object):
         full_name = module.getFullName()
 
         if full_name in pre_modules:
-            addUsedModule(
+            module_registry.addUsedModule(
                 pre_modules[full_name],
                 using_module=module,
                 usage_tag="plugins",
@@ -552,7 +552,7 @@ class Plugins(object):
             )
 
         if full_name in post_modules:
-            addUsedModule(
+            module_registry.addUsedModule(
                 module=post_modules[full_name],
                 using_module=module,
                 usage_tag="plugins",
@@ -562,7 +562,7 @@ class Plugins(object):
 
         if full_name in fake_modules:
             for fake_module, plugin, reason in fake_modules[full_name]:
-                addUsedModule(
+                module_registry.addUsedModule(
                     module=fake_module,
                     using_module=module,
                     usage_tag="plugins",
@@ -1134,19 +1134,19 @@ class Plugins(object):
     def onModuleInitialSet():
         """The initial set of root modules is complete, plugins may add more."""
 
-        from nuitka.ModuleRegistry import addRootModule
+        from nuitka.ModuleRegistry import module_registry
 
         for plugin in getActivePlugins():
             for module in plugin.onModuleInitialSet():
-                addRootModule(module)
+                module_registry.addRootModule(module)
 
     @staticmethod
     def onModuleCompleteSet():
         """The final set of modules is determined, this is only for inspection, cannot change."""
-        from nuitka.ModuleRegistry import getDoneModules
+        from nuitka.ModuleRegistry import module_registry
 
         # Make sure it's immutable.
-        module_set = tuple(getDoneModules())
+        module_set = tuple(module_registry.getDoneModules())
 
         for plugin in getActivePlugins():
             plugin.onModuleCompleteSet(module_set)

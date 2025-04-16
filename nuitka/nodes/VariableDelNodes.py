@@ -9,7 +9,7 @@ These refer to resolved variable objects.
 
 from abc import abstractmethod
 
-from nuitka.ModuleRegistry import getOwnerFromCodeName
+from nuitka.ModuleRegistry import module_registry
 from nuitka.Options import isExperimental
 from nuitka.PythonVersions import getUnboundLocalErrorErrorTemplate
 
@@ -82,7 +82,7 @@ class StatementDelVariableBase(StatementBase):
 
     @classmethod
     def fromXML(cls, provider, source_ref, **args):
-        owner = getOwnerFromCodeName(args["owner"])
+        owner = module_registry.getOwnerFromCodeName(args["owner"])
 
         if args["is_temp"] == "True":
             variable = owner.createTempVariable(

@@ -8,7 +8,7 @@ progress of optimization into images.
 """
 
 from nuitka import Options
-from nuitka.ModuleRegistry import getDoneModules
+from nuitka.ModuleRegistry import module_registry
 from nuitka.Tracing import general
 
 graph = None
@@ -48,7 +48,7 @@ def startGraph():
 
 def endGraph(output_filename):
     if graph is not None:
-        for module in getDoneModules():
+        for module in module_registry.getDoneModules():
             _addModuleGraph(module, "final")
 
         graph.draw(output_filename + ".dot", prog="dot")

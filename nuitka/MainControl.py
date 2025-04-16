@@ -109,7 +109,8 @@ from nuitka.utils.StaticLibraries import getSystemStaticLibPythonPath
 from nuitka.utils.Utils import getArchitecture, isMacOS, isWin32Windows
 from nuitka.Version import getCommercialVersion, getNuitkaVersion
 
-from . import ModuleRegistry, Options, OutputDirectories
+from . import Options, OutputDirectories
+from nuitka.ModuleRegistry import module_registry
 from .build.SconsInterface import (
     asBoolStr,
     cleanSconsDirectory,
@@ -262,7 +263,7 @@ def _createMainModule():
 
     # Check if distribution meta data is included, that cannot be used.
     for distribution_name, meta_data_value in getDistributionMetadataValues():
-        if not ModuleRegistry.hasDoneModule(meta_data_value.module_name):
+        if not module_registry.hasDoneModule(meta_data_value.module_name):
             inclusion_logger.sysexit(
                 "Error, including metadata for distribution '%s' without including related package '%s'."
                 % (distribution_name, meta_data_value.module_name)
@@ -272,7 +273,7 @@ def _createMainModule():
     Plugins.onModuleCompleteSet()
 
     if Options.isExperimental("check_xml_persistence"):
-        for module in ModuleRegistry.getRootModules():
+        for module in module_registry.getRootModules():
             if module.isMainModule():
                 return module
 
@@ -288,7 +289,7 @@ def dumpTreeXML():
     if filename is not None:
         with openTextFile(filename, "wb") as output_file:
             # XML output only.
-            for module in ModuleRegistry.getDoneModules():
+            for module in module_registry.getDoneModules():
                 dumpTreeXMLToFile(tree=module.asXml(), output_file=output_file)
 
         general.info("XML dump of node state written to file '%s'." % filename)
@@ -379,23 +380,23 @@ def makeSourceDirectory():
         if "*" in any_case_module or "{" in any_case_module:
             continue
 
-        if not ModuleRegistry.hasDoneModule(
+        if not module_registry.hasDoneModule(
             any_case_module
-        ) and not ModuleRegistry.hasRootModule(any_case_module):
+        ) and not module_registry.hasRootModule(any_case_module):
             general.warning(
                 "Did not follow import to unused '%s', consider include options."
                 % any_case_module
             )
 
     # Prepare code generation, i.e. execute finalization for it.
-    for module in ModuleRegistry.getDoneModules():
+    for module in module_registry.getDoneModules():
         if module.isCompiledPythonModule():
             Finalization.prepareCodeGeneration(module)
 
     # Do some reporting and determine compiled module to work on
     compiled_modules = []
 
-    for module in ModuleRegistry.getDoneModules():
+    for module in module_registry.getDoneModules():
         if module.isCompiledPythonModule():
             compiled_modules.append(module)
 
@@ -599,7 +600,7 @@ def runSconsBackend():
     scons_options["trace_mode"] = asBoolStr(Options.shallTraceExecution())
     scons_options["file_reference_mode"] = Options.getFileReferenceMode()
     scons_options["compiled_module_count"] = "%d" % len(
-        ModuleRegistry.getCompiledModules()
+        module_registry.getCompiledModules()
     )
 
     if Options.isLowMemory():
@@ -608,7 +609,7 @@ def runSconsBackend():
     scons_options["result_exe"] = OutputDirectories.getResultFullpath(onefile=False)
 
     if not Options.shallMakeModule():
-        main_module = ModuleRegistry.getRootTopModule()
+        main_module = module_registry.getRootTopModule()
         assert main_module.isMainModule()
 
         main_module_name = main_module.getFullName()
@@ -641,9 +642,9 @@ def runSconsBackend():
     if Options.shallTreatUninstalledPython():
         scons_options["uninstalled_python"] = asBoolStr(True)
 
-    if ModuleRegistry.getUncompiledTechnicalModules():
+    if module_registry.getUncompiledTechnicalModules():
         scons_options["frozen_modules"] = str(
-            len(ModuleRegistry.getUncompiledTechnicalModules())
+            len(module_registry.getUncompiledTechnicalModules())
         )
 
     if hasPythonFlagNoWarnings():
@@ -1026,7 +1027,7 @@ def _main():
 
         setMainEntryPoint(binary_filename)
 
-        for module in ModuleRegistry.getDoneModules():
+        for module in module_registry.getDoneModules():
             addIncludedEntryPoints(Plugins.considerExtraDlls(module))
 
         detectUsedDLLs(

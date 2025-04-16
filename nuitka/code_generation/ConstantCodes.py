@@ -19,7 +19,7 @@ import sys
 from nuitka import Options
 from nuitka.__past__ import unicode
 from nuitka.containers.Namedtuples import makeNamedtupleClass
-from nuitka.ModuleRegistry import getRootTopModule
+from  nuitka.ModuleRegistry import module_registry
 from nuitka.PythonVersions import python_version
 from nuitka.Serialization import GlobalConstantAccessor
 from nuitka.utils.CStrings import encodePythonStringToC
@@ -163,7 +163,7 @@ def getConstantsDefinitionCode():
 
     body = template_constants_reading % {
         "module_name_cstr": encodePythonStringToC(
-            getRootTopModule().getFullName().asString().encode("utf8")
+            module_registry.getRootTopModule().getFullName().asString().encode("utf8")
         ),
         "global_constants_count": constant_accessor.getConstantsCount(),
         "sys_executable": sys_executable,

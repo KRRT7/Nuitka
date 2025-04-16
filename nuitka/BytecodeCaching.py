@@ -12,7 +12,7 @@ import sys
 
 from nuitka.containers.OrderedSets import OrderedSet
 from nuitka.importing.Importing import locateModule, makeModuleUsageAttempt
-from nuitka.ModuleRegistry import getModuleOptimizationTimingInfos
+from nuitka.ModuleRegistry import module_registry
 from nuitka.plugins.Plugins import Plugins
 from nuitka.utils.AppDirs import getCacheDir
 from nuitka.utils.FileOperations import makePath
@@ -148,7 +148,7 @@ def writeImportedModulesNamesToCache(
         # We use a tuple, so preserve the order.
         "modules_used": used_modules,
         "distribution_names": distribution_names,
-        "timing_infos": getModuleOptimizationTimingInfos(module_name),
+        "timing_infos": module_registry.getModuleOptimizationTimingInfos(module_name),
     }
 
     makePath(os.path.dirname(cache_filename))

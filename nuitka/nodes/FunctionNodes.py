@@ -1133,9 +1133,9 @@ class ExpressionFunctionRef(ExpressionNoSideEffectsMixin, ExpressionBase):
         if self.function_body is None:
             module_code_name, _ = self.code_name.split("$$$", 1)
 
-            from nuitka.ModuleRegistry import getModuleFromCodeName
+            from nuitka.ModuleRegistry import module_registry
 
-            module = getModuleFromCodeName(module_code_name)
+            module = module_registry.getModuleFromCodeName(module_code_name)
 
             self.function_body = module.getFunctionFromCodeName(self.code_name)
 

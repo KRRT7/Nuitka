@@ -86,9 +86,9 @@ class ExpressionOutlineBody(ChildHavingBodyOptionalMixin, ExpressionBase):
         # Make sure the owning module is added to the used set. This is most
         # important for helper functions, or modules, which otherwise have
         # become unused.
-        from nuitka.ModuleRegistry import addUsedModule
+        from nuitka.ModuleRegistry import module_registry
 
-        addUsedModule(
+        module_registry.addUsedModule(
             module=owning_module,
             using_module=None,
             usage_tag="outline",

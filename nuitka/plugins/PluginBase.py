@@ -35,13 +35,8 @@ from nuitka.freezer.IncludedEntryPoints import (
     makeDllEntryPoint,
     makeExeEntryPoint,
 )
-from nuitka.ModuleRegistry import (
-    addModuleInfluencingCondition,
-    addModuleInfluencingDetection,
-    addModuleInfluencingParameter,
-    addModuleInfluencingVariable,
-    getModuleInclusionInfoByName,
-)
+
+from nuitka.ModuleRegistry import module_registry
 from nuitka.Options import (
     getCompanyName,
     getFileVersion,
@@ -642,7 +637,7 @@ class NuitkaPluginBase(getMetaClassBase("Plugin", require_slots=False)):
     @staticmethod
     def hasPreModuleLoadCode(module_name):
         return (
-            getModuleInclusionInfoByName(
+            module_registry.getModuleInclusionInfoByName(
                 makeTriggerModuleName(module_name, pre_module_load_trigger_name)
             )
             is not None
@@ -651,7 +646,7 @@ class NuitkaPluginBase(getMetaClassBase("Plugin", require_slots=False)):
     @staticmethod
     def hasPostModuleLoadCode(module_name):
         return (
-            getModuleInclusionInfoByName(
+            module_registry.getModuleInclusionInfoByName(
                 makeTriggerModuleName(module_name, post_module_load_trigger_name)
             )
             is not None
@@ -1623,7 +1618,7 @@ except Exception as e:
                 variable_name
             ]
 
-            addModuleInfluencingVariable(
+            module_registry.addModuleInfluencingVariable(
                 module_name=module_name,
                 config_module_name=config_module_name,
                 plugin_name=self.plugin_name,
@@ -1738,7 +1733,7 @@ Error, expression '%s' for module '%s' did not evaluate to 'tuple[str]' or 'list
 
             result = self.getExpressionVariables(full_name=full_name)[variable_name]
 
-            addModuleInfluencingVariable(
+            module_registry.addModuleInfluencingVariable(
                 module_name=full_name,
                 config_module_name=full_name,
                 plugin_name=self.plugin_name,
@@ -1799,7 +1794,7 @@ Error, expression '%s' for module '%s' did not evaluate to 'tuple[str]' or 'list
                 % (condition, full_name)
             )
 
-        addModuleInfluencingCondition(
+        module_registry.addModuleInfluencingCondition(
             module_name=full_name,
             plugin_name=self.plugin_name,
             condition=condition,
@@ -1812,7 +1807,7 @@ Error, expression '%s' for module '%s' did not evaluate to 'tuple[str]' or 'list
     def addModuleInfluencingParameter(
         self, module_name, parameter_name, condition_tags_used, result
     ):
-        addModuleInfluencingParameter(
+        module_registry.addModuleInfluencingParameter(
             module_name=module_name,
             plugin_name=self.plugin_name,
             parameter_name=parameter_name,
@@ -1823,7 +1818,7 @@ Error, expression '%s' for module '%s' did not evaluate to 'tuple[str]' or 'list
     def addModuleInfluencingDetection(
         self, module_name, detection_name, detection_value
     ):
-        addModuleInfluencingDetection(
+        module_registry.addModuleInfluencingDetection(
             module_name=module_name,
             plugin_name=self.plugin_name,
             detection_name=detection_name,

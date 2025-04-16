@@ -13,7 +13,6 @@ from nuitka import Options, Variables
 from nuitka.containers.OrderedSets import OrderedSet
 from nuitka.importing.Importing import locateModule, makeModuleUsageAttempt
 from nuitka.importing.Recursion import decideRecursion, recurseTo
-from nuitka.ModuleRegistry import getModuleByName, getOwnerFromCodeName
 from nuitka.optimizations.TraceCollections import TraceCollectionModule
 from nuitka.Options import hasPythonFlagIsolated
 from nuitka.PythonVersions import python_version
@@ -76,8 +75,9 @@ class PythonModuleBase(NodeBase):
             return ()
 
         # Return the list of newly added modules.
+        from nuitka.ModuleRegistry import module_registry
 
-        package = getModuleByName(package_name)
+        package = module_registry.getModuleByName(package_name)
 
         if package_name is not None and package is None:
             (
@@ -125,9 +125,9 @@ class PythonModuleBase(NodeBase):
                 )
 
         if package:
-            from nuitka.ModuleRegistry import addUsedModule
+            from nuitka.ModuleRegistry import module_registry
 
-            addUsedModule(
+            module_registry.addUsedModule(
                 package,
                 using_module=self,
                 usage_tag="package",
@@ -893,10 +893,8 @@ class PythonMainModule(CompiledPythonModule):
             future_spec=future_spec,
             source_ref=source_ref,
         )
-
-        from nuitka.ModuleRegistry import addRootModule
-
-        addRootModule(result)
+        from nuitka.ModuleRegistry import module_registry
+        module_registry.addRootModule(result)
 
         function_work = []
 
@@ -906,7 +904,7 @@ class PythonMainModule(CompiledPythonModule):
             )
 
             if "provider" in func_args:
-                func_args["provider"] = getOwnerFromCodeName(func_args["provider"])
+                func_args["provider"] = module_registry.getOwnerFromCodeName(func_args["provider"])
             else:
                 func_args["provider"] = result
 

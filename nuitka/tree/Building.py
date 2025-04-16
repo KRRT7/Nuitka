@@ -38,7 +38,7 @@ catching and passing in exceptions raised.
 import marshal
 import os
 
-from nuitka import ModuleRegistry, OutputDirectories, SourceCodeReferences
+from nuitka import OutputDirectories, SourceCodeReferences
 from nuitka.__past__ import long, unicode
 from nuitka.BytecodeCaching import (
     getCachedImportedModuleUsageAttempts,
@@ -52,7 +52,8 @@ from nuitka.freezer.ImportDetection import (
     detectStdlibAutoInclusionModules,
 )
 from nuitka.importing import Importing
-from nuitka.importing.ImportCache import addImportedModule
+from nuitka.ModuleRegistry import module_registry
+
 from nuitka.importing.PreloadedPackages import getPthImportedPackages
 from nuitka.importing.StandardLibrary import isStandardLibraryPath
 from nuitka.nodes.AttributeNodes import (
@@ -1020,7 +1021,7 @@ def _loadUncompiledModuleFromCache(
 
     result.setUsedModules(used_modules)
 
-    ModuleRegistry.setModuleOptimizationTimingInfos(module_name, timing_info)
+    module_registry.setModuleOptimizationTimingInfos(module_name, timing_info)
 
     return result
 
@@ -1188,7 +1189,7 @@ def buildMainModuleTree(source_code):
     if module.isMainModule():
         Plugins.onModuleDiscovered(module)
     else:
-        addImportedModule(imported_module=module)
+        module_registry.addImportedModule(imported_module=module)
 
     return module
 
@@ -1415,7 +1416,7 @@ def buildModule(
     )
 
     if is_top:
-        ModuleRegistry.addRootModule(module)
+        module_registry.addRootModule(module)
 
         OutputDirectories.setMainModule(module)
 

@@ -10,11 +10,7 @@ import marshal
 from nuitka.BytecodeCaching import writeImportedModulesNamesToCache
 from nuitka.Bytecodes import compileSourceToBytecode
 from nuitka.freezer.ImportDetection import detectEarlyImports
-from nuitka.importing.ImportCache import (
-    isImportedModuleByName,
-    replaceImportedModule,
-)
-from nuitka.ModuleRegistry import replaceRootModule
+from nuitka.ModuleRegistry import module_registry
 from nuitka.nodes.ModuleNodes import makeUncompiledPythonModule
 from nuitka.Options import isShowProgress, isStandaloneMode
 from nuitka.plugins.Plugins import (
@@ -74,9 +70,9 @@ def demoteCompiledModuleToBytecode(module):
 
     module.finalize()
 
-    if isImportedModuleByName(full_name):
-        replaceImportedModule(old=module, new=uncompiled_module)
-    replaceRootModule(old=module, new=uncompiled_module)
+    if module_registry.isImportedModuleByName(full_name):
+        module_registry.replaceImportedModule(old=module, new=uncompiled_module)
+    module_registry.replaceRootModule(old=module, new=uncompiled_module)
 
     if isTriggerModule(module):
         replaceTriggerModule(old=module, new=uncompiled_module)

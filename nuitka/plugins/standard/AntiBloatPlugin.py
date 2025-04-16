@@ -13,7 +13,7 @@ import re
 
 from nuitka.containers.OrderedDicts import OrderedDict
 from nuitka.Errors import NuitkaForbiddenImportEncounter
-from nuitka.ModuleRegistry import getModuleByName
+from nuitka.ModuleRegistry import module_registry
 from nuitka.Options import isExperimental
 from nuitka.plugins.YamlPluginBase import NuitkaYamlPluginBase
 from nuitka.utils.ModuleNames import ModuleName
@@ -800,7 +800,7 @@ class %(class_name)s:
         # library, or included for a module in standard library.
         if reason == "stdlib" or (
             using_module_name is not None
-            and getModuleByName(using_module_name).reason == "stdlib"
+            and module_registry.getModuleByName(using_module_name).reason == "stdlib"
         ):
             return
 

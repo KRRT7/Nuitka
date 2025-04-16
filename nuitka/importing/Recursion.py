@@ -8,14 +8,16 @@
 import glob
 import os
 
-from nuitka import ModuleRegistry, Options
+# from nuitka import ModuleRegistry, Options
+from nuitka import Options
+
 from nuitka.Errors import NuitkaForbiddenImportEncounter
 from nuitka.freezer.ImportDetection import (
     detectEarlyImports,
     detectStdlibAutoInclusionModules,
 )
 from nuitka.importing import ImportCache, StandardLibrary
-from nuitka.ModuleRegistry import addUsedModule, getRootTopModule
+from nuitka.ModuleRegistry import module_registry
 from nuitka.pgo.PGO import decideInclusionFromPGO
 from nuitka.plugins.Plugins import Plugins
 from nuitka.PythonVersions import python_version
@@ -50,7 +52,7 @@ def _recurseTo(module_name, module_filename, module_kind, reason):
         hide_syntax_error=True,
     )
 
-    ImportCache.addImportedModule(module)
+    module_registry.addImportedModule(module)
 
     return module
 
@@ -64,7 +66,7 @@ def recurseTo(
     using_module_name,
 ):
     try:
-        module = ImportCache.getImportedModuleByNameAndPath(
+        module = module_registry.getImportedModuleByNameAndPath(
             module_name, module_filename
         )
     except KeyError:
@@ -182,7 +184,7 @@ def _decideRecursion(
         and not Options.shallMakeModule()
         and module_name.getBasename() == "__main__"
     ):
-        if module_name.getPackageName() == getRootTopModule().getRuntimePackageValue():
+        if module_name.getPackageName() == module_registry.getRootTopModule().getRuntimePackageValue():
             return False, "Main program is already included in package mode."
 
     plugin_decision, deciding_plugins = Plugins.onModuleEncounter(
@@ -231,7 +233,7 @@ def _decideRecursion(
         return plugin_decision
 
     if Options.shallMakePackage():
-        if module_name.hasNamespace(getRootTopModule().getFullName()):
+        if module_name.hasNamespace(module_registry.getRootTopModule().getFullName()):
             return True, "Submodule of compiled package."
 
     if extra_recursion:
@@ -330,7 +332,7 @@ def _addIncludedModule(module, package_only):
             package_dir = os.path.dirname(package_filename)
 
             # Real packages will always be included.
-            ModuleRegistry.addRootModule(module)
+            module_registry.addRootModule(module)
 
         if Options.isShowInclusion():
             recursion_logger.info("Package directory '%s'." % package_dir)
@@ -369,10 +371,10 @@ def _addIncludedModule(module, package_only):
                             )
 
     elif module.isCompiledPythonModule() or module.isUncompiledPythonModule():
-        ModuleRegistry.addRootModule(module)
+        module_registry.addRootModule(module)
     elif module.isPythonExtensionModule():
         if Options.isStandaloneMode():
-            ModuleRegistry.addRootModule(module)
+            module_registry.addRootModule(module)
     else:
         assert False, module
 
@@ -549,7 +551,7 @@ def considerUsedModules(module, pass_count):
                     using_module_name=module.module_name,
                 )
 
-                addUsedModule(
+                module_registry.addUsedModule(
                     module=new_module,
                     using_module=module,
                     # TODO: Cleanup argument names here.

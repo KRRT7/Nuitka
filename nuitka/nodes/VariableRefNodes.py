@@ -9,7 +9,7 @@ and its expressions, changing the meaning of course dramatically.
 """
 
 from nuitka import Builtins, Variables
-from nuitka.ModuleRegistry import getOwnerFromCodeName
+from nuitka.ModuleRegistry import module_registry
 from nuitka.PythonVersions import (
     getUnboundLocalErrorErrorTemplate,
     python_version,
@@ -405,7 +405,7 @@ class ExpressionVariableRef(ExpressionVariableRefBase):
     def fromXML(cls, provider, source_ref, **args):
         assert cls is ExpressionVariableRef, cls
 
-        owner = getOwnerFromCodeName(args["owner"])
+        owner = module_registry.getOwnerFromCodeName(args["owner"])
         variable = owner.getProvidedVariable(args["variable_name"])
 
         return cls(variable=variable, source_ref=source_ref)
@@ -735,7 +735,7 @@ class ExpressionTempVariableRef(
     def fromXML(cls, provider, source_ref, **args):
         assert cls is ExpressionTempVariableRef, cls
 
-        owner = getOwnerFromCodeName(args["owner"])
+        owner = module_registry.getOwnerFromCodeName(args["owner"])
 
         variable = owner.getTempVariable(None, args["temp_name"])
 

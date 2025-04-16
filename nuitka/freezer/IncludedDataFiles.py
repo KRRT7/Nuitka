@@ -492,11 +492,11 @@ def makeIncludedPackageDataFiles(
 
 def addIncludedDataFilesFromPlugins():
     # Cyclic dependency
-    from nuitka import ModuleRegistry
+    from nuitka.ModuleRegistry import module_registry
     from nuitka.plugins.Plugins import Plugins
 
     # Plugins provide per module through this.
-    for module in ModuleRegistry.getDoneModules():
+    for module in module_registry.getDoneModules():
         for included_datafile in Plugins.considerDataFiles(module=module):
             addIncludedDataFile(included_datafile)
 

@@ -13,10 +13,7 @@ spell-checker: ignore joblib,anyio
 """
 
 from nuitka import Options
-from nuitka.ModuleRegistry import (
-    getModuleInclusionInfoByName,
-    getRootTopModule,
-)
+from nuitka.ModuleRegistry import module_registry
 from nuitka.plugins.PluginBase import NuitkaPluginBase
 from nuitka.PythonVersions import python_version
 from nuitka.tree.SourceHandling import readSourceCodeFromFilename
@@ -108,7 +105,7 @@ Monkey patching "multiprocessing" for compiled methods.""",
 
         # First, build the module node and then read again from the
         # source code.
-        root_module = getRootTopModule()
+        root_module = module_registry.getRootTopModule()
 
         module_name = ModuleName("__parents_main__")
 
@@ -179,7 +176,7 @@ __import__("multiprocessing.forking").forking.freeze_support()"""
 
     @staticmethod
     def getPreprocessorSymbols():
-        if getModuleInclusionInfoByName("__parents_main__"):
+        if module_registry.getModuleInclusionInfoByName("__parents_main__"):
             return {"_NUITKA_PLUGIN_MULTIPROCESSING_ENABLED": "1"}
 
 

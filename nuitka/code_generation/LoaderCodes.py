@@ -20,11 +20,7 @@ needed except for technical reasons.
 import sys
 
 from nuitka import Options
-from nuitka.ModuleRegistry import (
-    getDoneModules,
-    getUncompiledModules,
-    getUncompiledTechnicalModules,
-)
+from nuitka.ModuleRegistry import module_registry
 from nuitka.plugins.Plugins import Plugins
 from nuitka.PythonVersions import python_version
 from nuitka.Tracing import inclusion_logger
@@ -109,9 +105,9 @@ def getMetaPathLoaderBodyCode(bytecode_accessor):
     metapath_loader_inittab = []
     metapath_module_decls = []
 
-    uncompiled_modules = getUncompiledModules()
+    uncompiled_modules = module_registry.getUncompiledModules()
 
-    for other_module in getDoneModules():
+    for other_module in module_registry.getDoneModules():
         # Put those at the end.
         if other_module in uncompiled_modules:
             continue
@@ -141,7 +137,7 @@ PyThreadState *tstate, PyObject *, struct Nuitka_MetaPathBasedLoaderEntry const 
     frozen_defs = []
 
     # Only the non-technical ones need to be there.
-    for uncompiled_module in getUncompiledTechnicalModules():
+    for uncompiled_module in module_registry.getUncompiledTechnicalModules():
         module_name = uncompiled_module.getFullName()
         code_data = uncompiled_module.getByteCode()
         is_package = uncompiled_module.isUncompiledPythonPackage()

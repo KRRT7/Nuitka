@@ -18,7 +18,7 @@ the traces.
 
 from abc import abstractmethod
 
-from nuitka.ModuleRegistry import getOwnerFromCodeName
+from nuitka.ModuleRegistry import module_registry
 from nuitka.Options import isExperimental
 
 from .ConstantRefNodes import makeConstantRefNode
@@ -84,7 +84,7 @@ class StatementAssignmentVariableMixin(object):
     @classmethod
     def fromXML(cls, provider, source_ref, **args):
         # Virtual method overload, pylint: disable=unused-argument
-        owner = getOwnerFromCodeName(args["owner"])
+        owner = module_registry.getOwnerFromCodeName(args["owner"])
 
         if args["is_temp"] == "True":
             variable = owner.createTempVariable(

@@ -7,7 +7,7 @@ These refer to resolved variable objects.
 
 """
 
-from nuitka.ModuleRegistry import getOwnerFromCodeName
+from nuitka.ModuleRegistry import module_registry
 
 from .NodeBases import StatementBase
 
@@ -51,7 +51,7 @@ class StatementReleaseVariableBase(StatementBase):
     def fromXML(cls, provider, source_ref, **args):
         assert cls is makeStatementReleaseVariable, cls
 
-        owner = getOwnerFromCodeName(args["owner"])
+        owner = module_registry.getOwnerFromCodeName(args["owner"])
         assert owner is not None, args["owner"]
 
         variable = owner.getProvidedVariable(args["variable_name"])
