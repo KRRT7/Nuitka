@@ -8,7 +8,6 @@
 import glob
 import os
 
-# from nuitka import ModuleRegistry, Options
 from nuitka import Options
 
 from nuitka.Errors import NuitkaForbiddenImportEncounter
@@ -16,7 +15,7 @@ from nuitka.freezer.ImportDetection import (
     detectEarlyImports,
     detectStdlibAutoInclusionModules,
 )
-from nuitka.importing import ImportCache, StandardLibrary
+from nuitka.importing import StandardLibrary
 from nuitka.ModuleRegistry import module_registry
 from nuitka.pgo.PGO import decideInclusionFromPGO
 from nuitka.plugins.Plugins import Plugins
@@ -315,7 +314,7 @@ def _addIncludedModule(module, package_only):
             )
         )
 
-    ImportCache.addImportedModule(module)
+    module_registry.addImportedModule(module)
 
     if module.isCompiledPythonPackage() or module.isUncompiledPythonPackage():
         package_filename = module.getFilename()
