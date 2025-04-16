@@ -256,39 +256,48 @@ def makeOptimizationPass():
 
     finished = True
 
+    # Start the module traversal process
     module_registry.startTraversal()
 
-
+    # Setup progress tracking
     _restartProgress()
 
     main_module = None
     stdlib_phase_done = False
 
+    # Process modules one by one
     while True:
+        # Get the next module to process
         current_module = module_registry.nextModule()
 
+        # If no more modules to process
         if current_module is None:
+            # Special handling for the first pass
             if main_module is not None and pass_count == 1:
                 considerUsedModules(module=main_module, pass_count=-1)
-
                 stdlib_phase_done = True
                 main_module = None
                 continue
 
             break
 
+        # Keep track of the main module for special handling
         if current_module.isMainModule() and not stdlib_phase_done:
             main_module = current_module
 
+        # Show progress information
         _traceProgressModuleStart(current_module)
 
+        # Get the module name for reporting
         module_name = current_module.getFullName()
 
+        # Optimize the module and measure the time taken
         with TimerReport(
             message="Optimizing %s" % module_name, decider=False
         ) as module_timer:
             changed, micro_passes = optimizeModule(current_module)
 
+        # Record timing information for the module
         module_registry.addModuleOptimizationTimeInformation(
             module_name=module_name,
             pass_number=pass_count,
@@ -297,8 +306,10 @@ def makeOptimizationPass():
             merge_counts=fetchMergeCounts(),
         )
 
+        # Update progress information
         _traceProgressModuleEnd(current_module)
 
+        # If any module changed, we need another pass
         if changed:
             finished = False
 

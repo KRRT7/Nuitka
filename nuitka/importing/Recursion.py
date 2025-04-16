@@ -91,12 +91,9 @@ def recurseTo(
     return module
 
 
-_recursion_decision_cache = {}
-
-
 def getRecursionDecisions():
     """Access to recursion decisions, intended only for reporting."""
-    return _recursion_decision_cache
+    return module_registry.getRecursionDecisions()
 
 
 def decideRecursion(
@@ -128,26 +125,33 @@ def decideRecursion(
 
     key = using_module_name, module_filename, module_name, module_kind, extra_recursion
 
-    if key not in _recursion_decision_cache:
-        _recursion_decision_cache[key] = _decideRecursion(
+    # Check if we already have a cached decision
+    cached_decision = module_registry.getRecursionDecision(key)
+    
+    if cached_decision is None:
+        # If not, make the decision and cache it
+        decision = _decideRecursion(
             using_module_name,
             module_filename,
             module_name,
             module_kind,
             extra_recursion,
         )
+        
+        # Cache the decision
+        cached_decision = module_registry.cacheRecursionDecision(key, decision)
 
         # If decided true, give the plugins a chance to e.g. add more hard
         # module information, this indicates tentatively, that a module might
         # get used, but it may also not happen at all.
-        if _recursion_decision_cache[key][0]:
+        if cached_decision[0]:
             Plugins.onModuleUsageLookAhead(
                 module_name=module_name,
                 module_filename=module_filename,
                 module_kind=module_kind,
             )
 
-    return _recursion_decision_cache[key]
+    return cached_decision
 
 
 def _decideRecursion(

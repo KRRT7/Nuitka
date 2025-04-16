@@ -36,6 +36,9 @@ class Registry:
 
         # Already traversed modules
         self.done_modules = set()
+        
+        # Index of done modules by name for faster lookups
+        self.done_modules_by_name = {}
 
         # Cache of imported modules by name and path
         self.imported_modules = {}
@@ -133,9 +136,13 @@ class Registry:
 
     def startTraversal(self):
         """Start the module traversal process."""
+        # Create a new OrderedSet with the root modules
         self.active_modules = OrderedSet(self.root_modules)
 
+        # Reset the active modules info dictionary
         self.active_modules_info = {}
+        
+        # Initialize active_modules_info for root modules
         for root_module in self.root_modules:
             self.active_modules_info[root_module] = self.ActiveModuleInfo(
                 using_module=None,
@@ -143,8 +150,12 @@ class Registry:
                 reason="Root module",
                 source_ref=None,
             )
+            
+        # Reset the done modules set and index
         self.done_modules = set()
+        self.done_modules_by_name = {}
 
+        # Start traversal for all active modules
         for active_module in self.active_modules:
             active_module.startTraversal()
 
@@ -167,6 +178,8 @@ class Registry:
         if self.active_modules:
             result = self.active_modules.pop()
             self.done_modules.add(result)
+            # Update the name index for faster lookups
+            self.done_modules_by_name[result.getFullName()] = result
             return result
         else:
             return None
@@ -185,13 +198,22 @@ class Registry:
 
     def hasDoneModule(self, module_name):
         """Check if a module with the given name has been processed."""
-        return any(module.getFullName() == module_name for module in self.done_modules)
+        # Use the name index for O(1) lookup instead of O(n) search
+        return module_name in self.done_modules_by_name
 
     def getModuleInclusionInfoByName(self, module_name):
         """Get inclusion info for a module by name."""
+        # First check if the module exists in done modules
+        if module_name in self.done_modules_by_name:
+            module = self.done_modules_by_name[module_name]
+            if module in self.active_modules_info:
+                return self.active_modules_info[module]
+                
+        # Fallback to the original search if needed
         for module, info in self.active_modules_info.items():
             if module.getFullName() == module_name:
                 return info
+                
         return None
 
     def getModuleFromCodeName(self, code_name):
@@ -219,11 +241,12 @@ class Registry:
 
     def getModuleByName(self, module_name):
         """Get a module by its name."""
+        # First check the done modules index for O(1) lookup
+        if module_name in self.done_modules_by_name:
+            return self.done_modules_by_name[module_name]
+            
+        # Then check active modules
         for module in self.active_modules:
-            if module.getFullName() == module_name:
-                return module
-
-        for module in self.done_modules:
             if module.getFullName() == module_name:
                 return module
 
@@ -285,7 +308,11 @@ class Registry:
         self, module_name, pass_number, time_used, micro_passes, merge_counts
     ):
         """Add timing information for module optimization."""
-        module_timing_info = list(self.module_timing_infos.get(module_name, []))
+        # Get existing timing info or initialize an empty list
+        if module_name in self.module_timing_infos:
+            module_timing_info = list(self.module_timing_infos[module_name])
+        else:
+            module_timing_info = []
 
         # Do not record cached bytecode loaded timing information, not useful
         # and duplicate, we want the original values.
@@ -293,14 +320,16 @@ class Registry:
             assert micro_passes == 0
             return
 
-        module_timing_info.append(
-            self.ModuleOptimizationTimingInfo(
-                pass_number=pass_number,
-                time_used=time_used,
-                micro_passes=micro_passes,
-                merge_counts=merge_counts,
-            )
+        # Create the timing info object
+        timing_info = self.ModuleOptimizationTimingInfo(
+            pass_number=pass_number,
+            time_used=time_used,
+            micro_passes=micro_passes,
+            merge_counts=merge_counts,
         )
+        
+        # Append to the list and store back as tuple for immutability
+        module_timing_info.append(timing_info)
         self.module_timing_infos[module_name] = tuple(module_timing_info)
 
     def getModuleOptimizationTimingInfos(self, module_name):
@@ -330,21 +359,28 @@ class Registry:
 
     def addImportedModule(self, imported_module):
         """Add a module to the import cache."""
+        # Get the absolute path of the module filename
         module_filename = os.path.abspath(imported_module.getFilename())
+        full_name = imported_module.getFullName()
 
+        # Handle package directory filenames
         if hasPackageDirFilename(module_filename):
             module_filename = os.path.dirname(module_filename)
 
-        key = (module_filename, imported_module.getFullName())
+        # Create the key for the imported_modules dictionary
+        key = (module_filename, full_name)
 
-        if key in self.imported_modules:
-            assert imported_module is self.imported_modules[key], key
-        else:
+        # Only notify plugins if this is a new module
+        if key not in self.imported_modules:
             from nuitka.plugins.Plugins import Plugins
             Plugins.onModuleDiscovered(imported_module)
+        else:
+            # Sanity check: the module should be the same object
+            assert imported_module is self.imported_modules[key], key
 
+        # Update both caches
         self.imported_modules[key] = imported_module
-        self.imported_by_name[imported_module.getFullName()] = imported_module
+        self.imported_by_name[full_name] = imported_module
 
         # We don't expect that to happen.
         assert not imported_module.isMainModule()
