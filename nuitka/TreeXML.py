@@ -13,28 +13,43 @@ from nuitka.__past__ import BytesIO, StringIO, basestring
 
 
 def _indent(elem, level=0, more_sibs=False):
-    i = "\n"
     if level:
-        i += (level - 1) * "  "
+        indent_str = "\n" + (level - 1) * "  "
+    else:
+        indent_str = "\n"
+
     num_kids = len(elem)
     if num_kids:
-        if not elem.text or not elem.text.strip():
-            elem.text = i + "  "
+        # Only conditionally strip text if required, avoiding repeated strip calls
+        text = elem.text
+        if text is None or not text.strip():
+            # Efficiently precompute new text
             if level:
-                elem.text += "  "
-        count = 0
-        for kid in elem:
-            _indent(kid, level + 1, count < num_kids - 1)
-            count += 1
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
+                elem.text = indent_str + "    "
+            else:
+                elem.text = indent_str + "  "
+        # Use enumerate instead of count/index logic for efficiency
+        for idx, kid in enumerate(elem):
+            # Only True for siblings before the last
+            _indent(kid, level + 1, idx < num_kids - 1)
+        # Only conditionally strip tail if required
+        tail = elem.tail
+        if tail is None or not tail.strip():
+            # Build tail string efficiently
             if more_sibs:
-                elem.tail += "  "
+                elem.tail = indent_str + "  "
+            else:
+                elem.tail = indent_str
     else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = i
-            if more_sibs:
-                elem.tail += "  "
+        # Only check tail if required, as in original
+        if level:
+            tail = elem.tail
+            if tail is None or not tail.strip():
+                if more_sibs:
+                    elem.tail = indent_str + "  "
+                else:
+                    elem.tail = indent_str
+
 
     return elem
 
