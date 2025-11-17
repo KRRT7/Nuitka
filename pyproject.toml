@@ -3,6 +3,10 @@
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 
+[dependency-groups]
+dev = [
+    "codeflash",
+]
 #     Part of "Nuitka", an optimizing Python compiler that is compatible and
 #     integrates with CPython, but also works on its own.
 #
@@ -17,3 +21,14 @@ requires = ["setuptools>=42", "wheel"]
 #     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
+
+[tool.codeflash]
+# All paths are relative to this pyproject.toml's directory.
+module-root = "nuitka"
+tests-root = "fake_tests"
+test-framework = "pytest"
+ignore-paths = [
+    "nuitka/build/inline_copy/",
+]
+disable-telemetry = true
+formatter-cmds = ["disabled"]
