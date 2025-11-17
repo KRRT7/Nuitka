@@ -32,3 +32,6 @@ ignore-paths = [
 ]
 disable-telemetry = true
 formatter-cmds = ["disabled"]
+
+[tool.uv.sources]
+codeflash = { path = "../codeflash", editable = true }
