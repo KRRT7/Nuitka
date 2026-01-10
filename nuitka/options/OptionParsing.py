@@ -1800,13 +1800,14 @@ macos_group.add_option(
     "--macos-app-console-mode",
     action="store",
     dest="macos_app_console_mode",
-    choices=("force", "disable"),
+    choices=("force", "disable", "embedded"),
     metavar="MACOS_APP_CONSOLE_MODE",
     default=None,
     help="""\
 Select console mode to use. Default mode is 'disable' and creates no
 console window. With 'force' it will create a console window when
-launched from Finder. Default is 'disable'.""",
+launched from Finder. With 'embedded' it creates a built-in terminal
+window for console/TUI apps. Default is 'disable'.""",
 )
 
 macos_group.add_option(
