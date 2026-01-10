@@ -244,6 +244,23 @@ SI = "\x0f"
 ESC = "\x1b"
 DEL = "\x7f"
 
+# C1 Control Characters (8-bit)
+C1_IND = "\x84"  # Index (same as ESC D)
+C1_NEL = "\x85"  # Next Line (same as ESC E)
+C1_HTS = "\x88"  # Horizontal Tab Set (same as ESC H)
+C1_RI = "\x8d"  # Reverse Index (same as ESC M)
+C1_SS2 = "\x8e"  # Single Shift 2 (same as ESC N)
+C1_SS3 = "\x8f"  # Single Shift 3 (same as ESC O)
+C1_DCS = "\x90"  # Device Control String (same as ESC P)
+C1_SPA = "\x96"  # Start of Protected Area
+C1_EPA = "\x97"  # End of Protected Area
+C1_SOS = "\x98"  # Start of String (same as ESC X)
+C1_CSI = "\x9b"  # Control Sequence Introducer (same as ESC [)
+C1_ST = "\x9c"  # String Terminator (same as ESC \)
+C1_OSC = "\x9d"  # Operating System Command (same as ESC ])
+C1_PM = "\x9e"  # Privacy Message (same as ESC ^)
+C1_APC = "\x9f"  # Application Program Command (same as ESC _)
+
 # Default terminal dimensions
 DEFAULT_TERMINAL_WIDTH = 80
 DEFAULT_TERMINAL_HEIGHT = 24
@@ -821,6 +838,73 @@ class Buffer(object):
             return "".join(cell[1] for cell in self.grid[y])
         return ""
 
+    def get_line(
+        self,
+        y,
+        width=None,
+        cursor_x=-1,
+        cursor_y=-1,
+        show_cursor=False,
+        mouse_x=-1,
+        mouse_y=-1,
+        show_mouse=False,
+    ):
+        """Get full ANSI sequence for a line with cursor/mouse highlighting."""
+        if not (0 <= y < self.height):
+            return ""
+
+        # Use buffer width if not specified
+        if width is None:
+            width = self.width
+
+        parts = []
+        row = self.grid[y]
+        current_style = Style()  # Start with default style
+
+        # Process each cell up to specified width
+        for x in range(min(len(row), width)):
+            cell_style, char = row[x]
+
+            # Handle mouse cursor (convert to 0-based)
+            if show_mouse and x == (mouse_x - 1) and y == (mouse_y - 1):
+                char = "\u2196"  # ↖
+
+            # Handle text cursor position
+            if show_cursor and x == cursor_x and y == cursor_y:
+                # For cursor, apply reverse video on top of cell style
+                transition = current_style.diff(cell_style)
+                parts.append(transition)
+                parts.append(CURSOR_CODE)
+                parts.append(char)
+                parts.append("\033[27m")  # Turn off reverse video only
+                current_style = cell_style
+            else:
+                # Normal cell - generate diff from current to cell style
+                transition = current_style.diff(cell_style)
+                parts.append(transition)
+                parts.append(char)
+                current_style = cell_style
+
+        # Pad to width if needed
+        current_width = min(len(row), width)
+        if current_width < width:
+            # Transition to default style for padding
+            reset_transition = current_style.diff(Style())
+            parts.append(reset_transition)
+            parts.append(" " * (width - current_width))
+            current_style = Style()
+
+        # Always end with a reset to prevent bleeding to next line
+        final_reset = current_style.diff(Style())
+        parts.append(final_reset)
+
+        return "".join(parts)
+
+
+# Style constants for cursor display
+CURSOR_CODE = "\033[7m"  # Reverse video for cursor
+RESET_CODE = "\033[0m"  # Reset all formatting
+
 
 # =============================================================================
 # Terminal Emulator (from bittty/terminal.py + parser/)
@@ -841,6 +925,12 @@ class Terminal(object):
         self.cursor_x = 0
         self.cursor_y = 0
         self.cursor_visible = True
+        self.cursor_blinking = True
+
+        # Mouse position
+        self.mouse_x = 0
+        self.mouse_y = 0
+        self.show_mouse = False
 
         # Terminal modes
         self.auto_wrap = True
@@ -1033,6 +1123,94 @@ class Terminal(object):
                         self._parse_pos = pos
                         continue
 
+                    # 8-bit C1 controls (0x80-0x9F)
+                    elif ch == C1_CSI:
+                        # CSI - Control Sequence Introducer (8-bit)
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        self._parse_mode = "csi"
+                        self._seq_start = pos
+                        self._scan_from = pos + 1
+                        self._parse_pos = pos
+                        break
+                    elif ch == C1_OSC:
+                        # OSC - Operating System Command (8-bit)
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        self._parse_mode = "osc"
+                        self._seq_start = pos
+                        self._scan_from = pos + 1
+                        self._parse_pos = pos
+                        break
+                    elif ch == C1_DCS:
+                        # DCS - Device Control String (8-bit)
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        self._parse_mode = "dcs"
+                        self._seq_start = pos
+                        self._scan_from = pos + 1
+                        self._parse_pos = pos
+                        break
+                    elif ch == C1_SS2:
+                        # SS2 - Single Shift 2 (8-bit)
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        self.single_shift = 2
+                        pos += 1
+                        self._parse_pos = pos
+                        continue
+                    elif ch == C1_SS3:
+                        # SS3 - Single Shift 3 (8-bit)
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        self.single_shift = 3
+                        pos += 1
+                        self._parse_pos = pos
+                        continue
+                    elif ch == C1_IND:
+                        # IND - Index (8-bit, same as ESC D)
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        self.line_feed()
+                        pos += 1
+                        self._parse_pos = pos
+                        continue
+                    elif ch == C1_NEL:
+                        # NEL - Next Line (8-bit, same as ESC E)
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        self.cursor_x = 0
+                        self.line_feed()
+                        pos += 1
+                        self._parse_pos = pos
+                        continue
+                    elif ch == C1_RI:
+                        # RI - Reverse Index (8-bit, same as ESC M)
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        if self.cursor_y <= self.scroll_top:
+                            self.scroll(-1)
+                        else:
+                            self.cursor_y -= 1
+                        pos += 1
+                        self._parse_pos = pos
+                        continue
+                    elif ch == C1_HTS:
+                        # HTS - Horizontal Tab Set (8-bit, same as ESC H)
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        # Tab stop - ignore for now
+                        pos += 1
+                        self._parse_pos = pos
+                        continue
+                    elif "\x80" <= ch <= "\x9f":
+                        # Other C1 controls - skip
+                        if pos > self._parse_pos:
+                            self.write_text(buf[self._parse_pos : pos])
+                        pos += 1
+                        self._parse_pos = pos
+                        continue
+
                     pos += 1
 
                 else:
@@ -1072,19 +1250,33 @@ class Terminal(object):
             elif self._parse_mode in ("osc", "dcs"):
                 # Find string terminator (ST or BEL)
                 buf = self._parse_buffer
+                # Determine content start based on 7-bit vs 8-bit introducer
+                intro_char = buf[self._seq_start]
+                if intro_char == ESC:
+                    content_start = self._seq_start + 2  # ESC ] or ESC P
+                else:
+                    content_start = self._seq_start + 1  # 8-bit C1_OSC or C1_DCS
                 for i in range(self._scan_from, len(buf)):
                     if buf[i] == BEL:
-                        content = buf[self._seq_start + 2 : i]
+                        content = buf[content_start:i]
                         if self._parse_mode == "osc":
                             self._dispatch_osc(content)
                         self._parse_pos = i + 1
                         self._parse_mode = None
                         break
                     elif buf[i : i + 2] == "\x1b\\":
-                        content = buf[self._seq_start + 2 : i]
+                        content = buf[content_start:i]
                         if self._parse_mode == "osc":
                             self._dispatch_osc(content)
                         self._parse_pos = i + 2
+                        self._parse_mode = None
+                        break
+                    elif buf[i] == C1_ST:
+                        # 8-bit ST terminator
+                        content = buf[content_start:i]
+                        if self._parse_mode == "osc":
+                            self._dispatch_osc(content)
+                        self._parse_pos = i + 1
                         self._parse_mode = None
                         break
                     elif buf[i] in "\x18\x1a":
@@ -1159,7 +1351,18 @@ class Terminal(object):
 
     def _dispatch_csi(self, data):
         """Dispatch CSI escape sequence."""
-        if len(data) < 3:
+        # Handle both 7-bit (ESC[) and 8-bit (C1_CSI) sequences
+        if data.startswith("\x1b["):
+            # 7-bit: ESC [ params final
+            if len(data) < 3:
+                return
+            content_start = 2
+        elif data.startswith(C1_CSI):
+            # 8-bit: C1_CSI params final
+            if len(data) < 2:
+                return
+            content_start = 1
+        else:
             return
 
         final_char = data[-1]
@@ -1172,7 +1375,7 @@ class Terminal(object):
             return
 
         # Parse parameters
-        params, intermediates, final_char = self._parse_csi_params(data)
+        params, intermediates, final_char = self._parse_csi_params(data, content_start)
 
         if final_char in ("H", "f"):
             row = (params[0] if params and params[0] is not None else 1) - 1
@@ -1266,13 +1469,26 @@ class Terminal(object):
                 self._dispatch_private_mode(params, False)
             else:
                 self._dispatch_mode(params, False)
+        elif final_char == "p" and "$" in intermediates:
+            # DECRQM - Request Mode Status
+            mode = params[0] if params and params[0] is not None else 0
+            is_private = "?" in intermediates
+            if is_private:
+                status = self._get_private_mode_status(mode)
+            else:
+                status = self._get_ansi_mode_status(mode)
+            prefix = "?" if is_private else ""
+            self.respond("\033[%s%d;%d$y" % (prefix, mode, status))
+        elif final_char == "y" and "$" in intermediates:
+            # DECRPM - Mode status report (response) - ignore
+            pass
 
-    def _parse_csi_params(self, data):
+    def _parse_csi_params(self, data, content_start=2):
         """Parse CSI parameters."""
-        if len(data) < 3 or not data.startswith("\x1b["):
+        if len(data) < content_start + 1:
             return [], [], ""
 
-        content = data[2:]
+        content = data[content_start:]
         if not content:
             return [], [], ""
 
@@ -1353,7 +1569,7 @@ class Terminal(object):
             elif param == 7:
                 self.auto_wrap = set_mode
             elif param == 12:
-                pass  # Cursor blinking
+                self.cursor_blinking = set_mode
             elif param == 25:
                 self.cursor_visible = set_mode
             elif param == 47:
@@ -1392,6 +1608,63 @@ class Terminal(object):
                     self.restore_cursor()
             elif param == 2004:
                 self.bracketed_paste = set_mode
+
+    def _get_private_mode_status(self, mode):
+        """Get the status of a private mode for DECRQM response.
+
+        Status codes:
+        0 = not recognized
+        1 = set
+        2 = reset
+        3 = permanently set
+        4 = permanently reset
+        """
+        if mode == 1:  # DECCKM
+            return 1 if self.cursor_application_mode else 2
+        elif mode == 2:  # DECANM
+            return 1 if self.ansi_mode else 2
+        elif mode == 3:  # DECCOLM
+            return 1 if self.width == 132 else 2
+        elif mode == 6:  # DECOM
+            return 1 if self.origin_mode else 2
+        elif mode == 7:  # DECAWM
+            return 1 if self.auto_wrap else 2
+        elif mode == 12:  # Cursor blinking
+            return 1 if self.cursor_blinking else 2
+        elif mode == 25:  # DECTCEM
+            return 1 if self.cursor_visible else 2
+        elif mode == 47 or mode == 1047:  # Alternate screen
+            return 1 if self.in_alt_screen else 2
+        elif mode == 1049:  # Alternate screen + cursor
+            return 1 if self.in_alt_screen else 2
+        elif mode == 1000:  # VT200 mouse
+            return 1 if self.mouse_mode == "vt200" else 2
+        elif mode == 1002:  # Button event mouse
+            return 1 if self.mouse_mode == "button" else 2
+        elif mode == 1003:  # Any event mouse
+            return 1 if self.mouse_mode == "any" else 2
+        elif mode == 1006:  # SGR mouse
+            return 1 if self.sgr_mouse else 2
+        elif mode == 2004:  # Bracketed paste
+            return 1 if self.bracketed_paste else 2
+        else:
+            return 0  # Not recognized
+
+    def _get_ansi_mode_status(self, mode):
+        """Get the status of an ANSI mode for DECRQM response."""
+        if mode == 4:  # IRM
+            return 1 if self.insert_mode else 2
+        elif mode == 7:  # AWM
+            return 1 if self.auto_wrap else 2
+        elif mode == 12:  # SRM
+            # SRM works backwards: mode set = echo disabled
+            return 1 if not self.local_echo else 2
+        elif mode == 20:  # LNM
+            return 1 if self.linefeed_newline_mode else 2
+        elif mode == 25:  # DECTCEM
+            return 1 if self.cursor_visible else 2
+        else:
+            return 0  # Not recognized
 
     def _dispatch_osc(self, content):
         """Dispatch OSC sequence."""
