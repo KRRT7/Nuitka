@@ -2247,6 +2247,11 @@ def getMacOSAppConsoleMode():
     return (isMacOS() and options.macos_app_console_mode) or "disable"
 
 
+def shallUseMacOSEmbeddedTerminal():
+    """:returns: bool - True if embedded terminal mode is enabled for macOS app bundles"""
+    return getMacOSAppConsoleMode() == "embedded"
+
+
 def _isFullCompat():
     """:returns: bool derived from ``--full-compat``
 
