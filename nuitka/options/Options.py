@@ -2042,7 +2042,9 @@ def isMingw64():
 
 
 def isZig():
-    return options.zig
+    from nuitka.utils.Utils import isMacOS
+
+    return options.zig or isMacOS()
 
 
 def getMsvcVersion():

@@ -960,6 +960,10 @@ static inline PyObject *_Py_XNewRef(PyObject *obj) {
 // Our replacement for "PyType_IsSubtype"
 extern bool Nuitka_Type_IsSubtype(PyTypeObject *a, PyTypeObject *b);
 
+// Resolved generic attribute functions to avoid DLL lookups.
+extern getattrofunc PyObject_GenericGetAttr_resolved;
+extern setattrofunc PyObject_GenericSetAttr_resolved;
+
 #include "nuitka/allocator.h"
 #include "nuitka/exceptions.h"
 

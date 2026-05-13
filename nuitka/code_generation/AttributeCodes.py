@@ -98,11 +98,20 @@ def getAttributeLookupCode(
         emit("%s = LOOKUP_ATTRIBUTE_DICT_SLOT(tstate, %s);" % (to_name, source_name))
     elif attribute_name == "__class__":
         emit("%s = LOOKUP_ATTRIBUTE_CLASS_SLOT(tstate, %s);" % (to_name, source_name))
+    elif attribute_name == "__weakref__":
+        emit("%s = LOOKUP_ATTRIBUTE_WEAKREF_SLOT(tstate, %s);" % (to_name, source_name))
     else:
+        emit("#if defined(__NUITKA_DMA_ACTIVE__)")
+        emit(
+            "%s = Nuitka_Nitro_GetAttr(%s, %s);"
+            % (to_name, source_name, context.getConstantCode(attribute_name))
+        )
+        emit("#else")
         emit(
             "%s = LOOKUP_ATTRIBUTE(tstate, %s, %s);"
             % (to_name, source_name, context.getConstantCode(attribute_name))
         )
+        emit("#endif")
 
     getErrorExitCode(
         check_name=to_name,
@@ -144,10 +153,17 @@ def generateAttributeLookupCode(to_name, expression, emit, context):
 def getAttributeAssignmentCode(target_name, attribute_name, value_name, emit, context):
     res_name = context.getBoolResName()
 
+    emit("#if defined(__NUITKA_DMA_ACTIVE__)")
+    emit(
+        "%s = Nuitka_Nitro_SetAttr(%s, %s, %s);"
+        % (res_name, target_name, attribute_name, value_name)
+    )
+    emit("#else")
     emit(
         "%s = SET_ATTRIBUTE(tstate, %s, %s, %s);"
         % (res_name, target_name, attribute_name, value_name)
     )
+    emit("#endif")
 
     getErrorExitBoolCode(
         condition="%s == false" % res_name,
@@ -196,7 +212,13 @@ def getAttributeAssignmentClassSlotCode(target_name, value_name, emit, context):
 def getAttributeDelCode(target_name, attribute_name, emit, context):
     res_name = context.getIntResName()
 
+    emit("#if defined(__NUITKA_DMA_ACTIVE__)")
+    emit(
+        "%s = Nuitka_Nitro_DelAttr(%s, %s) ? 0 : -1;" % (res_name, target_name, attribute_name)
+    )
+    emit("#else")
     emit("%s = PyObject_DelAttr(%s, %s);" % (res_name, target_name, attribute_name))
+    emit("#endif")
 
     getErrorExitBoolCode(
         condition="%s == -1" % res_name,

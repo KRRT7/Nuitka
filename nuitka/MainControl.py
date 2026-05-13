@@ -665,6 +665,33 @@ def _runCPgoBinary():
             exit_code_pgo = _runPgoBinary()
 
         pgo_data_collected = os.path.exists(msvc_pgc_filename)
+    elif getSconsCompilerUsed(
+        OutputDirectories.getSourceDirectoryPath(onefile=False, create=False)
+    ) == "zig":
+        source_dir = OutputDirectories.getSourceDirectoryPath(
+            onefile=False, create=False
+        )
+        profraw_filename = getNormalizedPathJoin(source_dir, "default.profraw")
+        profdata_filename = getNormalizedPathJoin(source_dir, "default.profdata")
+
+        with withEnvironmentVarOverridden("LLVM_PROFILE_FILE", profraw_filename):
+            exit_code_pgo = _runPgoBinary()
+
+        if os.path.exists(profraw_filename):
+            from nuitka.utils.Execution import getExecutablePath
+
+            llvm_profdata = getExecutablePath("llvm-profdata")
+            if llvm_profdata is None:
+                return pgo_logger.sysexit(
+                    "Error, 'llvm-profdata' not found in PATH; needed to merge Zig PGO profile data."
+                )
+
+            callProcess(
+                [llvm_profdata, "merge", profraw_filename, "-o", profdata_filename],
+                shell=False,
+            )
+
+        pgo_data_collected = os.path.exists(profdata_filename)
     else:
         exit_code_pgo = _runPgoBinary()
 

@@ -67,40 +67,49 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       - name: 🧳 Install Nuitka and dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install patchelf gdb ccache libfuse2
-          python -m pip install --no-python-version-warning --disable-pip-version-check -r requirements-devel.txt
-          python -m pip install --no-python-version-warning --disable-pip-version-check .
+          sudo apt-get install -y patchelf gdb ccache libfuse2
+          uv sync --frozen --all-groups
 
       - name: 🔎 PyLint on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-pylint
+          uv run nuitka-pylint
 
       - name: 🔎 RestLint on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-restlint
+          uv run nuitka-restlint
 
       - name: 🔎 YamlLint on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-yamllint
+          uv run nuitka-yamllint
 
       - name: 🔎 Codespell on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-codespell
+          uv run nuitka-codespell
 
       - name: 🔎 Auto-format check on Nuitka source code
         run: |
-          python ./bin/autoformat-nuitka-source --check-only --assume-yes-for-downloads
+          uv run nuitka-autoformat --check-only --assume-yes-for-downloads
 
       - name: 🔎 Specialized C code check
         run: |
-          python ./bin/generate-specialized-c-code --check
+          uv run nuitka-generate-c-code --check
 
       - name: 🔎 Specialized Python code check
         run: |
-          python ./bin/generate-specialized-python-code --check
+          uv run nuitka-generate-python-code --check
 
   linux:
     needs: checks
@@ -159,22 +168,31 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       - name: 🧳 Install Nuitka and dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install patchelf gdb ccache libfuse2
-          python -m pip install --no-python-version-warning --disable-pip-version-check -r requirements-devel.txt
-          python -m pip install --no-python-version-warning --disable-pip-version-check .
+          sudo apt-get install -y patchelf gdb ccache libfuse2
+          uv sync --frozen
 
       - name: ⚙️ Verbose scons output in compilation
         run: |
           set -x
-          python -m nuitka --mode=module --show-scons --run --report=compilation-report-module.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=accelerated --show-scons --run --report=compilation-report-accelerated.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=standalone --show-scons --run --report=compilation-report-standalone.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=module --show-scons --run --report=compilation-report-module.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=accelerated --show-scons --run --report=compilation-report-accelerated.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=standalone --show-scons --run --report=compilation-report-standalone.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
           readelf -d EmptyModuleTest.dist/EmptyModuleTest.bin | tee standalone-binary-readelf.txt
           ldd EmptyModuleTest.dist/EmptyModuleTest.bin | tee standalone-binary-ldd.txt
-          python -m nuitka --mode=onefile --show-scons --run --report=compilation-report-onefile.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=onefile --show-scons --run --report=compilation-report-onefile.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
         shell: bash
 
       - name: 📤 Archive compilation reports for empty modules
@@ -197,9 +215,9 @@ jobs:
 
       - name: 🧪 Run Nuitka test suite
         run: |
-          python -m nuitka --version
+          uv run python -m nuitka --version
           env | sort
-          python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
+          uv run python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
 
   mac-python3:
     needs: linux
@@ -257,6 +275,16 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       - name: ⚙️ Verbose installation output for Python
         run: |
           set -x
@@ -267,8 +295,7 @@ jobs:
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          pip install --no-python-version-warning --disable-pip-version-check -r requirements-devel.txt
-          pip install --no-python-version-warning --disable-pip-version-check .
+          uv sync --frozen
 
       - name: Verbose scons output in compilation
         run: |
@@ -294,13 +321,13 @@ jobs:
             return $?
           }
 
-          retryMacCompileCommand python -m nuitka --mode=module --show-scons --run --report=compilation-report-module.xml --assume-yes-for-downloads tests/basics/EmptyModuleTest.py
-          retryMacCompileCommand python -m nuitka --mode=accelerated --show-scons --run --report=compilation-report-accelerated.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          retryMacCompileCommand python -m nuitka --mode=standalone --show-scons --run --report=compilation-report-standalone.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          retryMacCompileCommand python -m nuitka --mode=onefile --show-scons --run --report=compilation-report-onefile.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          retryMacCompileCommand uv run python -m nuitka --mode=module --show-scons --run --report=compilation-report-module.xml --assume-yes-for-downloads tests/basics/EmptyModuleTest.py
+          retryMacCompileCommand uv run python -m nuitka --mode=accelerated --show-scons --run --report=compilation-report-accelerated.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          retryMacCompileCommand uv run python -m nuitka --mode=standalone --show-scons --run --report=compilation-report-standalone.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          retryMacCompileCommand uv run python -m nuitka --mode=onefile --show-scons --run --report=compilation-report-onefile.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
 
           # DLL mode has no run ability at this time.
-          retryMacCompileCommand python -m nuitka --mode=dll --show-scons --report=compilation-report-dll.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          retryMacCompileCommand uv run python -m nuitka --mode=dll --show-scons --report=compilation-report-dll.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
         shell: bash
 
       - name: Archive compilation reports for empty modules
@@ -314,20 +341,20 @@ jobs:
       - name: 🐞 Check all modes for debug output
         run: |
           set -x
-          python -m nuitka --mode=module --run --report=compilation-report-module.xml --debug --assume-yes-for-downloads tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=accelerated --run --report=compilation-report-accelerated.xml --debug --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=standalone --run --report=compilation-report-standalone.xml --debug --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=onefile --run --report=compilation-report-onefile.xml --debug --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=module --run --report=compilation-report-module.xml --debug --assume-yes-for-downloads tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=accelerated --run --report=compilation-report-accelerated.xml --debug --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=standalone --run --report=compilation-report-standalone.xml --debug --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=onefile --run --report=compilation-report-onefile.xml --debug --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
 
           # DLL mode has no run ability at this time.
-          python -m nuitka --mode=dll --report=compilation-report-onefile.xml --debug --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=dll --report=compilation-report-onefile.xml --debug --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
         shell: bash
 
       - name: Run Nuitka test suite
         run: |
-          python -m nuitka --version
+          uv run python -m nuitka --version
           env | sort
-          python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
+          uv run python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
 
   windows:
     needs: linux
@@ -387,20 +414,29 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       - uses: ilammy/msvc-dev-cmd@v1
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          pip install --no-python-version-warning --disable-pip-version-check -r requirements-devel.txt
-          pip install --no-python-version-warning --disable-pip-version-check .
+          uv sync --frozen
 
       - name: Verbose scons output in compilation
         run: |
           set -x
-          python -m nuitka --mode=module --show-scons --run --report=compilation-report-module.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=accelerated --show-scons --run --report=compilation-report-accelerated.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=standalone --show-scons --run --report=compilation-report-standalone.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=onefile --show-scons --run --report=compilation-report-onefile.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=module --show-scons --run --report=compilation-report-module.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=accelerated --show-scons --run --report=compilation-report-accelerated.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=standalone --show-scons --run --report=compilation-report-standalone.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=onefile --show-scons --run --report=compilation-report-onefile.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
         shell: bash
 
       - name: Archive compilation reports for empty modules
@@ -414,8 +450,8 @@ jobs:
       - name: Run Nuitka test suite
         run: |
           Get-ChildItem env:
-          python -m nuitka --version
-          python .\tests\run-tests --no-other-python --no-debug --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
+          uv run python -m nuitka --version
+          uv run python .\tests\run-tests --no-other-python --no-debug --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
 
   windows-arm:
     needs: linux
@@ -471,22 +507,31 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: ⚙️ Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: arm64
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          pip install --no-python-version-warning --disable-pip-version-check -r requirements-devel.txt
-          pip install --no-python-version-warning --disable-pip-version-check .
+          uv sync --frozen
 
       - name: Verbose scons output in compilation
         run: |
           set -x
-          python -m nuitka --mode=module --show-scons --run --report=compilation-report-module.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=accelerated --show-scons --run --report=compilation-report-accelerated.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=standalone --show-scons --run --report=compilation-report-standalone.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
-          python -m nuitka --mode=onefile --show-scons --run --report=compilation-report-onefile.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=module --show-scons --run --report=compilation-report-module.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=accelerated --show-scons --run --report=compilation-report-accelerated.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=standalone --show-scons --run --report=compilation-report-standalone.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          uv run python -m nuitka --mode=onefile --show-scons --run --report=compilation-report-onefile.xml --assume-yes-for-downloads --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
         shell: bash
 
       - name: Archive compilation reports for empty modules
@@ -500,5 +545,5 @@ jobs:
       - name: Run Nuitka test suite
         run: |
           Get-ChildItem env:
-          python -m nuitka --version
-          python .\tests\run-tests --no-other-python --no-debug --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
+          uv run python -m nuitka --version
+          uv run python .\tests\run-tests --no-other-python --no-debug --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads

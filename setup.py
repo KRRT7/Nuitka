@@ -34,13 +34,9 @@ if __name__ != "__main__":
 # isort:start
 
 import fnmatch
-import re
 
 from setuptools import Distribution, setup
-from setuptools.command import easy_install
 
-from nuitka.PythonFlavors import isMSYS2MingwPython
-from nuitka.utils.Utils import isMacOS
 from nuitka.Version import getNuitkaVersion
 
 version = getNuitkaVersion()
@@ -163,46 +159,10 @@ nuitka_packages = findNuitkaPackages()
 
 # Include extra files
 package_data = {
-    "": ["*.txt", "*.rst", "*.c", "*.h", "*.yml"],
-    "nuitka.build": [
-        "*.scons",
-        "static_src/*.c",
-        "static_src/*.cpp",
-        "static_src/*/*.c",
-        "static_src/*/*.h",
-        "inline_copy/aix_dl/AixDllAddr.c",
-        "inline_copy/zstd/LICENSE.txt",
-        "inline_copy/zstd/*.h",
-        "inline_copy/zstd/*/*.h",
-        "inline_copy/zstd/*/*.c",
-        "inline_copy/zlib/LICENSE",
-        "inline_copy/zlib/*.h",
-        "inline_copy/zlib/*.c",
-        "inline_copy/python_hacl/LICENSE.txt",
-        "inline_copy/python_hacl/hacl_312/*.h",
-        "inline_copy/python_hacl/hacl_312/*.c",
-        "inline_copy/python_hacl/hacl_312/*/*.h",
-        "inline_copy/python_hacl/hacl_312/*/*/*.c",
-        "inline_copy/python_hacl/hacl_312/*/*/*.h",
-        "inline_copy/python_hacl/hacl_312/*/*/*/*.h",
-        "static_src/*/*.asm",
-        "static_src/*/*.S",
-        "include/*.h",
-        "include/*/*.h",
-        "include/*/*/*.h",
-        "python_internal_offset/offsets_*.json",
-    ]
-    + inline_copy_files,
-    "nuitka.code_generation": ["templates_c/*.j2"],
-    "nuitka.reports": ["*.j2"],
-    "nuitka.plugins.standard": ["*/*.c", "*/*.py"],
-    "nuitka.utils": ["requirements-private.txt"],
-    "nuitka.format": ["biome.json"],
-    "nuitka.package_config": ["nuitka-package-config-schema.json"],
+    "nuitka.build": inline_copy_files,
 }
 
 
-data_files = []
 try:
     import distutils.util
 except ImportError:
@@ -236,146 +196,6 @@ if distutils_util is not None:
     distutils_util.byte_compile = byte_compile
 
 
-# We monkey patch easy install script generation to not load pkg_resources,
-# which is very slow to launch. This can save one second or more per launch
-# of Nuitka.
-runner_script_template = """\
-# -*- coding: utf-8 -*-
-# Launcher for Nuitka
-
-import %(package_name)s
-%(package_name)s.%(function_name)s()
-"""
-
-
-def _getEntryPoints(dist, group):
-    """Abstract setuptools version differences for entry point groups access."""
-    if hasattr(dist, "get_entry_map"):
-        for name, ep in dist.get_entry_map(group).items():
-            package_name, function_name = str(ep).split("=")[1].strip().split(":")
-            yield name, package_name, function_name
-
-    else:
-        for ep in dist.entry_points:
-            if ep.group == group:
-                name = ep.name
-                package_name, function_name = ep.value.split(":", 1)
-                yield name, package_name, function_name
-
-
-# This is for newer setuptools:
-@classmethod
-def get_args(cls, dist, header=None):
-    """
-    Yield write_script() argument tuples for a distribution's
-    console_scripts and gui_scripts entry points.
-    """
-    if header is None:
-        header = cls.get_header()
-
-    for type_ in "console", "gui":
-        group = type_ + "_scripts"
-
-        for name, package_name, function_name in _getEntryPoints(dist, group):
-            script_text = runner_script_template % {
-                "package_name": package_name,
-                "function_name": function_name,
-            }
-
-            args = cls._get_script_args(type_, name, header, script_text)
-            for res in args:
-                yield res
-
-
-try:
-    easy_install.ScriptWriter.get_args = get_args
-except AttributeError:
-    pass
-
-
-# This is for older setuptools:
-def get_script_args(dist, executable=os.path.normpath(sys.executable), wininst=False):
-    """Yield write_script() argument tuples for a distribution's entrypoints"""
-    header = easy_install.get_script_header("", executable, wininst)
-    for group in "console_scripts", "gui_scripts":
-        for name, _ep in dist.get_entry_map(group).items():
-            script_text = runner_script_template
-            if sys.platform == "win32" or wininst:
-                # On Windows/wininst, add a .py extension and an .exe launcher
-                if group == "gui_scripts":
-                    launcher_type = "gui"
-                    ext = "-script.pyw"
-                    old = [".pyw"]
-                    new_header = re.sub("(?i)python.exe", "pythonw.exe", header)
-                else:
-                    launcher_type = "cli"
-                    ext = "-script.py"
-                    old = [".py", ".pyc", ".pyo"]
-                    new_header = re.sub("(?i)pythonw.exe", "python.exe", header)
-                if (
-                    os.path.exists(new_header[2:-1].strip('"'))
-                    or sys.platform != "win32"
-                ):
-                    hdr = new_header
-                else:
-                    hdr = header
-                yield (name + ext, hdr + script_text, "t", [name + x for x in old])
-                yield (
-                    name + ".exe",
-                    easy_install.get_win_launcher(launcher_type),
-                    "b",  # write in binary mode
-                )
-                if not easy_install.is_64bit():
-                    # install a manifest for the launcher to prevent Windows
-                    #  from detecting it as an installer (which it will for
-                    #  launchers like easy_install.exe). Consider only
-                    #  adding a manifest for launchers detected as installers.
-                    #  See Distribute #143 for details.
-                    m_name = name + ".exe.manifest"
-                    yield (m_name, easy_install.load_launcher_manifest(name), "t")
-            else:
-                # On other platforms, we assume the right thing to do is to
-                # just write the stub with no extension.
-                yield (name, header + script_text)
-
-
-try:
-    easy_install.get_script_args
-except AttributeError:
-    pass
-else:
-    easy_install.get_script_args = get_script_args
-
-if str is bytes:
-    binary_suffix = "2"
-else:
-    binary_suffix = ""
-
-if os.name == "nt" and not isMSYS2MingwPython():
-    console_scripts = []
-else:
-    console_scripts = [
-        "nuitka%s = nuitka.__main__:main" % binary_suffix,
-        "nuitka%s-run = nuitka.__main__:main" % binary_suffix,
-    ]
-
-
-scripts = []
-
-if sdist_mode or (os.name != "nt" and not isMacOS()):
-    scripts.append("bin/compile-python-for-nuitka-linux.sh")
-
-if sdist_mode or isMacOS():
-    scripts.append("bin/compile-python-for-nuitka-mac.sh")
-
-if sdist_mode or os.name == "nt":
-    scripts.append("bin/compile-python-for-nuitka-windows.cmd")
-
-# For Windows, there are CMD batch files to launch Nuitka.
-if os.name == "nt" and not isMSYS2MingwPython():
-    scripts += ["misc/nuitka.cmd", "misc/nuitka-run.cmd"]
-
-
 # With this, we can enforce a binary package.
 class BinaryDistribution(Distribution):
     """Distribution which always forces a binary package with platform name"""
@@ -388,131 +208,9 @@ class BinaryDistribution(Distribution):
         return not install_mode
 
 
-with open("README.rst", "rb") as input_file:
-    long_description = input_file.read().decode("utf8")
-
-    # Need to remove the ..contents etc from the rest, or else PyPI will not render
-    # it.
-    long_description = long_description.replace(".. contents::\n", "")
-    long_description = long_description.replace(
-        ".. image:: doc/images/Nuitka-Logo-Symbol.png\n", ""
-    )
-
-install_requires = []
-if sys.version_info[:2] == (2, 7) and os.name == "nt":
-    install_requires.append("subprocess32")
-
-build_requires = ["setuptools>=42", "toml"]
-standalone_requires = []
-onefile_requires = []
-icon_conversion_requires = ["imageio"]
-package_requires = []
-
-if (3, 7) <= sys.version_info < (3, 14):
-    onefile_requires.append("zstandard >= 0.15")
-
 setup(
-    name="Nuitka",
-    license="GNU Affero General Public License v3",
-    version=version,
-    long_description=long_description,
-    long_description_content_type="text/x-rst",
-    classifiers=[
-        # Nuitka is mature even
-        "Development Status :: 5 - Production/Stable",
-        # Indicate who Nuitka is for
-        "Intended Audience :: Developers",
-        "Intended Audience :: Science/Research",
-        # Nuitka is a compiler and a build tool as such.
-        "Topic :: Software Development :: Compilers",
-        "Topic :: Software Development :: Build Tools",
-        # Is has a weak subset of PyLint, but aims for more long term
-        "Topic :: Software Development :: Quality Assurance",
-        # Nuitka standalone mode aims at distribution
-        "Topic :: System :: Software Distribution",
-        # Python3 supported versions.
-        "Programming Language :: Python :: 3.14",
-        "Programming Language :: Python :: 3.13",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.4",
-        # Python2 supported versions.
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 2.6",
-        # We depend on CPython.
-        "Programming Language :: Python :: Implementation :: CPython",
-        # We generate C intermediate code and implement part of the
-        # run time environment in C. Actually C11.
-        "Programming Language :: C",
-        # Supported OSes are many
-        "Operating System :: POSIX :: Linux",
-        "Operating System :: POSIX :: BSD :: FreeBSD",
-        "Operating System :: POSIX :: BSD :: NetBSD",
-        "Operating System :: POSIX :: BSD :: OpenBSD",
-        "Operating System :: Microsoft :: Windows",
-        "Operating System :: MacOS",
-        "Operating System :: Android",
-        # License
-        "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
-    ],
     packages=nuitka_packages,
     package_data=package_data,
-    # metadata for upload to PyPI
-    author="Kay Hayen",
-    author_email="Kay.Hayen@gmail.com",
-    url="https://nuitka.net",
-    description="""\
-Python compiler with full language support and CPython compatibility""",
-    keywords="compiler,python,nuitka",
-    project_urls={
-        "Commercial": "https://nuitka.net/doc/commercial.html",
-        "Support": "https://nuitka.net/pages/support.html",
-        "Documentation": "https://nuitka.net/doc/user-manual.html",
-        "Donations": "https://nuitka.net/pages/donations.html",
-        "Mastodon": "https://fosstodon.org/@kayhayen",
-        "Twitter": "https://twitter.com/KayHayen",
-        "Source": "https://github.com/Nuitka/Nuitka",
-    },
-    zip_safe=False,
-    scripts=scripts,
-    data_files=data_files,
-    entry_points={
-        "distutils.commands": [
-            "bdist_nuitka = \
-             nuitka.distutils.DistutilsCommands:bdist_nuitka",
-            "build_nuitka = \
-             nuitka.distutils.DistutilsCommands:build",
-            "install_nuitka = \
-             nuitka.distutils.DistutilsCommands:install",
-        ],
-        "distutils.setup_keywords": [
-            "build_with_nuitka = nuitka.distutils.DistutilsCommands:setupNuitkaDistutilsCommands"
-        ],
-        "console_scripts": console_scripts,
-    },
-    install_requires=install_requires,
-    extras_require={
-        "build-wheel": build_requires + ["wheel"],
-        # TODO: Enable these, once our "build" integration allows for these build types.
-        #        "build-standalone": build_requires + standalone_requires,
-        #        "build-onefile": build_requires + standalone_requires + onefile_requires,
-        "package": package_requires,
-        "standalone": standalone_requires,
-        "onefile": standalone_requires + onefile_requires,
-        "app": (standalone_requires if isMacOS() else onefile_requires),
-        "icon-conversion": icon_conversion_requires,
-        "all": build_requires
-        + standalone_requires
-        + onefile_requires
-        + package_requires
-        + icon_conversion_requires,
-    },
     # As we do version specific hacks for installed inline copies, make the
     # wheel version and platform specific.
     distclass=BinaryDistribution,

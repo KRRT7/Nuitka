@@ -3,6 +3,156 @@
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 
+[project]
+name = "Nuitka"
+version = "4.2rc1"
+description = "Python compiler with full language support and CPython compatibility"
+authors = [
+    { name = "Kay Hayen", email = "Kay.Hayen@gmail.com" },
+]
+license = { text = "GNU Affero General Public License v3" }
+keywords = ["compiler", "python", "nuitka"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Software Distribution",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: 3.4",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 2.6",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: C",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: POSIX :: BSD :: FreeBSD",
+    "Operating System :: POSIX :: BSD :: NetBSD",
+    "Operating System :: POSIX :: BSD :: OpenBSD",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: Android",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+]
+readme = { file = "README.rst", content-type = "text/x-rst" }
+requires-python = ">=3.8"
+dependencies = [
+    "appdirs>=1.4.4",
+    "jinja2>=2.10.2",
+    "pyyaml>=6.0.3 ; python_full_version >= '3.6'",
+    "tqdm>=4.67.3 ; python_full_version >= '3.4'",
+    "zstandard>=0.15 ; python_full_version >= '3.5' and python_full_version < '3.14'",
+]
+
+[project.urls]
+Homepage = "https://nuitka.net"
+Source = "https://github.com/Nuitka/Nuitka"
+Documentation = "https://nuitka.net/doc/user-manual.html"
+Support = "https://nuitka.net/pages/support.html"
+Commercial = "https://nuitka.net/doc/commercial.html"
+Donations = "https://nuitka.net/pages/donations.html"
+Mastodon = "https://fosstodon.org/@kayhayen"
+Twitter = "https://twitter.com/KayHayen"
+
+[project.scripts]
+nuitka = "nuitka.__main__:main"
+nuitka-run = "nuitka.__main__:main"
+nuitka-autoformat = "nuitka.tools.quality.auto_format.__main__:main"
+nuitka-codespell = "nuitka.tools.quality.codespell.__main__:main"
+nuitka-pylint = "nuitka.tools.quality.pylint.__main__:main"
+nuitka-restlint = "nuitka.tools.quality.restlint.__main__:main"
+nuitka-yamllint = "nuitka.tools.quality.yamllint.__main__:main"
+nuitka-generate-c-code = "nuitka.tools.specialize.SpecializeC:main"
+nuitka-generate-python-code = "nuitka.tools.specialize.SpecializePython:main"
+nuitka-generate-offsets = "nuitka.tools.general.generate_header.GenerateOffsets:main"
+nuitka-measure-performance = "nuitka.tools.testing.measure_construct_performance.__main__:main"
+nuitka-check-refs = "nuitka.tools.testing.check_reference_counts.__main__:main"
+nuitka-find-sxs = "nuitka.tools.testing.find_sxs_modules.__main__:main"
+nuitka-watch = "nuitka.tools.watch.__main__:main"
+nuitka-run-container = "nuitka.tools.podman.__main__:main"
+nuitka-compare-cpython = "nuitka.tools.testing.compare_with_cpython.__main__:main"
+
+[project.entry-points."distutils.commands"]
+bdist_nuitka = "nuitka.distutils.DistutilsCommands:bdist_nuitka"
+build_nuitka = "nuitka.distutils.DistutilsCommands:build"
+install_nuitka = "nuitka.distutils.DistutilsCommands:install"
+
+[project.entry-points."distutils.setup_keywords"]
+build_with_nuitka = "nuitka.distutils.DistutilsCommands:setupNuitkaDistutilsCommands"
+
+[tool.setuptools]
+zip-safe = false
+
+script-files = [
+    "bin/compile-python-for-nuitka-linux.sh",
+    "bin/compile-python-for-nuitka-mac.sh",
+    "bin/compile-python-for-nuitka-windows.cmd",
+    "misc/nuitka.cmd",
+    "misc/nuitka-run.cmd",
+]
+
+[tool.uv]
+managed = true
+default-groups = ["dev", "lint", "test"]
+
+[project.optional-dependencies]
+build-wheel = ["setuptools>=42", "toml", "wheel"]
+package = []
+standalone = []
+onefile = ["zstandard>=0.15 ; python_full_version >= '3.7' and python_full_version < '3.14'"]
+app = ["zstandard>=0.15 ; python_full_version >= '3.7' and python_full_version < '3.14'"]
+icon-conversion = ["imageio"]
+all = ["setuptools>=42", "toml", "wheel", "zstandard>=0.15 ; python_full_version >= '3.7' and python_full_version < '3.14'", "imageio"]
+
+[dependency-groups]
+build = [
+    "wheel",
+]
+dev = [
+    "pytest",
+    "setuptools",
+    "toml",
+]
+docs = [
+    "doxypypy",
+]
+lint = [
+    "astroid",
+    "black",
+    "clang-format",
+    "codespell",
+    "deepdiff",
+    "isort",
+    "jsonschema",
+    "mdformat",
+    "mdformat-footnote",
+    "mdformat-frontmatter",
+    "mdformat-gfm",
+    "pygments",
+    "pylint",
+    "restructuredtext-lint",
+    "rstcheck",
+    "rstfmt",
+    "ruamel-yaml",
+    "toml",
+    "tomli ; python_version < '3.11'",
+    "yamllint",
+]
+test = [
+    "pytest",
+    "virtualenv",
+]
+
 #     Part of "Nuitka", an optimizing Python compiler that is compatible and
 #     integrates with CPython, but also works on its own.
 #
@@ -17,3 +167,40 @@ requires = ["setuptools>=42", "wheel"]
 #     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.rst", "*.c", "*.h", "*.yml"]
+"nuitka.code_generation" = ["templates_c/*.j2"]
+"nuitka.reports" = ["*.j2"]
+"nuitka.plugins.standard" = ["*/*.c", "*/*.py"]
+"nuitka.utils" = ["requirements-private.txt"]
+"nuitka.format" = ["biome.json"]
+"nuitka.package_config" = ["nuitka-package-config-schema.json"]
+"nuitka.build" = [
+    "*.scons",
+    "static_src/*.c",
+    "static_src/*.cpp",
+    "static_src/*/*.c",
+    "static_src/*/*.h",
+    "inline_copy/aix_dl/AixDllAddr.c",
+    "inline_copy/zstd/LICENSE.txt",
+    "inline_copy/zstd/*.h",
+    "inline_copy/zstd/*/*.h",
+    "inline_copy/zstd/*/*.c",
+    "inline_copy/zlib/LICENSE",
+    "inline_copy/zlib/*.h",
+    "inline_copy/zlib/*.c",
+    "inline_copy/python_hacl/LICENSE.txt",
+    "inline_copy/python_hacl/hacl_312/*.h",
+    "inline_copy/python_hacl/hacl_312/*.c",
+    "inline_copy/python_hacl/hacl_312/*/*.h",
+    "inline_copy/python_hacl/hacl_312/*/*/*.c",
+    "inline_copy/python_hacl/hacl_312/*/*/*.h",
+    "inline_copy/python_hacl/hacl_312/*/*/*/*.h",
+    "static_src/*/*.asm",
+    "static_src/*/*.S",
+    "include/*.h",
+    "include/*/*.h",
+    "include/*/*/*.h",
+    "python_internal_offset/offsets_*.json",
+]

@@ -407,7 +407,11 @@ static int Nuitka_handle_weakrefs(PyThreadState *tstate, PyGC_Head *unreachable,
         if (!_PyType_SUPPORTS_WEAKREFS(Py_TYPE(object)))
             continue;
 
+#if defined(__NUITKA_DMA_ACTIVE__)
+        wrlist = (PyWeakReference **)Nuitka_Nitro_GetWeakrefListPtr(object);
+#else
         wrlist = (PyWeakReference **)_PyObject_GET_WEAKREFS_LISTPTR(object);
+#endif
 
         for (wr = *wrlist; wr != NULL; wr = *wrlist) {
             PyGC_Head *wrasgc;

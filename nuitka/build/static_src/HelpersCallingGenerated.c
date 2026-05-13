@@ -11896,8 +11896,46 @@ PyObject *CALL_METHOD_NO_ARGS(PyThreadState *tstate, PyObject *source, PyObject 
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_NO_ARGS(tstate, called_object);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -11917,6 +11955,7 @@ PyObject *CALL_METHOD_NO_ARGS(PyThreadState *tstate, PyObject *source, PyObject 
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -12122,8 +12161,46 @@ PyObject *CALL_METHOD_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *source, P
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_SINGLE_ARG(tstate, called_object, args[0]);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -12143,6 +12220,7 @@ PyObject *CALL_METHOD_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *source, P
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -12347,8 +12425,46 @@ PyObject *CALL_METHOD_WITH_ARGS2(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_ARGS2(tstate, called_object, args);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -12368,6 +12484,7 @@ PyObject *CALL_METHOD_WITH_ARGS2(PyThreadState *tstate, PyObject *source, PyObje
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -12572,8 +12689,46 @@ PyObject *CALL_METHOD_WITH_ARGS3(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_ARGS3(tstate, called_object, args);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -12593,6 +12748,7 @@ PyObject *CALL_METHOD_WITH_ARGS3(PyThreadState *tstate, PyObject *source, PyObje
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -12797,8 +12953,46 @@ PyObject *CALL_METHOD_WITH_ARGS4(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_ARGS4(tstate, called_object, args);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -12818,6 +13012,7 @@ PyObject *CALL_METHOD_WITH_ARGS4(PyThreadState *tstate, PyObject *source, PyObje
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -13022,8 +13217,46 @@ PyObject *CALL_METHOD_WITH_ARGS5(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_ARGS5(tstate, called_object, args);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -13043,6 +13276,7 @@ PyObject *CALL_METHOD_WITH_ARGS5(PyThreadState *tstate, PyObject *source, PyObje
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -13247,8 +13481,46 @@ PyObject *CALL_METHOD_WITH_ARGS6(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_ARGS6(tstate, called_object, args);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -13268,6 +13540,7 @@ PyObject *CALL_METHOD_WITH_ARGS6(PyThreadState *tstate, PyObject *source, PyObje
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -13472,8 +13745,46 @@ PyObject *CALL_METHOD_WITH_ARGS7(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_ARGS7(tstate, called_object, args);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -13493,6 +13804,7 @@ PyObject *CALL_METHOD_WITH_ARGS7(PyThreadState *tstate, PyObject *source, PyObje
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -13697,8 +14009,46 @@ PyObject *CALL_METHOD_WITH_ARGS8(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_ARGS8(tstate, called_object, args);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -13718,6 +14068,7 @@ PyObject *CALL_METHOD_WITH_ARGS8(PyThreadState *tstate, PyObject *source, PyObje
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -13922,8 +14273,46 @@ PyObject *CALL_METHOD_WITH_ARGS9(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_ARGS9(tstate, called_object, args);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -13943,6 +14332,7 @@ PyObject *CALL_METHOD_WITH_ARGS9(PyThreadState *tstate, PyObject *source, PyObje
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);
@@ -14147,8 +14537,46 @@ PyObject *CALL_METHOD_WITH_ARGS10(PyThreadState *tstate, PyObject *source, PyObj
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values — fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = CALL_FUNCTION_WITH_ARGS10(tstate, called_object, args);
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -14168,6 +14596,7 @@ PyObject *CALL_METHOD_WITH_ARGS10(PyThreadState *tstate, PyObject *source, PyObj
             PyObject **dictptr = (PyObject **)((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);

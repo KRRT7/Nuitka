@@ -53,8 +53,46 @@ PyObject *CALL_METHOD_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject *s
             }
         }
 
-        Py_ssize_t dictoffset = type->tp_dictoffset;
         PyObject *dict = NULL;
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_USE_VALUES_ARRAY)
+        // Tier 0: inline values - fastest for string keys on Python 3.14+.
+        if (likely(PyUnicode_CheckExact(attr_name))) {
+            PyDictValues **values_ptr = _PyObject_ValuesPointer(source);
+
+            if (*values_ptr != NULL) {
+                PyObject *called_object = _PyObject_GetInstanceAttribute(source, *values_ptr, attr_name);
+
+                if (called_object != NULL) {
+                    Py_XDECREF(descr);
+
+                    PyObject *result = {{ call_function_with_args( "called_object", "args", args_count) }};
+                    Py_DECREF(called_object);
+                    return result;
+                }
+                if (unlikely(PyErr_Occurred())) {
+                    Py_XDECREF(descr);
+                    return NULL;
+                }
+                // Key absent from inline values; fall through to class-attr path.
+            }
+        }
+#endif
+
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_HAS_FIXED_DICT_OFFSET)
+        // Compile-time offset: no tp_dictoffset load.
+        PyObject **dictptr = (PyObject **)((char *)source + (NITRO_FIXED_OFFSET));
+        dict = *dictptr;
+#elif defined(__NUITKA_DMA_ACTIVE__) && defined(NUITKA_MANAGED_DICT)
+        // Managed dict whose offset was not probed: _PyObject_GetDictPtr handles it.
+        {
+            PyObject **dictptr = _PyObject_GetDictPtr(source);
+            if (dictptr != NULL) {
+                dict = *dictptr;
+            }
+        }
+#else
+        Py_ssize_t dictoffset = type->tp_dictoffset;
 
         if (dictoffset != 0) {
             // Negative dictionary offsets have special meaning.
@@ -74,6 +112,7 @@ PyObject *CALL_METHOD_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject *s
             PyObject **dictptr = (PyObject **) ((char *)source + dictoffset);
             dict = *dictptr;
         }
+#endif
 
         if (dict != NULL) {
             CHECK_OBJECT(dict);

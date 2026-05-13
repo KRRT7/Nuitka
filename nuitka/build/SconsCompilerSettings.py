@@ -247,7 +247,12 @@ slower without it.
 """)
 
     if (env.gcc_mode or env.zig_mode) and lto_mode:
-        if env.clang_mode:
+        if env.zig_mode and isMacOS():
+            env.Append(CCFLAGS=["-flto=thin"])
+            # zig cc 0.13+ requires LLD explicitly on macOS; ld64 cannot
+            # process LLVM LTO bitcode objects.
+            env.Append(LINKFLAGS=["-flto=thin", "-fuse-ld=lld"])
+        elif env.clang_mode:
             if "thin-lto" not in env.experimental_flags:
                 env.Append(CCFLAGS=["-flto"])
                 env.Append(LINKFLAGS=["-flto"])
@@ -540,7 +545,7 @@ def createEnvironmentAndCheckCompiler(
         download_ok=download_ok,
         assume_yes_for_downloads=assume_yes_for_downloads,
     )
-
+    import os
     env.the_compiler = env["CC"] or env["CXX"]
     env.the_cc_name = os.path.normcase(os.path.basename(env.the_compiler))
 
@@ -667,7 +672,10 @@ def _decideBlobResourceMode(env):
         resource_mode = "linker"
         reason = "default MSYS2 Posix"
     elif isMacOS():
-        if env.clang_mode and env.clang_version >= (19,):
+        if env.zig_mode:
+            resource_mode = "c23_embed"
+            reason = "zig does not support -sectcreate on macOS"
+        elif env.clang_mode and env.clang_version >= (19,):
             resource_mode = "c23_embed"
             reason = "default for macOS with clang 19 or later"
         else:
@@ -919,21 +927,23 @@ def _addConstantBlobFileWinResource(env):
 
 def _addConstantBlobFileMacSection(env, blob_filename):
     assert isMacOS()
+    assert not env.zig_mode, "Zig does not support -sectcreate; use c23_embed instead"
 
     env.Append(CPPDEFINES=["_NUITKA_CONSTANTS_FROM_MACOS_SECTION"])
 
     section_name = _getSymbolName(blob_filename)
 
     # spell-checker: ignore linkflags, sectcreate
-    env.Append(
-        LINKFLAGS=[
-            "-Wl,-sectcreate,%(section_name)s,%(section_name)s,%(blob_filename)s"
-            % {
-                "section_name": section_name,
-                "blob_filename": blob_filename,
-            }
-        ]
-    )
+    if not env.zig_mode:
+        env.Append(
+            LINKFLAGS=[
+                "-Wl,-sectcreate,%(section_name)s,%(section_name)s,%(blob_filename)s"
+                % {
+                    "section_name": section_name,
+                    "blob_filename": blob_filename,
+                }
+            ]
+        )
 
 
 def addConstantBlobFile(env, blob_filename):
@@ -1204,6 +1214,14 @@ def createNuitkaSconsEnvironment(needs_source_dir=True):
     env.deployment_mode = deployment_mode
     env.nuitka_src = nuitka_src
     env.low_memory = low_memory
+
+    if env.zig_mode:
+        import sys as _sys
+        _zig_path = os.path.join(os.path.dirname(__file__), "zig")
+        if _zig_path not in _sys.path:
+            _sys.path.insert(0, _zig_path)
+        from LayoutOracle import run_oracle
+        run_oracle(env)
     env.macos_min_version = macos_min_version
     env.macos_target_arch = macos_target_arch
     env.target_arch = target_arch
@@ -1678,7 +1696,11 @@ def _enablePgoSettings(env):
 
         env.Append(CPPDEFINES=["_NUITKA_PGO_USE"])
 
-        if env.gcc_mode or env.zig_mode:
+        if env.zig_mode:
+            profdata = os.path.join(env.source_dir, "default.profdata")
+            env.Append(CCFLAGS=["-fprofile-use=%s" % profdata])
+            env.Append(LINKFLAGS=["-fprofile-use=%s" % profdata])
+        elif env.gcc_mode:
             env.Append(CCFLAGS=["-fprofile-use"])
             env.Append(LINKFLAGS=["-fprofile-use"])
         elif env.msvc_mode:
