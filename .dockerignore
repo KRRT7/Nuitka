@@ -11,5 +11,3 @@ dist
 *.build
 *.dist
 *.onefile-build
-bin/compile-python-for-nuitka-mac.sh
-bin/compile-python-for-nuitka-windows.cmd

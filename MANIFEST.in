@@ -9,18 +9,13 @@ include Developer_Manual.rst
 include doc/nuitka.1
 include doc/nuitka-run.1
 
-include bin/compare_with_cpython
 include bin/compare_with_xml
-include bin/check-nuitka-with-pylint
-include bin/autoformat-nuitka-source
-include bin/measure-construct-performance
-
-# Runners, mainly for source distribution.
-include bin/nuitka
-include bin/nuitka-run
 include bin/compile-python-for-nuitka-linux.sh
 include bin/compile-python-for-nuitka-mac.sh
 include bin/compile-python-for-nuitka-windows.cmd
+include bin/nuitka
+include bin/nuitka2
+include bin/nuitka2-run
 
 include misc/*.cmd
 include misc/nuitka-completion.bash
