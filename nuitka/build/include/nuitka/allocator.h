@@ -352,8 +352,16 @@ static PyObject *Nuitka_PyType_AllocNoTrackVar(PyTypeObject *type, Py_ssize_t ni
     // There is always a sentinel now, therefore add one
     const size_t size = _PyObject_VAR_SIZE(type, nitems + 1);
 
-    // TODO: This ought to be static for all our types, so remove it as a call.
-    size_t pre_size = _PyType_PreHeaderSize(type);
+    size_t pre_size;
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NITRO_USER_CLASS_PREHEADER_SIZE)
+    if (type->tp_getattro == PyObject_GenericGetAttr_resolved && type->tp_basicsize == NITRO_USER_CLASS_BASICSIZE) {
+        pre_size = NITRO_USER_CLASS_PREHEADER_SIZE;
+    } else {
+        pre_size = _PyType_PreHeaderSize(type);
+    }
+#else
+    pre_size = _PyType_PreHeaderSize(type);
+#endif
     size_t inline_values_size = 0;
 
 #if PYTHON_VERSION >= 0x3d0
@@ -409,8 +417,16 @@ static PyObject *Nuitka_PyType_AllocNoTrackVar(PyTypeObject *type, Py_ssize_t ni
 }
 
 static PyObject *Nuitka_PyType_AllocNoTrack(PyTypeObject *type) {
-    // TODO: This ought to be static for all our types, so remove it as a call.
-    size_t pre_size = _PyType_PreHeaderSize(type);
+    size_t pre_size;
+#if defined(__NUITKA_DMA_ACTIVE__) && defined(NITRO_USER_CLASS_PREHEADER_SIZE)
+    if (type->tp_getattro == PyObject_GenericGetAttr_resolved && type->tp_basicsize == NITRO_USER_CLASS_BASICSIZE) {
+        pre_size = NITRO_USER_CLASS_PREHEADER_SIZE;
+    } else {
+        pre_size = _PyType_PreHeaderSize(type);
+    }
+#else
+    pre_size = _PyType_PreHeaderSize(type);
+#endif
     size_t size = _PyObject_SIZE(type);
 
 #if PYTHON_VERSION >= 0x3d0

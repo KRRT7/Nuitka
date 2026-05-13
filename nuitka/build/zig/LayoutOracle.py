@@ -2,21 +2,20 @@ import ctypes
 import os
 import struct
 import sys
+import weakref
 
 
 # CPython flag constants (stable since 3.12)
-_Py_TPFLAGS_MANAGED_DICT = 1 << 9   # 0x200
-_Py_TPFLAGS_INLINE_VALUES = 1 << 7  # 0x080
+_Py_TPFLAGS_MANAGED_WEAKREF = 1 << 3
+_Py_TPFLAGS_MANAGED_DICT    = 1 << 4
+_Py_TPFLAGS_INLINE_VALUES   = 1 << 6
+_Py_TPFLAGS_PREHEADER       = 1 << 9
 
 
 def probe_managed_dict_offset():
     """
     For types with Py_TPFLAGS_MANAGED_DICT, the dict pointer lives at a fixed
-    negative offset before the object in memory.  Probe the actual offset by
-    creating a live object, forcing a __dict__, then scanning backwards from
-    the object's base address until we find the dict pointer.
-
-    Returns the (negative) byte offset on success, None on failure.
+    negative offset before the object in memory.
     """
     class _Probe:
         pass
@@ -33,19 +32,69 @@ def probe_managed_dict_offset():
         offset = back * ptr_size
         addr = obj_id - offset
         try:
-            candidate = ctypes.cast(addr, ctypes.POINTER(ctypes.py_object)).contents.value
-            if id(candidate) == dict_id:
+            # We use c_void_p to avoid py_object overhead/crashes if it's not a valid object.
+            val = ctypes.cast(addr, ctypes.POINTER(ctypes.c_void_p)).contents.value
+            if val == dict_id:
                 return -offset
         except Exception:
             continue
     return None
 
 
+def probe_managed_weakref_offset():
+    """
+    For types with Py_TPFLAGS_MANAGED_WEAKREF, the weakref list lives at a fixed
+    negative offset before the object in memory.
+    """
+    class _Probe:
+        pass
+
+    obj = _Probe()
+    wr = weakref.ref(obj)
+    
+    obj_id = id(obj)
+    wr_id = id(obj.__weakref__)
+
+    ptr_size = struct.calcsize("P")
+    # Scan up to 8 pointer-widths before the object for the weakref pointer.
+    for back in range(1, 9):
+        offset = back * ptr_size
+        addr = obj_id - offset
+        try:
+            val = ctypes.cast(addr, ctypes.POINTER(ctypes.c_void_p)).contents.value
+            if val == wr_id:
+                return -offset
+        except Exception:
+            continue
+    return None
+
+
+def probe_preheader_size():
+    """
+    Determine the total size of the preheader for a standard user class.
+    This includes GC head, managed dict, and managed weakref.
+    """
+    class _Probe:
+        pass
+
+    flags = _Probe.__flags__
+    ptr_size = struct.calcsize("P")
+    size = 0
+    
+    if flags & _Py_TPFLAGS_MANAGED_DICT:
+        size += ptr_size
+    if flags & _Py_TPFLAGS_MANAGED_WEAKREF:
+        size += ptr_size
+    if flags & _Py_TPFLAGS_PREHEADER:
+        # PREHEADER flag usually means GC is in the preheader (2 pointers).
+        size += 2 * ptr_size
+        
+    return size
+
+
 def probe_fixed_dict_offset():
     """
-    For traditional (non-managed) types, tp_dictoffset is a fixed positive
-    value.  Verify that two independent probe classes agree on the same offset
-    and that it is positive.
+    For traditional (non-managed) types, tp_dictoffset is a fixed positive value.
     """
     class _A:
         pass
@@ -56,6 +105,16 @@ def probe_fixed_dict_offset():
     a, b = _A.__dictoffset__, _B.__dictoffset__
     if a > 0 and a == b:
         return a
+    return None
+
+
+def probe_fixed_weakref_offset():
+    """
+    For traditional types, tp_weaklistoffset is a fixed positive value.
+    Note: Standard 'class C: pass' often has managed weakref in 3.12+.
+    """
+    # Finding a non-managed type with weakrefs is harder in 3.12+ for pure python classes.
+    # But we can check if it exists.
     return None
 
 
@@ -74,28 +133,50 @@ def run_oracle(env):
         "#define __NUITKA_DMA_ACTIVE__ 1",
     ]
 
-    # Mirror every define into the Scons env so that build scripts can branch on
-    # them and so the compiler gets them even if nuitka_offsets.h is not included
-    # via an unexpected path.
     env.Append(CPPDEFINES=["__NUITKA_DMA_ACTIVE__"])
 
     class _Probe:
         pass
 
     flags = _Probe.__flags__
-    has_managed = bool(flags & _Py_TPFLAGS_MANAGED_DICT)
-    has_inline  = bool(flags & _Py_TPFLAGS_INLINE_VALUES)
+    
+    # Check for managed features.
+    has_managed_dict = bool(flags & _Py_TPFLAGS_MANAGED_DICT)
+    has_managed_wr   = bool(flags & _Py_TPFLAGS_MANAGED_WEAKREF)
+    has_inline       = bool(flags & _Py_TPFLAGS_INLINE_VALUES)
 
-    managed_offset = None
-    fixed = None
+    # Basicsize for standard user class.
+    user_basicsize = _Probe.__basicsize__
+    lines.append("#define NITRO_USER_CLASS_BASICSIZE %d" % user_basicsize)
+    env.Append(CPPDEFINES=[("NITRO_USER_CLASS_BASICSIZE", "%d" % user_basicsize)])
 
-    if has_managed:
+    # Total preheader size.
+    preheader_size = probe_preheader_size()
+    lines.append("#define NITRO_USER_CLASS_PREHEADER_SIZE %d" % preheader_size)
+    env.Append(CPPDEFINES=[("NITRO_USER_CLASS_PREHEADER_SIZE", "%d" % preheader_size)])
+
+    # Probe basicsize for common builtins.
+    builtin_types = [
+        ("LIST", list),
+        ("DICT", dict),
+        ("TUPLE", tuple),
+        ("SET", set),
+        ("STR", str),
+        ("BYTES", bytes),
+        ("INT", int),
+        ("FLOAT", float),
+        ("BOOL", bool),
+    ]
+    for name, cls in builtin_types:
+        lines.append("#define NITRO_%s_BASICSIZE %d" % (name, cls.__basicsize__))
+        env.Append(CPPDEFINES=[("NITRO_%s_BASICSIZE" % name, "%d" % cls.__basicsize__)])
+
+    if has_managed_dict:
         lines.append("#define NUITKA_MANAGED_DICT 1")
         env.Append(CPPDEFINES=["NUITKA_MANAGED_DICT"])
 
         managed_offset = probe_managed_dict_offset()
         if managed_offset is not None:
-            # Negative offset — dict pointer lives before the object base.
             lines.append("#define NUITKA_HAS_FIXED_DICT_OFFSET 1")
             lines.append("#define NITRO_FIXED_OFFSET (%d)" % managed_offset)
             env.Append(CPPDEFINES=["NUITKA_HAS_FIXED_DICT_OFFSET"])
@@ -111,6 +192,17 @@ def run_oracle(env):
             lines.append("#define NITRO_FIXED_OFFSET %d" % fixed)
             env.Append(CPPDEFINES=["NUITKA_HAS_FIXED_DICT_OFFSET"])
             env.Append(CPPDEFINES=[("NITRO_FIXED_OFFSET", "%d" % fixed)])
+
+    if has_managed_wr:
+        lines.append("#define NUITKA_MANAGED_WEAKREF 1")
+        env.Append(CPPDEFINES=["NUITKA_MANAGED_WEAKREF"])
+        
+        wr_offset = probe_managed_weakref_offset()
+        if wr_offset is not None:
+            lines.append("#define NUITKA_HAS_FIXED_WEAKREF_OFFSET 1")
+            lines.append("#define NITRO_FIXED_WEAKREF_OFFSET (%d)" % wr_offset)
+            env.Append(CPPDEFINES=["NUITKA_HAS_FIXED_WEAKREF_OFFSET"])
+            env.Append(CPPDEFINES=[("NITRO_FIXED_WEAKREF_OFFSET", "(%d)" % wr_offset)])
 
     with open(target_header, "w") as f:
         f.write("\n".join(lines) + "\n")

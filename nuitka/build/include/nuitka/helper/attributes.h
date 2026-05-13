@@ -12,6 +12,9 @@ extern PyObject *LOOKUP_ATTRIBUTE_DICT_SLOT(PyThreadState *tstate, PyObject *sou
 // Attribute lookup of attribute slot "__class__".
 extern PyObject *LOOKUP_ATTRIBUTE_CLASS_SLOT(PyThreadState *tstate, PyObject *source);
 
+// Attribute lookup of attribute slot "__weakref__".
+extern PyObject *LOOKUP_ATTRIBUTE_WEAKREF_SLOT(PyThreadState *tstate, PyObject *source);
+
 // For built-in "hasattr" functionality.
 extern int BUILTIN_HASATTR_BOOL(PyThreadState *tstate, PyObject *source, PyObject *attr_name);
 
@@ -40,29 +43,40 @@ extern PyObject *FIND_ATTRIBUTE_IN_CLASS(PyClassObject *class_object, PyObject *
 
 extern PyObject *LOOKUP_MODULE_VALUE(PyDictObject *module_dict, PyObject *var_name);
 
-// In case of DLL usage, this avoids looking up the symbol from it.
-extern getattrofunc PyObject_GenericGetAttr_resolved;
+// Classes in Python3 might share keys.
+#define CACHED_KEYS(type) (((PyHeapTypeObject *)type)->ht_cached_keys)
 
 // Avoid repeated code, this checks if a type has the standard implementation, then
 // we can just try and do the same in slightly faster ways.
 static inline bool hasTypeGenericGetAttr(PyTypeObject *type) {
+    // Tier 1: Nitro/DMA Override
+    // If the LayoutOracle has probed the memory layout, we trust the generic path.
+#if defined(__NUITKA_DMA_ACTIVE__)
+    return type->tp_getattro == PyObject_GenericGetAttr_resolved;
+#else
+    // Tier 2: Standard Nuitka Safety Logic
 #if PYTHON_VERSION >= 0x3b0
-    // TODO: Big performance loss here
+    // Managed dicts in 3.11+ are not supported in the standard Nuitka path yet.
+    // See Commit 266e2f00b for details.
     return false;
 #else
     return type->tp_getattro == PyObject_GenericGetAttr_resolved;
 #endif
+#endif
 }
 
-// In case of DLL usage, this avoids looking up the symbol from it.
-extern setattrofunc PyObject_GenericSetAttr_resolved;
-
 static inline bool hasTypeGenericSetAttr(PyTypeObject *type) {
+    // Tier 1: Nitro/DMA Override
+#if defined(__NUITKA_DMA_ACTIVE__)
+    return type->tp_setattro == PyObject_GenericSetAttr_resolved;
+#else
+    // Tier 2: Standard Nuitka Safety Logic
 #if PYTHON_VERSION >= 0x3b0
-    // TODO: Big performance loss here
+    // Managed dicts in 3.11+ are not supported in the standard Nuitka path yet.
     return false;
 #else
     return type->tp_setattro == PyObject_GenericSetAttr_resolved;
+#endif
 #endif
 }
 
@@ -73,6 +87,9 @@ static inline bool Nuitka_Descr_IsData(PyObject *object) { return Py_TYPE(object
 #endif
 
 #endif
+
+// Nitro-Bypass fast attribute lookup for Zig/DMA mode.
+#include "nuitka/helper/nitro_attributes.h"
 
 //     Part of "Nuitka", an optimizing Python compiler that is compatible and
 //     integrates with CPython, but also works on its own.

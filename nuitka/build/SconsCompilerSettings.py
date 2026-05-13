@@ -190,7 +190,7 @@ def _enableLtoSettings(
     elif isMacOS() and (env.gcc_mode or env.zig_mode) and env.clang_mode:
         if env.zig_mode:
             lto_mode = False
-            reason = "known to be not supported (zig on macOS)"
+            reason = "not supported (zig cc as drop-in on macOS requires LLD which crashes"
         elif env.debugger_mode:
             lto_mode = False
             reason = "must be disabled to see line numbers (macOS clang)"
@@ -247,12 +247,7 @@ slower without it.
 """)
 
     if (env.gcc_mode or env.zig_mode) and lto_mode:
-        if env.zig_mode and isMacOS():
-            env.Append(CCFLAGS=["-flto=thin"])
-            # zig cc 0.13+ requires LLD explicitly on macOS; ld64 cannot
-            # process LLVM LTO bitcode objects.
-            env.Append(LINKFLAGS=["-flto=thin", "-fuse-ld=lld"])
-        elif env.clang_mode:
+        if env.clang_mode:
             if "thin-lto" not in env.experimental_flags:
                 env.Append(CCFLAGS=["-flto"])
                 env.Append(LINKFLAGS=["-flto"])
