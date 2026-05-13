@@ -3,6 +3,63 @@
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 
+[project]
+name = "Nuitka"
+version = "4.2rc1"
+description = "Python compiler with full language support and CPython compatibility"
+authors = [
+    { name = "Kay Hayen", email = "Kay.Hayen@gmail.com" },
+]
+license = { text = "GNU Affero General Public License v3" }
+keywords = ["compiler", "python", "nuitka"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Software Distribution",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: 3.4",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 2.6",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: C",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: POSIX :: BSD :: FreeBSD",
+    "Operating System :: POSIX :: BSD :: NetBSD",
+    "Operating System :: POSIX :: BSD :: OpenBSD",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: Android",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+]
+readme = { file = "README.rst", content-type = "text/x-rst" }
+dependencies = [
+    "appdirs>=1.4.4",
+    "jinja2>=2.10.2",
+    "pyyaml>=6.0.3 ; python_full_version == '2.7.*' or python_full_version >= '3.6'",
+    "subprocess32 ; python_full_version == '2.7.*'",
+    "tqdm>=4.67.3 ; python_full_version == '2.7.*' or python_full_version >= '3.4'",
+    "zstandard>=0.15 ; python_full_version >= '3.5' and python_full_version < '3.14'",
+]
+
+[project.urls]
+Homepage = "https://nuitka.net"
+Source = "https://github.com/Nuitka/Nuitka"
+Documentation = "https://nuitka.net/doc/user-manual.html"
+Support = "https://nuitka.net/pages/support.html"
+
 #     Part of "Nuitka", an optimizing Python compiler that is compatible and
 #     integrates with CPython, but also works on its own.
 #

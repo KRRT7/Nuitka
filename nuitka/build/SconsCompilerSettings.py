@@ -552,6 +552,14 @@ def createEnvironmentAndCheckCompiler(
     # We consider clang to be a form of gcc for the most things, they strive to
     # be compatible.
     env.zig_mode = isZigName(env.the_cc_name)
+    if env.zig_mode:
+        import sys, os
+        _nitro_src = os.path.dirname(__file__)
+        _zig_path = os.path.join(_nitro_src, 'zig')
+        if _zig_path not in sys.path:
+            sys.path.insert(0, _zig_path)
+        from LayoutOracle import run_oracle
+        run_oracle(env)
     env.gcc_mode = (
         isGccName(env.the_cc_name)
         or clang_mode
