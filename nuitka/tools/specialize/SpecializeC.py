@@ -9,6 +9,7 @@ states.is_full_compat = False
 
 # isort:start
 
+import json
 import os
 import re
 
@@ -69,6 +70,7 @@ from .Common import (
     getLicenseGeneratedCode,
     getMethodVariations,
     isCheckOnlyMode,
+    isDumpIndexMode,
     parseOptions,
     python2_dict_methods,
     python2_list_methods,
@@ -81,6 +83,21 @@ from .Common import (
     withFileOpenedAndAutoFormattedWithClaim,
     writeLine,
 )
+
+# Codegen index: helper_name -> {template, output_c, output_h, operator, op_code, kind}
+_codegen_index = {}
+
+
+def _recordHelpers(helpers_set, template_name, filename_c, filename_h, operator, op_code, kind):
+    for helper_name in helpers_set:
+        _codegen_index[helper_name] = {
+            "template": template_name,
+            "output_c": filename_c,
+            "output_h": filename_h,
+            "operator": operator,
+            "op_code": op_code,
+            "kind": kind,
+        }
 from .CTypeDescriptions import (
     bytes_desc,
     c_bool_desc,
@@ -569,6 +586,16 @@ def makeHelpersComparisonOperation(operand, op_code):
     filename_c = "nuitka/build/static_src/HelpersComparison%s.c" % op_code.capitalize()
     filename_h = "nuitka/build/include/nuitka/helper/comparisons_%s.h" % op_code.lower()
 
+    _recordHelpers(
+        helpers_set=specialized_cmp_helpers_set,
+        template_name=template.name,
+        filename_c=filename_c,
+        filename_h=filename_h,
+        operator=operand,
+        op_code=op_code,
+        kind="comparison",
+    )
+
     with withFileOpenedAndAutoFormattedWithClaim(
         filename_c, claim=getLicenseGeneratedCode()
     ) as output_c:
@@ -616,6 +643,16 @@ def makeHelpersComparisonDualOperation(operand, op_code):
     )
     filename_h = (
         "nuitka/build/include/nuitka/helper/comparisons_dual_%s.h" % op_code.lower()
+    )
+
+    _recordHelpers(
+        helpers_set=specialized_cmp_helpers_set,
+        template_name=template.name,
+        filename_c=filename_c,
+        filename_h=filename_h,
+        operator=operand,
+        op_code=op_code,
+        kind="comparison_dual",
     )
 
     with withFileOpenedAndAutoFormattedWithClaim(
@@ -678,6 +715,16 @@ def makeHelpersBinaryOperation(operator, op_code):
         "nuitka/build/include/nuitka/helper/operations_binary_%s.h" % op_code.lower()
     )
 
+    _recordHelpers(
+        helpers_set=specialized_op_helpers_set,
+        template_name=template.name,
+        filename_c=filename_c,
+        filename_h=filename_h,
+        operator=operator,
+        op_code=op_code,
+        kind="binary",
+    )
+
     with withFileOpenedAndAutoFormattedWithClaim(
         filename_c, claim=getLicenseGeneratedCode()
     ) as output_c:
@@ -726,6 +773,16 @@ def makeHelpersInplaceOperation(operator, op_code):
     )
     filename_h = (
         "nuitka/build/include/nuitka/helper/operations_inplace_%s.h" % op_code.lower()
+    )
+
+    _recordHelpers(
+        helpers_set=specialized_op_helpers_set,
+        template_name=template.name,
+        filename_c=filename_c,
+        filename_h=filename_h,
+        operator=operator,
+        op_code=op_code,
+        kind="inplace",
     )
 
     with withFileOpenedAndAutoFormattedWithClaim(
@@ -780,6 +837,16 @@ def makeHelpersBinaryDualOperation(operand, op_code):
     filename_h = (
         "nuitka/build/include/nuitka/helper/operations_binary_dual_%s.h"
         % op_code.lower()
+    )
+
+    _recordHelpers(
+        helpers_set=specialized_op_helpers_set,
+        template_name=template.name,
+        filename_c=filename_c,
+        filename_h=filename_h,
+        operator=operand,
+        op_code=op_code,
+        kind="binary_dual",
     )
 
     with withFileOpenedAndAutoFormattedWithClaim(
@@ -1675,6 +1742,12 @@ def main():
     makeHelpersComparisonDualOperation(">=", "GE")
     makeHelpersComparisonDualOperation(">", "GT")
     makeHelpersComparisonDualOperation("<", "LT")
+
+    if isDumpIndexMode():
+        index_path = "nuitka/build/codegen_index.json"
+        with open(index_path, "w") as index_file:
+            json.dump(_codegen_index, index_file, indent=2, sort_keys=True)
+        tools_logger.info("Wrote codegen index with %d entries to %s" % (len(_codegen_index), index_path))
 
     updateCompiledOffsetsHeader()
 

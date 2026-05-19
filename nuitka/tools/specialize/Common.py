@@ -394,6 +394,19 @@ def isCheckOnlyMode():
     return check_only
 
 
+dump_index_mode = False
+
+
+def enableDumpIndexMode():
+    # Singleton, pylint: disable=global-statement
+    global dump_index_mode
+    dump_index_mode = True
+
+
+def isDumpIndexMode():
+    return dump_index_mode
+
+
 def parseOptions():
     parser = makeOptionsParser(usage=None, epilog=None)
     parser.add_option(
@@ -403,10 +416,20 @@ def parseOptions():
         default=False,
         help="""Check only, do not write files. Default is %default.""",
     )
+    parser.add_option(
+        "--dump-index",
+        action="store_true",
+        dest="dump_index",
+        default=False,
+        help="""Dump codegen index JSON instead of writing C files. Default is %default.""",
+    )
     options, _positional_args = parser.parse_args()
 
     if options.check_only:
         enableCheckOnlyMode()
+
+    if options.dump_index:
+        enableDumpIndexMode()
 
 
 def withFileOpenedAndAutoFormattedWithClaim(filename, claim, ignore_errors=False):
