@@ -49,6 +49,16 @@ Default is %default.""",
     )
 
     parser.add_option(
+        "--skip-dual-type-tests",
+        action="store_false",
+        dest="dual_type_tests",
+        default=True,
+        help="""\
+The dual-type tests, execute these to check if Nuitka handles NILONG
+optimized big integer operations fine. Default is %default.""",
+    )
+
+    parser.add_option(
         "--skip-syntax-tests",
         action="store_false",
         dest="syntax_tests",
@@ -809,6 +819,14 @@ def main():
             )
             with withExtendedExtraOptions(*getExtraFlags(where, "basics", flags)):
                 executeSubTest("./tests/basics/run_all.py search")
+
+        if options.dual_type_tests:
+            my_print(
+                "Running the dual-type tests with options '%s' with '%s':"
+                % (flags, use_python)
+            )
+            with withExtendedExtraOptions(*getExtraFlags(where, "dual-type", flags)):
+                executeSubTest("./tests/dual-type/run_all.py search")
 
         if options.syntax_tests:
             my_print(
