@@ -294,7 +294,7 @@ def getModuleNameAndKindFromFilenameSuffix(module_filename):
 def hasPackageDirFilename(path):
     path = os.path.basename(path)
 
-    for suffix in (".py",) + getExtensionModuleSuffixes():
+    for suffix, _module_type in getModuleFilenameSuffixes():
         candidate = "__init__" + suffix
 
         if candidate == path:
@@ -306,7 +306,7 @@ def hasPackageDirFilename(path):
 def getPackageDirFilename(path):
     assert os.path.isdir(path)
 
-    for suffix in getExtensionModuleSuffixes() + (".py",):
+    for suffix, _module_type in getModuleFilenameSuffixes():
         candidate = os.path.join(path, "__init__" + suffix)
 
         if os.path.isfile(candidate):
@@ -336,7 +336,10 @@ def withTemporarySysPathExtension(extra_paths, prepend=False):
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

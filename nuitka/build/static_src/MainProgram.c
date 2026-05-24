@@ -1263,10 +1263,9 @@ static void Nuitka_Py_Initialize(void) {
 #if _NUITKA_STANDALONE_MODE
     config.use_frozen_modules = 0;
 #else
-// Emulate PYTHON_FROZEN_MODULES for accelerated mode, it is only added in 3.13,
-// but we need to control it for controlling things for accelerated binaries
-// too.
-#if PYTHON_VERSION >= 0x3b0 && PYTHON_VERSION <= 0x3d0
+// Emulate PYTHON_FROZEN_MODULES for accelerated mode, we need to control
+// it for controlling things for accelerated binaries too.
+#if PYTHON_VERSION >= 0x3b0
     environment_char_t const *frozen_modules_env = getEnvironmentVariable("PYTHON_FROZEN_MODULES");
 
     if (frozen_modules_env == NULL ||
@@ -2018,12 +2017,7 @@ static int Nuitka_Main(int argc, native_command_line_argument_t **argv) {
 
 #if PYTHON_VERSION >= 0x300
     NUITKA_PRINT_TRACE("main(): Calling patchInspectModule().");
-
-// TODO: Python3.13 NoGIL: This is causing errors during bytecode import
-// that are unexplained.
-#if !defined(Py_GIL_DISABLED)
     patchInspectModule(tstate);
-#endif
 #endif
 
 #if PYTHON_VERSION >= 0x300 && SYSFLAG_NO_RANDOMIZATION == 1
@@ -2106,7 +2100,7 @@ static int Nuitka_Main(int argc, native_command_line_argument_t **argv) {
         Py_ssize_t size = PyList_Size(argv_list);
 
         // Negative indexes are not supported by this function.
-        int res = PyList_SetSlice(argv_list, 1, size - 2, const_tuple_empty);
+        NUITKA_MAY_BE_UNUSED int res = PyList_SetSlice(argv_list, 1, size - 2, const_tuple_empty);
         assert(res == 0);
 
         PyObject *main_function = PyObject_GetAttrString(joblib_popen_loky_win32_module, "main");
@@ -2137,7 +2131,7 @@ static int Nuitka_Main(int argc, native_command_line_argument_t **argv) {
             EXECUTE_MAIN_MODULE(tstate, "joblib.externals.loky.backend.popen_loky_posix", true);
 
         // Remove the "-m" like CPython would do as well.
-        int res = PyList_SetSlice(Nuitka_SysGetObject("argv"), 0, 2, const_tuple_empty);
+        NUITKA_MAY_BE_UNUSED int res = PyList_SetSlice(Nuitka_SysGetObject("argv"), 0, 2, const_tuple_empty);
         assert(res == 0);
 
         PyObject *main_function = PyObject_GetAttrString(joblib_popen_loky_posix_module, "main");
@@ -2362,7 +2356,10 @@ __attribute__((weak)) void __warn_memset_zero_len(void) {}
 //     you may not use this file except in compliance with the License.
 //     You may obtain a copy of the License at
 //
-//        http://www.gnu.org/licenses/agpl.txt
+//        https://www.gnu.org/licenses/agpl-3.0.txt
+//
+//     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+//     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 //
 //     Unless required by applicable law or agreed to in writing, software
 //     distributed under the License is distributed on an "AS IS" BASIS,

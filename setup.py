@@ -114,8 +114,10 @@ addInlineCopy("tqdm")
 
 addInlineCopy("stubgen")
 
-if os.name == "nt" or sdist_mode:
+if os.name == "nt" or sys.version_info < (3,) or sdist_mode:
     addInlineCopy("atomicwrites")
+
+if os.name == "nt" or sdist_mode:
     addInlineCopy("clcache")
     addInlineCopy("colorama")
 
@@ -123,6 +125,7 @@ if (os.name == "nt" and sys.version_info >= (3, 6)) or sdist_mode:
     addInlineCopy("pefile")
 
 if sys.version_info < (3,) or sdist_mode:
+    addInlineCopy("pkg_resources_27", do_byte_compile=sys.version_info < (3,))
     addInlineCopy("yaml_27", do_byte_compile=sys.version_info < (3,))
 if (3,) < sys.version_info < (3, 6) or sdist_mode:
     addInlineCopy("yaml_35", do_byte_compile=(3,) < sys.version_info < (3, 6))
@@ -449,7 +452,10 @@ setup(
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

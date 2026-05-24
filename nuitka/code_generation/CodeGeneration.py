@@ -260,6 +260,7 @@ from .LoopCodes import (
 from .MatchCodes import generateMatchArgsCode
 from .ModuleCodes import (
     generateModuleAttributeCode,
+    generateModuleAttributeDunderCompiledCode,
     generateModuleAttributeFileCode,
     getModuleCode,
 )
@@ -847,6 +848,7 @@ addExpressionDispatchDict(
         "EXPRESSION_LIST_OPERATION_SORT1": generateListOperationSort1Code,
         "EXPRESSION_LIST_OPERATION_SORT2": generateListOperationSort2Code,
         "EXPRESSION_LIST_OPERATION_SORT3": generateListOperationSort3Code,
+        "EXPRESSION_MODULE_ATTRIBUTE_DUNDER_COMPILED_REF": generateModuleAttributeDunderCompiledCode,
         "EXPRESSION_MODULE_ATTRIBUTE_FILE_REF": generateModuleAttributeFileCode,
         "EXPRESSION_MODULE_ATTRIBUTE_NAME_REF": generateModuleAttributeCode,
         "EXPRESSION_MODULE_ATTRIBUTE_PACKAGE_REF": generateModuleAttributeCode,
@@ -1112,7 +1114,10 @@ setStatementDispatchDict(
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

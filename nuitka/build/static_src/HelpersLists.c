@@ -58,7 +58,7 @@ PyObject *MAKE_LIST_EMPTY(PyThreadState *tstate, Py_ssize_t size) {
     return PyList_New(size);
 #else
 #if PYTHON_VERSION >= 0x3e0
-    PyListObject *result_list = (PyListObject *)Nuitka_PyFreeList_Pop(&_Py_freelists_GET()->lists);
+    PyListObject *result_list = (PyListObject *)Nuitka_PyFreeList_Pop(&Nuitka_Py_freelists_GET(tstate)->lists);
 
     if (result_list == NULL) {
         result_list = (PyListObject *)Nuitka_GC_New(&PyList_Type);
@@ -100,6 +100,9 @@ PyObject *MAKE_LIST_EMPTY(PyThreadState *tstate, Py_ssize_t size) {
             Py_DECREF(result_list);
             return PyErr_NoMemory();
         }
+
+        memset(list_array->ob_item, 0, size * sizeof(PyObject *));
+        result_list->ob_item = list_array->ob_item;
 #else
         result_list->ob_item = (PyObject **)NuitkaMem_Calloc(size, sizeof(PyObject *));
 
@@ -902,7 +905,10 @@ PyObject *MAKE_LIST(PyThreadState *tstate, PyObject *iterable) {
 //     you may not use this file except in compliance with the License.
 //     You may obtain a copy of the License at
 //
-//        http://www.gnu.org/licenses/agpl.txt
+//        https://www.gnu.org/licenses/agpl-3.0.txt
+//
+//     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+//     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 //
 //     Unless required by applicable law or agreed to in writing, software
 //     distributed under the License is distributed on an "AS IS" BASIS,

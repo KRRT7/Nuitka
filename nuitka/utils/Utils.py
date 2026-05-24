@@ -58,6 +58,11 @@ def _parseOsReleaseFileContents(filename):
                 base = "Debian"
             elif "fedora" in base:
                 base = "Fedora"
+            elif "suse" in base:
+                base = "SUSE"
+
+                if result is None:
+                    result = base
 
         if line.startswith("VERSION="):
             version = line[8:].strip('"')
@@ -197,6 +202,22 @@ def isFedoraBasedLinux():
     dist_name, base, _dist_version = getLinuxDistribution()
 
     return (base or dist_name) == "Fedora"
+
+
+def isSuseBasedLinux():
+    dist_name, base, _dist_version = getLinuxDistribution()
+
+    if base == "SUSE":
+        return True
+
+    if dist_name is None:
+        return False
+
+    dist_name = dist_name.lower()
+
+    return dist_name.startswith(
+        ("suse", "opensuse", "sles", "sled", "sle-", "sle_", "sl-", "sl_")
+    )
 
 
 def isArchBasedLinux():
@@ -526,7 +547,10 @@ def isCoffUsingPlatform():
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

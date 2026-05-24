@@ -1572,14 +1572,18 @@ static void _Nuitka_PyFrame_Clear(PyThreadState *tstate, _PyInterpreterFrame *fr
     Py_XDECREF(frame->f_locals);
 #if PYTHON_VERSION < 0x3c0
     Py_DECREF(frame->f_func);
-#else
+#elif PYTHON_VERSION < 0x3e0
     Py_DECREF(frame->f_funcobj);
+#else
+    PyStackRef_CLEAR(frame->f_funcobj);
 #endif
 
 #if PYTHON_VERSION < 0x3d0
     Py_XDECREF(frame->f_code);
-#else
+#elif PYTHON_VERSION < 0x3e0
     Py_XDECREF(frame->f_executable);
+#else
+    PyStackRef_CLEAR(frame->f_executable);
 #endif
 }
 #endif
@@ -2434,7 +2438,10 @@ static PyObject *Nuitka_PyGen_gen_close(PyThreadState *tstate, PyGenObject *gen,
 //     you may not use this file except in compliance with the License.
 //     You may obtain a copy of the License at
 //
-//        http://www.gnu.org/licenses/agpl.txt
+//        https://www.gnu.org/licenses/agpl-3.0.txt
+//
+//     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+//     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 //
 //     Unless required by applicable law or agreed to in writing, software
 //     distributed under the License is distributed on an "AS IS" BASIS,

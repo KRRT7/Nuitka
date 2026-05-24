@@ -339,6 +339,9 @@ extern PyObject *getPythonProgramDirectoryObject(bool resolve_symlinks);
 // Get the containing directory as an object with symlinks resolved or not.
 extern PyObject *getContainingDirectoryObject(bool resolve_symlinks);
 
+// Get the loaded extension filename for module/package mode.
+extern PyObject *getDllFilenameObject(void);
+
 // Get the original argv[0] as recorded by the bootstrap stage. Returns
 // None, if not available, in module mode.
 #if _NUITKA_EXE_MODE || _NUITKA_DLL_MODE
@@ -411,7 +414,10 @@ extern void Nuitka_PyType_Ready(PyTypeObject *type, PyTypeObject *base, bool gen
 //     you may not use this file except in compliance with the License.
 //     You may obtain a copy of the License at
 //
-//        http://www.gnu.org/licenses/agpl.txt
+//        https://www.gnu.org/licenses/agpl-3.0.txt
+//
+//     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+//     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 //
 //     Unless required by applicable law or agreed to in writing, software
 //     distributed under the License is distributed on an "AS IS" BASIS,

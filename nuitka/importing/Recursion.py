@@ -43,6 +43,7 @@ from nuitka.utils.FileOperations import listDir
 from nuitka.utils.Importing import (
     getExtensionModuleSuffixes,
     getPackageDirFilename,
+    hasPackageDirFilename,
 )
 from nuitka.utils.ModuleNames import ModuleName
 
@@ -427,7 +428,7 @@ def _addIncludedModule(module, package_only):
 
         if not package_only:
             for sub_path, sub_filename in listDir(package_dir):
-                if sub_filename in ("__init__.py", "__pycache__"):
+                if sub_filename == "__pycache__" or hasPackageDirFilename(sub_filename):
                     continue
 
                 if isPackageDir(sub_path) and not os.path.exists(sub_path + ".py"):
@@ -713,7 +714,10 @@ def scanIncludedPackage(package_name):
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

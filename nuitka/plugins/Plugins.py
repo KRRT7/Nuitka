@@ -886,9 +886,16 @@ through implicit import by '%s' plugin encountered."""
                 for included_datafile in _iterateIncludedDataFiles(plugin, value):
                     yield included_datafile
 
-    @staticmethod
+    _data_file_tags_cache = set()
+
+    @classmethod
     @counted_plugin_method
-    def onDataFileTags(included_datafile):
+    def onDataFileTags(cls, included_datafile):
+        if included_datafile.dest_path in cls._data_file_tags_cache:
+            return
+
+        cls._data_file_tags_cache.add(included_datafile.dest_path)
+
         for plugin in getActivePlugins():
             plugin.onDataFileTags(included_datafile)
 
@@ -1566,7 +1573,7 @@ through incomplete set import by '%s' plugin encountered."""
             order will be plugin order.
 
         Returns:
-            OrderedSet() of paths to include as well.
+            tuple of paths to include as well.
         """
         if cls.extra_include_directories is None:
             cls.extra_include_directories = OrderedSet()
@@ -1577,7 +1584,7 @@ through incomplete set import by '%s' plugin encountered."""
                 if value:
                     cls.extra_include_directories.update(value)
 
-        return cls.extra_include_directories
+        return tuple(cls.extra_include_directories)
 
     @staticmethod
     @counted_plugin_method
@@ -1648,7 +1655,7 @@ through incomplete set import by '%s' plugin encountered."""
                         for library_name in value:
                             cls.extra_link_libraries.add(os.path.normcase(library_name))
 
-        return cls.extra_link_libraries
+        return tuple(cls.extra_link_libraries)
 
     extra_link_directories = None
 
@@ -1668,7 +1675,7 @@ through incomplete set import by '%s' plugin encountered."""
                         for dir_name in value:
                             cls.extra_link_directories.add(dir_name)
 
-        return cls.extra_link_directories
+        return tuple(cls.extra_link_directories)
 
     @classmethod
     @counted_plugin_method
@@ -2376,7 +2383,10 @@ def setupHooks():
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

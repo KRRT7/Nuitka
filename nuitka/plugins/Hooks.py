@@ -116,7 +116,7 @@ def getExtraIncludeDirectories():
         order will be plugin order.
 
     Returns:
-        OrderedSet() of paths to include as well.
+        tuple of paths to include as well.
     """
     return Plugins.getExtraIncludeDirectories()
 
@@ -129,7 +129,7 @@ def getExtraLinkDirectories():
         order will be plugin order.
 
     Returns:
-        OrderedSet() of paths to include as well.
+        tuple of paths to include as well.
     """
     return Plugins.getExtraLinkDirectories()
 
@@ -142,7 +142,7 @@ def getExtraLinkLibraries():
         order will be plugin order.
 
     Returns:
-        OrderedSet() of library names to link against.
+        tuple of library names to link against.
     """
     return Plugins.getExtraLinkLibraries()
 
@@ -378,7 +378,10 @@ def getUncompiledDecoratorNames():
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

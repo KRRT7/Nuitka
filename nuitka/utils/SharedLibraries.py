@@ -32,12 +32,15 @@ from .Importing import importFromInlineCopy
 from .Utils import (
     getOS,
     isAlpineLinux,
+    isAndroidBasedLinux,
     isBSD,
     isCoffUsingPlatform,
     isDebianBasedLinux,
     isElfUsingPlatform,
+    isFedoraBasedLinux,
     isLinux,
     isMacOS,
+    isSuseBasedLinux,
     isWin32Windows,
     raiseWindowsError,
 )
@@ -318,12 +321,7 @@ def clearOtoolOutputCache(filename):
 
 
 def _getMacOSArchOption():
-    macos_target_arch = getMacOSTargetArch()
-
-    if macos_target_arch != "universal":
-        return ("-arch", macos_target_arch)
-    else:
-        return ()
+    return ("-arch", getMacOSTargetArch())
 
 
 def _filterOtoolErrorOutput(stderr):
@@ -474,11 +472,11 @@ _patchelf_usage = """\
 Error, needs 'patchelf' on your system, to modify 'RPATH' settings that \
 need to be updated."""
 
+_patch_elf_version = None
 
-def checkPatchElfPresenceAndUsability(logger):
-    """Checks if patchelf is present and usable."""
 
-    output = executeToolChecked(
+def _getPatchElfVersionOutput(logger):
+    return executeToolChecked(
         logger=logger,
         command=("patchelf", "--version"),
         absence_message="""\
@@ -486,9 +484,46 @@ Error, standalone mode on %s requires 'patchelf' to be \
 installed. Use 'apt/dnf/yum install patchelf' first.""" % getOS(),
     )
 
-    if output.split() == b"0.18.0" and not isDebianBasedLinux():
+
+def getPatchElfVersion(logger):
+    # Singleton, pylint: disable=global-statement
+    global _patch_elf_version
+
+    result = _patch_elf_version
+
+    if result is None:
+        output = _getPatchElfVersionOutput(logger)
+
+        version = output.split()[1]
+
+        if str is not bytes:
+            version = version.decode("utf8")
+
+        result = version, tuple(
+            int("".join(d for d in part if d.isdigit())) for part in version.split(".")
+        )
+
+        _patch_elf_version = result
+
+    return result
+
+
+def checkPatchElfPresenceAndUsability(logger):
+    """Checks if patchelf is present and usable."""
+
+    version, version_tuple = getPatchElfVersion(logger)
+
+    # These have backports or a safe enough package build by now.
+    if (
+        version_tuple == (0, 18, 0)
+        and not isDebianBasedLinux()
+        and not isAndroidBasedLinux()
+        and not isFedoraBasedLinux()
+        and not isSuseBasedLinux()
+    ):
         return logger.sysexit(
-            "Error, patchelf version 0.18.0 is a known buggy release and cannot be used. Please upgrade or downgrade it."
+            "Error, patchelf version %s is a known buggy release and cannot be used. Please upgrade or downgrade it."
+            % version
         )
 
 
@@ -550,6 +585,9 @@ def setSharedLibraryRPATH(filename, rpath):
         else:
             _setSharedLibraryRPATHElf(filename, rpath)
 
+            if isAndroidBasedLinux():
+                cleanupHeaderForAndroid(filename)
+
     updated_rpaths = getSharedLibraryRPATHs(filename, elements=False, cached=False)
     expected_rpaths = [rpath]
 
@@ -571,7 +609,7 @@ def callInstallNameTool(filename, mapping, id_path, rpath):
         filename - The file to be modified.
         mapping  - old_path, new_path pairs of values that should be changed
         id_path  - Use this value for library id
-        rpath    - Set this as an rpath if not None, delete if False
+        rpath    - Set this as an rpath if not None, delete all if False
 
     Returns:
         None
@@ -587,7 +625,11 @@ def callInstallNameTool(filename, mapping, id_path, rpath):
             command += ("-change", old_path, new_path)
             needs_call = True
 
-    if rpath is not None:
+    if rpath is False:
+        for existing_rpath in getSharedLibraryRPATHs(filename):
+            command += ("-delete_rpath", existing_rpath)
+            needs_call = True
+    elif rpath is not None:
         command += ("-add_rpath", os.path.join(rpath, "."))
         needs_call = True
 
@@ -793,7 +835,7 @@ def copyDllFile(source_path, dist_dir, dest_path, executable, other_entry_points
     if isWin32Windows() and python_version < 0x300:
         _removeSxsFromDLL(target_filename)
 
-    if isMacOS() and getMacOSTargetArch() != "universal":
+    if isMacOS():
         makeMacOSThinBinary(dest_path=target_filename, original_path=source_path)
 
     if isElfUsingPlatform():
@@ -1097,7 +1139,10 @@ def getDllSuffix():
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

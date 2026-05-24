@@ -282,6 +282,7 @@ def _checkPrivatePipBinaryPath(
     version,
     dependencies,
     check_binary,
+    report_rejection,
 ):
     """Check if a binary path is version compatible and usable."""
 
@@ -303,7 +304,7 @@ def _checkPrivatePipBinaryPath(
                 binary_path=binary_path,
             )
 
-    if not ok and logger is not None:
+    if report_rejection and not ok and logger is not None:
         logger.info(
             "Rejecting '%s' binary '%s' due to: %s"
             % (binary_name, binary_path, message)
@@ -334,6 +335,7 @@ def _getPrivatePipBinaryPath(
     # Complex code, pylint: disable=too-many-locals
 
     version = getRequiredVersion(logger, package_name)
+    report_rejection = reject_message is not None
 
     candidate_bin_paths = _getCandidateBinPaths(logger=logger, site_packages=None)
 
@@ -351,12 +353,16 @@ def _getPrivatePipBinaryPath(
             version=version,
             dependencies=dependencies,
             check_binary=check_binary,
+            report_rejection=report_rejection,
         )
 
         if ok:
             return binary_path, None, assume_yes_for_downloads
 
         force_package_update = True
+
+    if reject_message is None:
+        return None, None, assume_yes_for_downloads
 
     if force_package_update:
         site_packages_folder = getPrivatePipSitePackagesDir(logger=logger)
@@ -427,6 +433,7 @@ def _getPrivatePipBinaryPath(
                     version=version,
                     dependencies=dependencies,
                     check_binary=check_binary,
+                    report_rejection=report_rejection,
                 )
 
                 if not ok:
@@ -1085,7 +1092,10 @@ def _checkRequiredVersion(logger, tool, tool_call, dependencies):
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

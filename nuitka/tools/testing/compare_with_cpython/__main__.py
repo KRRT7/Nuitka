@@ -225,6 +225,7 @@ def main():
     trace_command = (
         hasArg("trace_command") or os.getenv("NUITKA_TRACE_COMMANDS", "0") != "0"
     )
+    no_diffable = hasArg("no_diffable")
     remove_output = hasArg("remove_output")
     remove_binary = not hasArg("--keep-binary")
     app_bundle_mode = hasArg("--mode=app") and isMacOS()
@@ -257,6 +258,22 @@ def main():
 
     if python_version:
         python_version = tuple(int(d) for d in python_version.split("."))
+
+    for count, arg in reversed(tuple(enumerate(args))):
+        if arg.startswith("env:"):
+            setting = arg[len("env:") :]
+
+            if "=" not in setting:
+                return sys.exit("Error, malformed environment override '%s'." % arg)
+
+            env_var_name, env_var_value = setting.split("=", 1)
+
+            if not env_var_name:
+                return sys.exit("Error, malformed environment override '%s'." % arg)
+
+            os.environ[env_var_name] = env_var_value
+
+            del args[count]
 
     plugins_enabled = []
     for count, arg in reversed(tuple(enumerate(args))):
@@ -796,6 +813,7 @@ Stderr was:
                     stdout_nuitka2 if two_step_execution else stdout_nuitka,
                     ignore_warnings,
                     syntax_errors,
+                    no_diffable=no_diffable,
                 )
 
             if ignore_stderr:
@@ -807,6 +825,7 @@ Stderr was:
                     stderr_nuitka2 if two_step_execution else stderr_nuitka,
                     ignore_warnings,
                     syntax_errors,
+                    no_diffable=no_diffable,
                 )
 
             exit_code_return = exit_cpython != exit_nuitka
@@ -960,7 +979,10 @@ if __name__ == "__main__":
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

@@ -13,10 +13,12 @@ from nuitka.Errors import NuitkaForbiddenDLLEncounter
 from nuitka.plugins.Hooks import isAcceptableMissingDLL
 from nuitka.PythonFlavors import (
     getHomebrewInstallPath,
+    getMacPortsInstallPath,
     getSystemPrefixPath,
     isAnacondaPython,
     isCPythonOfficialPackage,
     isHomebrewPython,
+    isMacPortsPython,
     isMonolithPy,
     isPyenvHomebrewPython,
     isPythonBuildStandalonePython,
@@ -76,6 +78,18 @@ def _detectPythonRpaths():
 
     if isCPythonOfficialPackage() or isPythonBuildStandalonePython():
         result.append(os.path.join(getSystemPrefixPath(), "lib"))
+
+    if isMacPortsPython():
+        mac_ports_install_path = getMacPortsInstallPath()
+
+        # spell-checker: ignore libexec
+        for candidate in (
+            os.path.join(getSystemPrefixPath(), "lib"),
+            os.path.join(mac_ports_install_path, "Library", "Frameworks"),
+            os.path.join(mac_ports_install_path, "lib"),
+            os.path.join(mac_ports_install_path, "libexec", "qt6", "lib"),
+        ):
+            result.append(candidate)
 
     if isHomebrewPython() or isPyenvHomebrewPython():
         result.extend(
@@ -310,6 +324,13 @@ def _resolveBinaryPathDLLsMacOS(
         elif os.path.basename(path) == os.path.basename(binary_filename):
             # We ignore the references to itself coming from the library id.
             continue
+        elif os.path.isabs(path) and not os.path.exists(path):
+            candidate = os.path.join(original_dir, os.path.basename(path))
+
+            if os.path.exists(candidate):
+                resolved_path = candidate
+            else:
+                resolved_path = path
         elif isMonolithPy() and not os.path.isabs(path) and not os.path.exists(path):
             # Although MonolithPy statically links all packages, some of them
             # have proprietary dependencies that cannot be statically built and
@@ -580,7 +601,10 @@ Error, problem with dependency scan of '%s' with '%s' please report the bug."""
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

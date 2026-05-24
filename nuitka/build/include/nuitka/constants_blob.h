@@ -14,7 +14,7 @@
  *
  */
 
-extern void loadConstantsBlob(PyThreadState *tstate, PyObject **, char const *name);
+extern int loadConstantsBlob(PyThreadState *tstate, PyObject **, char const *name);
 
 // We define a macro that declares the external symbols and provides accessor functions.
 // For INCBIN/C23, the generating C file already defines these functions, so we just declare them.
@@ -34,7 +34,10 @@ extern void loadConstantsBlob(PyThreadState *tstate, PyObject **, char const *na
 //     you may not use this file except in compliance with the License.
 //     You may obtain a copy of the License at
 //
-//        http://www.gnu.org/licenses/agpl.txt
+//        https://www.gnu.org/licenses/agpl-3.0.txt
+//
+//     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+//     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 //
 //     Unless required by applicable law or agreed to in writing, software
 //     distributed under the License is distributed on an "AS IS" BASIS,

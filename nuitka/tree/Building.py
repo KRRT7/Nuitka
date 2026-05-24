@@ -90,6 +90,7 @@ from nuitka.nodes.ImportNodes import (
 )
 from nuitka.nodes.LoopNodes import StatementLoopBreak, StatementLoopContinue
 from nuitka.nodes.ModuleAttributeNodes import (
+    ExpressionModuleAttributeDunderCompiledRef,
     ExpressionModuleAttributeFileRef,
     ExpressionModuleAttributeSpecRef,
 )
@@ -954,6 +955,18 @@ def buildParseTree(provider, ast_tree, source_ref, is_main):
             )
         )
 
+    statements.append(
+        StatementAssignmentVariableName(
+            provider=provider,
+            variable_name="__compiled__",
+            source=ExpressionModuleAttributeDunderCompiledRef(
+                variable=provider.getVariableForReference("__compiled__"),
+                source_ref=internal_source_ref,
+            ),
+            source_ref=internal_source_ref,
+        )
+    )
+
     if provider.needsAnnotationsDictionary():
         # Set "__annotations__" on module level to {}
         statements.append(
@@ -1326,11 +1339,16 @@ def buildModule(
 
     # Handle bytecode module case immediately.
     if module_kind == "pyc":
+        bytecode_filename = source_filename
+
+        if bytecode_filename is None:
+            bytecode_filename = module_filename
+
         return makeUncompiledPythonModule(
             module_name=module_name,
             reason=reason,
             filename=module_filename,
-            bytecode=loadCodeObjectData(module_filename),
+            bytecode=loadCodeObjectData(bytecode_filename),
             is_package=is_package,
             technical=module_name in detectEarlyImports(),
         )
@@ -1480,7 +1498,10 @@ def buildModule(
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

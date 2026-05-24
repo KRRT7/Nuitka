@@ -63,7 +63,6 @@ from nuitka.optimizations.ValueTraces import setupValueTraceFromOptions
 from nuitka.options.Options import (
     assumeYesForDownloads,
     getDebuggerName,
-    getExperimentalIndications,
     getFileReferenceMode,
     getForcedStderrPath,
     getForcedStdoutPath,
@@ -728,7 +727,6 @@ def runSconsBackend():
     scons_options["debugger_mode"] = asBoolStr(shallRunInDebugger())
     scons_options["python_debug"] = asBoolStr(shallUsePythonDebug())
     scons_options["full_compat"] = asBoolStr(states.is_full_compat)
-    scons_options["experimental"] = ",".join(getExperimentalIndications())
     scons_options["trace_mode"] = asBoolStr(shallTraceExecution())
     scons_options["file_reference_mode"] = getFileReferenceMode()
     scons_options["compiled_module_count"] = "%d" % len(
@@ -1409,7 +1407,10 @@ Report writing was prevented by exception %r, use option \
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

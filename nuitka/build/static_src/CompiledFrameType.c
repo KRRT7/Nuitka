@@ -501,6 +501,13 @@ static void Nuitka_Frame_tp_dealloc(struct Nuitka_FrameObject *nuitka_frame) {
     Py_DECREF(locals_owner->f_globals);
     Py_XDECREF(locals_owner->f_locals);
 
+#if PYTHON_VERSION >= 0x3e0
+    PyStackRef_CLEAR(locals_owner->f_executable);
+    Py_CLEAR(frame->f_extra_locals);
+    Py_CLEAR(frame->f_locals_cache);
+    Py_CLEAR(frame->f_overwritten_fast_locals);
+#endif
+
 #if PYTHON_VERSION < 0x370
     Py_XDECREF(frame->f_exc_type);
     Py_XDECREF(frame->f_exc_value);
@@ -851,6 +858,12 @@ static struct Nuitka_FrameObject *_MAKE_COMPILED_FRAME(PyCodeObject *code, PyObj
 #else
     frame->f_trace_lines = 0;
     frame->f_trace_opcodes = 0;
+#endif
+
+#if PYTHON_VERSION >= 0x3e0
+    frame->f_extra_locals = NULL;
+    frame->f_locals_cache = NULL;
+    frame->f_overwritten_fast_locals = NULL;
 #endif
 
 #if PYTHON_VERSION >= 0x3b0
@@ -1422,7 +1435,10 @@ void PRINT_TOP_FRAME(char const *prefix) {
 //     you may not use this file except in compliance with the License.
 //     You may obtain a copy of the License at
 //
-//        http://www.gnu.org/licenses/agpl.txt
+//        https://www.gnu.org/licenses/agpl-3.0.txt
+//
+//     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+//     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 //
 //     Unless required by applicable law or agreed to in writing, software
 //     distributed under the License is distributed on an "AS IS" BASIS,

@@ -292,7 +292,7 @@ static struct Nuitka_MetaPathBasedLoaderEntry *findEntry(char const *name) {
 
     while (current->name != NULL) {
         if ((current->flags & NUITKA_TRANSLATED_FLAG) != 0) {
-            current->name = UN_TRANSLATE(current->name);
+            current->name = UN_TRANSLATE_NAME(current->name);
             current->flags -= NUITKA_TRANSLATED_FLAG;
         }
 
@@ -320,7 +320,7 @@ static struct Nuitka_MetaPathBasedLoaderEntry *findContainingPackageEntry(char c
 
     while (current->name != NULL) {
         if ((current->flags & NUITKA_TRANSLATED_FLAG) != 0) {
-            current->name = UN_TRANSLATE(current->name);
+            current->name = UN_TRANSLATE_NAME(current->name);
             current->flags -= NUITKA_TRANSLATED_FLAG;
         }
 
@@ -1684,7 +1684,7 @@ static PyObject *_nuitka_loader_iter_modules(PyObject *self_obj, PyObject *args,
 
     while (current->name != NULL) {
         if ((current->flags & NUITKA_TRANSLATED_FLAG) != 0) {
-            current->name = UN_TRANSLATE(current->name);
+            current->name = UN_TRANSLATE_NAME(current->name);
             current->flags -= NUITKA_TRANSLATED_FLAG;
         }
 
@@ -2377,7 +2377,7 @@ static PyObject *_nuitka_loader_sys_path_hook(PyObject *self, PyObject *args, Py
 
     while (entry->name != NULL) {
         if ((entry->flags & NUITKA_TRANSLATED_FLAG) != 0) {
-            entry->name = UN_TRANSLATE(entry->name);
+            entry->name = UN_TRANSLATE_NAME(entry->name);
             entry->flags -= NUITKA_TRANSLATED_FLAG;
         }
 
@@ -2561,7 +2561,7 @@ void updateMetaPathBasedLoaderModuleRoot(char const *module_root_name) {
 
         while (current->name != NULL) {
             if ((current->flags & NUITKA_TRANSLATED_FLAG) != 0) {
-                current->name = UN_TRANSLATE(current->name);
+                current->name = UN_TRANSLATE_NAME(current->name);
                 current->flags -= NUITKA_TRANSLATED_FLAG;
             }
 
@@ -2684,7 +2684,10 @@ void setEarlyFrozenModulesFileAttribute(PyThreadState *tstate) {
 //     you may not use this file except in compliance with the License.
 //     You may obtain a copy of the License at
 //
-//        http://www.gnu.org/licenses/agpl.txt
+//        https://www.gnu.org/licenses/agpl-3.0.txt
+//
+//     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+//     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 //
 //     Unless required by applicable law or agreed to in writing, software
 //     distributed under the License is distributed on an "AS IS" BASIS,

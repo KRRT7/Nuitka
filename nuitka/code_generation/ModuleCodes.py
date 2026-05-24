@@ -193,15 +193,18 @@ def getModuleCode(
         )
 
         module_constants_check_hash = "\n".join(
-            "mod_consts_hash[%(index)d] = DEEP_HASH(tstate, mod_consts.%(name)s);"
+            """\
+CHECK_OBJECT_DEEP_NAMED("mod_consts.%(name)s", mod_consts.%(name)s);
+mod_consts_hash[%(index)d] = DEEP_HASH(tstate, mod_consts.%(name)s);"""
             % {"index": count, "name": name}
             for count, name in enumerate(context.getConstantNames())
         )
 
         module_constants_check_object = "\n".join(
             """\
-assert(mod_consts_hash[%(index)d] == DEEP_HASH(tstate, mod_consts.%(name)s));
-CHECK_OBJECT_DEEP(mod_consts.%(name)s);""" % {"index": count, "name": name}
+CHECK_OBJECT_DEEP_NAMED("mod_consts.%(name)s", mod_consts.%(name)s);
+assert(mod_consts_hash[%(index)d] == DEEP_HASH(tstate, mod_consts.%(name)s) && "mod_consts.%(name)s");"""
+            % {"index": count, "name": name}
             for count, name in enumerate(context.getConstantNames())
         )
     else:
@@ -252,6 +255,13 @@ def generateModuleAttributeFileCode(to_name, expression, emit, context):
         emit("%s = module_filename_obj;" % result_name)
 
 
+def generateModuleAttributeDunderCompiledCode(to_name, expression, emit, context):
+    with withObjectCodeTemporaryAssignment(
+        to_name, "module_compiled_attr_value", expression, emit, context
+    ) as result_name:
+        emit("%s = Nuitka_dunder_compiled_value;" % result_name)
+
+
 def generateModuleAttributeCode(to_name, expression, emit, context):
     getModuleVariableReferenceCode(
         to_name=to_name,
@@ -271,7 +281,10 @@ def generateModuleAttributeCode(to_name, expression, emit, context):
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,

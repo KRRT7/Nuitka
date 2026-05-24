@@ -454,7 +454,13 @@ extern bool Nuitka_DictNext(PyObject *dict, Py_ssize_t *pos, PyObject **key_ptr,
 extern PyObject *MAKE_DICT_EMPTY(PyThreadState *tstate);
 #else
 #define NUITKA_DICT_HAS_FREELIST 0
-#define MAKE_DICT_EMPTY(tstate) PyDict_New()
+static inline PyObject *MAKE_DICT_EMPTY(PyThreadState *tstate) {
+    (void)tstate;
+
+    PyObject *result = PyDict_New();
+    assert(result != NULL);
+    return result;
+}
 #endif
 
 // Create a dictionary from key/value pairs.
@@ -484,7 +490,10 @@ typedef struct {
 //     you may not use this file except in compliance with the License.
 //     You may obtain a copy of the License at
 //
-//        http://www.gnu.org/licenses/agpl.txt
+//        https://www.gnu.org/licenses/agpl-3.0.txt
+//
+//     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+//     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 //
 //     Unless required by applicable law or agreed to in writing, software
 //     distributed under the License is distributed on an "AS IS" BASIS,

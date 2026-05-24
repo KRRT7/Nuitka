@@ -520,13 +520,6 @@ longer part of Winlibs and therefore no more available this way. Use only \
             )
 
     if isMacOS():
-        macos_target_arch = getMacOSTargetArch()
-
-        if macos_target_arch == "universal":
-            return options_logger.sysexit(
-                "Cannot create universal macOS binaries (yet), please pick an arch and create two binaries."
-            )
-
         if (options.macos_target_arch or "native") != "native":
             from nuitka.utils.SharedLibraries import (
                 hasUniversalOrMatchingMacOSArchitecture,
@@ -1312,7 +1305,7 @@ provide either '--product-version' or '--file-version' as these can
 not have good defaults, but are forced to be present by the OS.""")
 
     if (
-        options.macos_target_arch not in ("native", "universal", None)
+        options.macos_target_arch not in ("native", None)
         and getArchitecture() != options.macos_target_arch
     ):
         options_logger.warning(
@@ -2150,13 +2143,13 @@ def isDeploymentMode():
 
 
 def getNoDeploymentIndications():
-    """:returns: list derived from ``--no-deployment-flag``"""
+    """:returns: tuple derived from ``--no-deployment-flag``"""
     result = list(options.no_deployment_flags)
 
     if shallRunInDebugger() and "segfault" not in result:
         result.append("segfault")
 
-    return result
+    return tuple(result)
 
 
 def hasNonDeploymentIndicator(indicator_name):
@@ -2182,11 +2175,8 @@ def enableExperimental(indication):
 
 
 def getExperimentalIndications():
-    """*tuple*, items of ``--experimental=``"""
-    if hasattr(options, "experimental"):
-        return options.experimental
-    else:
-        return ()
+    """*tuple*, items of ``--experimental=`` and runtime enabled indications."""
+    return tuple(sorted(_experimental))
 
 
 def getDebugModeIndications():
@@ -2208,7 +2198,7 @@ def getDebugModeIndications():
             if getattr(options, debug_option_value_name) is True:
                 result.append(debug_option_value_name)
 
-    return result
+    return tuple(result)
 
 
 def requireNoDebugImmortalAssumptions(logger, reason):
@@ -2570,7 +2560,7 @@ def getProductName():
 
 
 def getMacOSTargetArch():
-    """:returns: str enum ("universal", "arm64", "x86_64") derived from ``--macos-target-arch`` value"""
+    """:returns: str enum ("arm64", "x86_64") derived from ``--macos-target-arch`` value"""
     if options is None:
         macos_target_arch = "native"
     else:
@@ -3229,7 +3219,10 @@ def getPyProjectRequiredPackages():
 #     you may not use this file except in compliance with the License.
 #     You may obtain a copy of the License at
 #
-#        http://www.gnu.org/licenses/agpl.txt
+#        https://www.gnu.org/licenses/agpl-3.0.txt
+#
+#     See also: "Nuitka Runtime Library Exception, Version 1.0" in file
+#     "LICENSE-RUNTIME.txt" for additional permissions granted under Section 7.
 #
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,
