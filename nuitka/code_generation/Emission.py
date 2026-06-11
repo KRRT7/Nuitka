@@ -16,7 +16,10 @@ class SourceCodeCollector(list):
     __slots__ = ()
 
     def __call__(self, code):
-        self.append(code)
+        if isinstance(code, str):
+            self.append(code)
+        else:
+            self.extend(code)
 
     emit = __call__
 

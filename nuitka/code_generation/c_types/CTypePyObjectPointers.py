@@ -390,9 +390,10 @@ class CTypePyObjectPtr(CPythonPyObjectPtrBase):
                 emit=emit,
             )
         elif value_name.c_type == "nuitka_ilong":
-            emit("ENFORCE_NILONG_OBJECT_VALUE(&%s);" % value_name)
-
-            emit("%s = %s.python_value;" % (to_name, value_name))
+            emit([
+                "ENFORCE_NILONG_OBJECT_VALUE(&%s);" % value_name,
+                "%s = %s.python_value;" % (to_name, value_name),
+            ])
 
             context.transferCleanupTempName(value_name, to_name)
         else:
@@ -468,8 +469,7 @@ class CTypeCellObject(CTypeBase):
     @classmethod
     def getCellObjectAssignmentCode(cls, target_cell_code, variable_code_name, emit):
         emit("%s = %s;" % (target_cell_code, variable_code_name))
-
-        emit("Py_INCREF(%s);" % (target_cell_code))
+        emit("Py_INCREF(%s);" % target_cell_code)
 
     @classmethod
     def emitVariableAssignCode(
@@ -636,8 +636,10 @@ class CTypePyCellObject(CTypeCellObject):
 
     @classmethod
     def emitReleaseAssertionCode(cls, value_name, emit):
-        emit("CHECK_OBJECT(%s);" % value_name)
-        emit("assert(PyCell_Check((PyObject *)%s));" % value_name)
+        emit([
+            "CHECK_OBJECT(%s);" % value_name,
+            "assert(PyCell_Check((PyObject *)%s));" % value_name,
+        ])
 
 
 #     Part of "Nuitka", an optimizing Python compiler that is compatible and

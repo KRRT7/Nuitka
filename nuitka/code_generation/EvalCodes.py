@@ -47,8 +47,7 @@ def _getStoreLocalsCode(locals_name, variable_traces, is_dict, emit, context):
 
                 context.addCleanupTempName(value_name)
 
-            emit("if (%s != NULL)" % value_name)
-            emit("{")
+            emit(["if (%s != NULL)" % value_name, "{"])
 
             getVariableAssignmentCode(
                 variable=variable,

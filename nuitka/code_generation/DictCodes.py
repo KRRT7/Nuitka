@@ -215,8 +215,10 @@ def generateDictOperationUpdateCode(statement, emit, context):
     with context.withCurrentSourceCodeReference(statement.getSourceReference()):
         res_name = context.getIntResName()
 
-        emit("assert(PyDict_Check(%s));" % dict_arg_name)
-        emit("%s = PyDict_Update(%s, %s);" % (res_name, dict_arg_name, value_arg_name))
+        emit([
+            "assert(PyDict_Check(%s));" % dict_arg_name,
+            "%s = PyDict_Update(%s, %s);" % (res_name, dict_arg_name, value_arg_name),
+        ])
 
         getErrorExitBoolCode(
             condition="%s != 0" % res_name,
