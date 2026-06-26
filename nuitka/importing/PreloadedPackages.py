@@ -46,6 +46,7 @@ def detectPreLoadedPackagePaths():
 
 
 preloaded_packages = None
+preloaded_package_paths = None
 
 
 def getPreloadedPackagePaths():
@@ -62,24 +63,32 @@ def getPreloadedPackagePaths():
 
 def setPreloadedPackagePaths(value):
     # We need to set this from the outside, pylint: disable=global-statement
-    global preloaded_packages
+    global preloaded_packages, preloaded_package_paths
 
     preloaded_packages = value
+    preloaded_package_paths = None
 
 
 def getPreloadedPackagePath(package_name):
     return getPreloadedPackagePaths().get(package_name)
 
 
+def _getPreloadedPackagePathSet():
+    # We need to set this from the outside, pylint: disable=global-statement
+    global preloaded_package_paths
+
+    if preloaded_package_paths is None:
+        preloaded_package_paths = set(
+            os.path.normcase(path)
+            for paths in getPreloadedPackagePaths().values()
+            for path in paths
+        )
+
+    return preloaded_package_paths
+
+
 def isPreloadedPackagePath(path):
-    path = os.path.normcase(path)
-
-    for paths in getPreloadedPackagePaths().values():
-        for element in paths:
-            if os.path.normcase(element) == path:
-                return True
-
-    return False
+    return os.path.normcase(path) in _getPreloadedPackagePathSet()
 
 
 def _considerPthImportedPackage(module_name):
