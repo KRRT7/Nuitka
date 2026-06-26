@@ -1221,10 +1221,11 @@ Prefix = .
             if isWin32Windows():
                 # Those 2 vars will be used later, just saving some resources
                 # by caching the files list
-                qt_bin_files = sum(
-                    (getFileList(qt_bin_dir) for qt_bin_dir in self._getQtBinDirs()),
-                    [],
-                )
+                qt_bin_files = [
+                    filename
+                    for qt_bin_dir in self._getQtBinDirs()
+                    for filename in getFileList(qt_bin_dir)
+                ]
 
                 count = 0
                 for filename in qt_bin_files:
