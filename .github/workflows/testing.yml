@@ -100,23 +100,23 @@ jobs:
 
       - name: 🔎 PyLint on Nuitka source code
         run: |
-          uv run --frozen --no-sync --with pylint==4.0.5 python -m nuitka.tools.quality.pylint --assume-yes-for-downloads
+          uv run --frozen --no-sync --with pylint==4.0.5 -m nuitka.tools.quality.pylint --assume-yes-for-downloads
 
       - name: 🔎 RestLint on Nuitka source code
         run: |
-          uv run --frozen --no-sync python -m nuitka.tools.quality.restlint --assume-yes-for-downloads
+          uv run --frozen --no-sync -m nuitka.tools.quality.restlint --assume-yes-for-downloads
 
       - name: 🔎 YamlLint on Nuitka source code
         run: |
-          uv run --frozen --no-sync python -m nuitka.tools.quality.yamllint --assume-yes-for-downloads
+          uv run --frozen --no-sync -m nuitka.tools.quality.yamllint --assume-yes-for-downloads
 
       - name: 🔎 Codespell on Nuitka source code
         run: |
-          uv run --frozen --no-sync python -m nuitka.tools.quality.codespell --assume-yes-for-downloads
+          uv run --frozen --no-sync -m nuitka.tools.quality.codespell --assume-yes-for-downloads
 
       - name: 🔎 Auto-format check on Nuitka source code
         run: |
-          uv run --frozen --no-sync python -m nuitka.tools.quality.auto_format --check-only --assume-yes-for-downloads
+          uv run --frozen --no-sync -m nuitka.tools.quality.auto_format --check-only --assume-yes-for-downloads
 
       - name: ♻️ Save Nuitka tool data
         if: always() && steps.restore-nuitka-tool-cache.outputs.cache-hit != 'true'
