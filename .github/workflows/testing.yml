@@ -81,8 +81,9 @@ jobs:
             pyproject.toml
             uv.lock
 
-      - name: ♻️ Cache Nuitka tool data
-        uses: actions/cache@v4
+      - name: ♻️ Restore Nuitka tool data
+        id: restore-nuitka-tool-cache
+        uses: actions/cache/restore@v4
         with:
           path: .nuitka-cache
           key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-checks-${{ github.ref_name }}
@@ -116,6 +117,14 @@ jobs:
       - name: 🔎 Auto-format check on Nuitka source code
         run: |
           uv run --frozen python -m nuitka.tools.quality.auto_format --check-only --assume-yes-for-downloads
+
+      - name: ♻️ Save Nuitka tool data
+        if: always() && steps.restore-nuitka-tool-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .nuitka-cache
+          key: ${{ steps.restore-nuitka-tool-cache.outputs.cache-primary-key }}
 
       - name: 🔎 Specialized C code check
         run: |
