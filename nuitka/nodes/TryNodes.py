@@ -134,7 +134,7 @@ class StatementTry(StatementTryBase):
                     self.setChildExceptHandler(result)
 
         if break_handler is not None:
-            if not tried.mayBreak():
+            if not break_collections:
                 break_handler.finalize()
                 break_handler = None
 
@@ -157,7 +157,7 @@ class StatementTry(StatementTryBase):
                 break_handler = result
 
         if continue_handler is not None:
-            if not tried.mayContinue():
+            if not continue_collections:
                 continue_handler.finalize()
                 continue_handler = None
 
@@ -181,7 +181,7 @@ class StatementTry(StatementTryBase):
                 self.setChildContinueHandler(result)
 
         if return_handler is not None:
-            if not tried.mayReturn():
+            if not return_collections:
                 return_handler.finalize()
                 return_handler = None
 
@@ -215,9 +215,11 @@ class StatementTry(StatementTryBase):
 
         # Merge exception handler only if it is used. Empty means it is not
         # aborting, as it swallows the exception.
-        if self.tried_may_raise and (
-            except_handler is None or not except_handler.isStatementAborting()
-        ):
+        except_handler_is_aborting = (
+            except_handler is not None and except_handler.isStatementAborting()
+        )
+
+        if self.tried_may_raise and not except_handler_is_aborting:
             if tried.isStatementAborting():
                 trace_collection.variable_actives = (
                     collection_exception_handling.variable_actives
@@ -288,7 +290,7 @@ class StatementTry(StatementTryBase):
 
         post_statement_start = tried_statements_count
 
-        if except_handler is not None and except_handler.isStatementAborting():
+        if except_handler_is_aborting:
             if needs_control_flow_check:
                 while post_statement_start > pre_statement_count:
                     tried_statement = tried_statements[post_statement_start - 1]
