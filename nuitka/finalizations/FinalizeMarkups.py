@@ -22,6 +22,34 @@ from nuitka.PythonVersions import python_version
 from nuitka.tree.Operations import VisitorNoopMixin
 
 
+return_statement_kinds = frozenset(
+    (
+        "STATEMENT_RETURN",
+        "STATEMENT_RETURN_NONE",
+        "STATEMENT_RETURN_FALSE",
+        "STATEMENT_RETURN_TRUE",
+        "STATEMENT_RETURN_CONSTANT",
+        "STATEMENT_RETURN_RETURNED_VALUE",
+        "STATEMENT_GENERATOR_RETURN",
+        "STATEMENT_GENERATOR_RETURN_NONE",
+    )
+)
+
+assignment_variable_statement_kinds = frozenset(
+    (
+        "STATEMENT_ASSIGNMENT_VARIABLE_GENERIC",
+        "STATEMENT_ASSIGNMENT_VARIABLE_ITERATOR",
+        "STATEMENT_ASSIGNMENT_VARIABLE_CONSTANT_MUTABLE",
+        "STATEMENT_ASSIGNMENT_VARIABLE_CONSTANT_IMMUTABLE",
+        "STATEMENT_ASSIGNMENT_VARIABLE_CONSTANT_MUTABLE_TRUSTED",
+        "STATEMENT_ASSIGNMENT_VARIABLE_CONSTANT_IMMUTABLE_TRUSTED",
+        "STATEMENT_ASSIGNMENT_VARIABLE_HARD_VALUE",
+        "STATEMENT_ASSIGNMENT_VARIABLE_FROM_VARIABLE",
+        "STATEMENT_ASSIGNMENT_VARIABLE_FROM_TEMP_VARIABLE",
+    )
+)
+
+
 class FinalizeMarkups(VisitorNoopMixin):
     def __init__(self, module):
         self.module = module
@@ -42,9 +70,7 @@ class FinalizeMarkups(VisitorNoopMixin):
 
         kind = node.kind
 
-        if kind.startswith("STATEMENT_RETURN") or kind.startswith(
-            "STATEMENT_GENERATOR_RETURN"
-        ):
+        if kind in return_statement_kinds:
             # Search up to the containing function, and check for a try/finally
             # containing the "return" statement.
             search = node.getParentReturnConsumer()
@@ -75,7 +101,7 @@ class FinalizeMarkups(VisitorNoopMixin):
 
                 self.module.addCrossUsedFunction(function_body)
 
-        if kind.startswith("STATEMENT_ASSIGNMENT_VARIABLE"):
+        if kind in assignment_variable_statement_kinds:
             target_var = node.getVariable()
             assign_source = node.subnode_source
 
