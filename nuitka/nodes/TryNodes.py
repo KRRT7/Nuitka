@@ -253,42 +253,67 @@ class StatementTry(StatementTryBase):
 
         pre_statement_count = 0
 
-        while pre_statement_count < tried_statements_count:
-            tried_statement = tried_statements[pre_statement_count]
+        needs_break_check = break_handler is not None
+        needs_continue_check = continue_handler is not None
+        needs_return_check = return_handler is not None
+        needs_control_flow_check = (
+            needs_break_check or needs_continue_check or needs_return_check
+        )
 
-            if tried_statement.mayRaiseException(BaseException):
-                break
-
-            if break_handler is not None and tried_statement.mayBreak():
-                break
-
-            if continue_handler is not None and tried_statement.mayContinue():
-                break
-
-            if return_handler is not None and tried_statement.mayReturn():
-                break
-
-            pre_statement_count += 1
-
-        post_statement_start = tried_statements_count
-
-        if except_handler is not None and except_handler.isStatementAborting():
-            while post_statement_start > pre_statement_count:
-                tried_statement = tried_statements[post_statement_start - 1]
+        if needs_control_flow_check:
+            while pre_statement_count < tried_statements_count:
+                tried_statement = tried_statements[pre_statement_count]
 
                 if tried_statement.mayRaiseException(BaseException):
                     break
 
-                if break_handler is not None and tried_statement.mayBreak():
+                if needs_break_check and tried_statement.mayBreak():
                     break
 
-                if continue_handler is not None and tried_statement.mayContinue():
+                if needs_continue_check and tried_statement.mayContinue():
                     break
 
-                if return_handler is not None and tried_statement.mayReturn():
+                if needs_return_check and tried_statement.mayReturn():
                     break
 
-                post_statement_start -= 1
+                pre_statement_count += 1
+        else:
+            while pre_statement_count < tried_statements_count:
+                if tried_statements[pre_statement_count].mayRaiseException(
+                    BaseException
+                ):
+                    break
+
+                pre_statement_count += 1
+
+        post_statement_start = tried_statements_count
+
+        if except_handler is not None and except_handler.isStatementAborting():
+            if needs_control_flow_check:
+                while post_statement_start > pre_statement_count:
+                    tried_statement = tried_statements[post_statement_start - 1]
+
+                    if tried_statement.mayRaiseException(BaseException):
+                        break
+
+                    if needs_break_check and tried_statement.mayBreak():
+                        break
+
+                    if needs_continue_check and tried_statement.mayContinue():
+                        break
+
+                    if needs_return_check and tried_statement.mayReturn():
+                        break
+
+                    post_statement_start -= 1
+            else:
+                while post_statement_start > pre_statement_count:
+                    if tried_statements[post_statement_start - 1].mayRaiseException(
+                        BaseException
+                    ):
+                        break
+
+                    post_statement_start -= 1
 
         pre_statements = tried_statements[:pre_statement_count]
         post_statements = tried_statements[post_statement_start:]
