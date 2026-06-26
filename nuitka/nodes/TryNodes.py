@@ -27,12 +27,20 @@ class StatementTry(StatementTryBase):
     )
     auto_compute_handling = "post_init"
 
-    __slots__ = ("tried_may_raise",)
+    __slots__ = (
+        "tried_may_break",
+        "tried_may_continue",
+        "tried_may_raise",
+        "tried_may_return",
+    )
 
     # False alarm due to post_init, pylint: disable=attribute-defined-outside-init
 
     def postInitNode(self):
+        self.tried_may_break = None
+        self.tried_may_continue = None
         self.tried_may_raise = None
+        self.tried_may_return = None
 
     def getDetailsForDisplay(self):
         return {"aborting": self.isStatementAborting()}
@@ -73,10 +81,24 @@ class StatementTry(StatementTryBase):
                 self.setChildTried(result)
                 tried = result
 
+                self.tried_may_break = None
+                self.tried_may_continue = None
+                self.tried_may_raise = None
+                self.tried_may_return = None
+
             break_collections = trace_collection.getLoopBreakCollections()
             continue_collections = trace_collection.getLoopContinueCollections()
             return_collections = trace_collection.getFunctionReturnCollections()
             exception_collections = trace_collection.getExceptionRaiseCollections()
+
+            if break_handler is not None:
+                self.tried_may_break = bool(break_collections)
+
+            if continue_handler is not None:
+                self.tried_may_continue = bool(continue_collections)
+
+            if return_handler is not None:
+                self.tried_may_return = bool(return_collections)
 
         # Not raising never turns into raising, but None (never calculated) and True
         # may no longer be true, but not raising never becomes raising.
@@ -360,7 +382,10 @@ class StatementTry(StatementTryBase):
     def mayReturn(self):
         # TODO: If we optimized return handler away, this would be not needed
         # or even non-optimal.
-        if self.subnode_tried.mayReturn():
+        if self.tried_may_return is True:
+            return True
+
+        if self.tried_may_return is not False and self.subnode_tried.mayReturn():
             return True
 
         if self.tried_may_raise is not False:
@@ -389,7 +414,10 @@ class StatementTry(StatementTryBase):
     def mayBreak(self):
         # TODO: If we optimized return handler away, this would be not needed
         # or even non-optimal.
-        if self.subnode_tried.mayBreak():
+        if self.tried_may_break is True:
+            return True
+
+        if self.tried_may_break is not False and self.subnode_tried.mayBreak():
             return True
 
         if self.tried_may_raise is not False:
@@ -418,7 +446,10 @@ class StatementTry(StatementTryBase):
     def mayContinue(self):
         # TODO: If we optimized return handler away, this would be not needed
         # or even non-optimal.
-        if self.subnode_tried.mayContinue():
+        if self.tried_may_continue is True:
+            return True
+
+        if self.tried_may_continue is not False and self.subnode_tried.mayContinue():
             return True
 
         if self.tried_may_raise is not False:
