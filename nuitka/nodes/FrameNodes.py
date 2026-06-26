@@ -226,15 +226,26 @@ class StatementsFrameBase(StatementsSequenceMixin, StatementsSequenceBase):
 
         # Determine statements inside the frame, that need not be in a frame,
         # because they wouldn't raise an exception.
-        outside_pre = []
-        while new_statements and not new_statements[0].needsFrame():
-            outside_pre.append(new_statements[0])
-            del new_statements[0]
+        outside_pre_count = 0
+        new_statements_count = len(new_statements)
 
-        outside_post = []
-        while new_statements and not new_statements[-1].needsFrame():
-            outside_post.insert(0, new_statements[-1])
-            del new_statements[-1]
+        while (
+            outside_pre_count < new_statements_count
+            and not new_statements[outside_pre_count].needsFrame()
+        ):
+            outside_pre_count += 1
+
+        outside_post_start = new_statements_count
+
+        while (
+            outside_post_start > outside_pre_count
+            and not new_statements[outside_post_start - 1].needsFrame()
+        ):
+            outside_post_start -= 1
+
+        outside_pre = new_statements[:outside_pre_count]
+        outside_post = new_statements[outside_post_start:]
+        new_statements = new_statements[outside_pre_count:outside_post_start]
 
         if outside_pre or outside_post:
             from .NodeMakingHelpers import (

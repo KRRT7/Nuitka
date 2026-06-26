@@ -126,7 +126,7 @@ class StatementsSequence(StatementsSequenceMixin, StatementsSequenceBase):
         return True
 
     def computeStatementsSequence(self, trace_collection):
-        new_statements = []
+        new_statements = None
 
         statements = self.subnode_statements
         assert statements, self
@@ -140,14 +140,24 @@ class StatementsSequence(StatementsSequenceMixin, StatementsSequenceBase):
 
             if new_statement is not None:
                 if new_statement.isStatementsSequenceButNotFrame():
+                    if new_statements is None:
+                        new_statements = list(statements[:count])
+
                     new_statements.extend(new_statement.subnode_statements)
                 else:
-                    new_statements.append(new_statement)
+                    if new_statement is not statement and new_statements is None:
+                        new_statements = list(statements[:count])
+
+                    if new_statements is not None:
+                        new_statements.append(new_statement)
 
                 if (
                     statement is not statements[-1]
                     and new_statement.isStatementAborting()
                 ):
+                    if new_statements is None:
+                        new_statements = list(statements[: count + 1])
+
                     trace_collection.signalChange(
                         "new_statements",
                         statements[count + 1].getSourceReference(),
@@ -158,17 +168,20 @@ class StatementsSequence(StatementsSequenceMixin, StatementsSequenceBase):
                         s.finalize()
 
                     break
+            elif new_statements is None:
+                new_statements = list(statements[:count])
 
-        new_statements = tuple(new_statements)
-        if statements != new_statements:
+        if new_statements is not None:
+            new_statements = tuple(new_statements)
+
             if new_statements:
                 self.setChildStatements(new_statements)
 
                 return self
             else:
                 return None
-        else:
-            return self
+
+        return self
 
     @staticmethod
     def getStatementNiceName():
