@@ -37,7 +37,10 @@ def generateTryCode(statement, emit, context):
     break_handler = statement.subnode_break_handler
     return_handler = statement.subnode_return_handler
 
-    tried_block_may_raise = tried_block.mayRaiseException(BaseException)
+    tried_block_may_raise = statement.tried_may_raise
+
+    if tried_block_may_raise is None:
+        tried_block_may_raise = tried_block.mayRaiseException(BaseException)
 
     assert (
         tried_block_may_raise
@@ -89,7 +92,9 @@ def generateTryCode(statement, emit, context):
 
     post_label = None
 
-    if not tried_block.isStatementAborting():
+    tried_block_is_aborting = tried_block.isStatementAborting()
+
+    if not tried_block_is_aborting:
         if post_label is None:
             post_label = context.allocateLabel("try_end")
 
@@ -98,7 +103,8 @@ def generateTryCode(statement, emit, context):
         getMustNotGetHereCode(reason="tried codes exits in all cases", emit=emit)
 
     if return_handler is not None:
-        assert tried_block.mayReturn()
+        if __debug__ and statement.tried_may_return is not True:
+            assert tried_block.mayReturn()
 
         emit("// Return handler code:")
         getLabelCode(return_handler_escape, emit)
@@ -177,7 +183,8 @@ INIT_ERROR_OCCURRED_STATE(&%(exception_state_name)s);
         assert except_handler is None, tried_block.asXmlText()
 
     if break_handler is not None:
-        assert tried_block.mayBreak()
+        if __debug__ and statement.tried_may_break is not True:
+            assert tried_block.mayBreak()
 
         emit("// try break handler code:")
         getLabelCode(break_handler_escape, emit)
@@ -192,7 +199,8 @@ INIT_ERROR_OCCURRED_STATE(&%(exception_state_name)s);
         assert break_handler.isStatementAborting()
 
     if continue_handler is not None:
-        assert tried_block.mayContinue()
+        if __debug__ and statement.tried_may_continue is not True:
+            assert tried_block.mayContinue()
 
         emit("// try continue handler code:")
         getLabelCode(continue_handler_escape, emit)
