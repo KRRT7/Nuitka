@@ -92,8 +92,10 @@ jobs:
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
+          export UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/nuitka-venv"
+          echo "UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT" >> "$GITHUB_ENV"
           uv sync --dev --frozen --no-install-project --python python
-          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+          echo "$UV_PROJECT_ENVIRONMENT/bin" >> "$GITHUB_PATH"
 
       - name: 🔎 PyLint on Nuitka source code
         run: |
@@ -207,9 +209,11 @@ jobs:
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
+          export UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/nuitka-venv"
+          echo "UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT" >> "$GITHUB_ENV"
           uv sync --no-dev --frozen --no-install-project --python python
-          uv pip install --python .venv --no-deps .
-          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+          uv pip install --python "$UV_PROJECT_ENVIRONMENT" --no-deps .
+          echo "$UV_PROJECT_ENVIRONMENT/bin" >> "$GITHUB_PATH"
 
       - name: ⚙️ Verbose scons output in compilation
         run: |
@@ -330,9 +334,11 @@ jobs:
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
+          export UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/nuitka-venv"
+          echo "UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT" >> "$GITHUB_ENV"
           uv sync --no-dev --frozen --no-install-project --python python
-          uv pip install --python .venv --no-deps .
-          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+          uv pip install --python "$UV_PROJECT_ENVIRONMENT" --no-deps .
+          echo "$UV_PROJECT_ENVIRONMENT/bin" >> "$GITHUB_PATH"
 
       - name: Verbose scons output in compilation
         run: |
@@ -473,9 +479,11 @@ jobs:
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
+          $env:UV_PROJECT_ENVIRONMENT = "$env:RUNNER_TEMP\nuitka-venv"
+          "UV_PROJECT_ENVIRONMENT=$env:UV_PROJECT_ENVIRONMENT" | Out-File -FilePath $env:GITHUB_ENV -Append
           uv sync --no-dev --frozen --no-install-project --python python
-          uv pip install --python .venv --no-deps .
-          "$PWD\.venv\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Append
+          uv pip install --python $env:UV_PROJECT_ENVIRONMENT --no-deps .
+          "$env:UV_PROJECT_ENVIRONMENT\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Verbose scons output in compilation
         run: |
@@ -578,9 +586,11 @@ jobs:
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
+          $env:UV_PROJECT_ENVIRONMENT = "$env:RUNNER_TEMP\nuitka-venv"
+          "UV_PROJECT_ENVIRONMENT=$env:UV_PROJECT_ENVIRONMENT" | Out-File -FilePath $env:GITHUB_ENV -Append
           uv sync --no-dev --frozen --no-install-project --python python
-          uv pip install --python .venv --no-deps .
-          "$PWD\.venv\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Append
+          uv pip install --python $env:UV_PROJECT_ENVIRONMENT --no-deps .
+          "$env:UV_PROJECT_ENVIRONMENT\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Verbose scons output in compilation
         run: |

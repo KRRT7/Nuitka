@@ -200,7 +200,11 @@ def checkReleaseDocumentation():
         if "inline_copy" not in entry
     ]
 
-    for document in ("README.rst", "Developer_Manual.rst", "Changelog.rst"):
+    for document in (
+        os.path.join("doc", "README.rst"),
+        os.path.join("doc", "Developer_Manual.rst"),
+        os.path.join("doc", "Changelog.rst"),
+    ):
         assert document in documents, documents
 
     for document in documents:
