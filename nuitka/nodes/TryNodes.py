@@ -249,11 +249,12 @@ class StatementTry(StatementTryBase):
             )
 
         tried_statements = tried.subnode_statements
+        tried_statements_count = len(tried_statements)
 
-        pre_statements = []
+        pre_statement_count = 0
 
-        while tried_statements:
-            tried_statement = tried_statements[0]
+        while pre_statement_count < tried_statements_count:
+            tried_statement = tried_statements[pre_statement_count]
 
             if tried_statement.mayRaiseException(BaseException):
                 break
@@ -267,16 +268,13 @@ class StatementTry(StatementTryBase):
             if return_handler is not None and tried_statement.mayReturn():
                 break
 
-            pre_statements.append(tried_statement)
-            tried_statements = list(tried_statements)
+            pre_statement_count += 1
 
-            del tried_statements[0]
-
-        post_statements = []
+        post_statement_start = tried_statements_count
 
         if except_handler is not None and except_handler.isStatementAborting():
-            while tried_statements:
-                tried_statement = tried_statements[-1]
+            while post_statement_start > pre_statement_count:
+                tried_statement = tried_statements[post_statement_start - 1]
 
                 if tried_statement.mayRaiseException(BaseException):
                     break
@@ -290,18 +288,19 @@ class StatementTry(StatementTryBase):
                 if return_handler is not None and tried_statement.mayReturn():
                     break
 
-                post_statements.insert(0, tried_statement)
-                tried_statements = list(tried_statements)
+                post_statement_start -= 1
 
-                del tried_statements[-1]
+        pre_statements = tried_statements[:pre_statement_count]
+        post_statements = tried_statements[post_statement_start:]
+        tried_statements = tried_statements[pre_statement_count:post_statement_start]
 
         if pre_statements or post_statements:
             assert tried_statements  # Should be dealt with already
 
-            tried.setChildStatements(tuple(tried_statements))
+            tried.setChildStatements(tried_statements)
 
             result = StatementsSequence(
-                statements=tuple(pre_statements + [self] + post_statements),
+                statements=pre_statements + (self,) + post_statements,
                 source_ref=self.source_ref,
             )
 

@@ -157,12 +157,19 @@ class ConstantStreamReader(object):
 
 
 class GlobalConstantAccessor(object):
-    __slots__ = ("constants", "constants_writer", "top_level_name", "special_details")
+    __slots__ = (
+        "constant_indexes",
+        "constants",
+        "constants_writer",
+        "top_level_name",
+        "special_details",
+    )
 
     global_constant_keys = set()
 
     def __init__(self, data_filename, top_level_name):
         self.constants = OrderedSet()
+        self.constant_indexes = {}
         self.special_details = {}
 
         self.constants_writer = ConstantStreamWriter(data_filename)
@@ -242,10 +249,11 @@ class GlobalConstantAccessor(object):
         key = "const_" + namifyConstant(constant)
 
         if key not in self.constants:
+            self.constant_indexes[key] = len(self.constants)
             self.constants.add(key)
             self.constants_writer.addConstantValue(constant)
 
-        key = "%s[%d]" % (self.top_level_name, self.constants.index(key))
+        key = "%s[%d]" % (self.top_level_name, self.constant_indexes[key])
 
         # TODO: Make it returning, more clear.
         return key
@@ -254,12 +262,13 @@ class GlobalConstantAccessor(object):
         key = "blob_" + namifyConstant(data)
 
         if key not in self.constants:
+            self.constant_indexes[key] = len(self.constants)
             self.constants.add(key)
             blob = BlobData(data, name)
             self.special_details[key] = blob.getConstantDetails()
             self.constants_writer.addBlobData(data=data, name=name)
 
-        key = "%s[%d]" % (self.top_level_name, self.constants.index(key))
+        key = "%s[%d]" % (self.top_level_name, self.constant_indexes[key])
 
         return key
 
@@ -294,6 +303,7 @@ class ConstantAccessor(GlobalConstantAccessor):
             return key
 
         if key not in self.constants:
+            self.constant_indexes[key] = len(self.constants)
             self.constants.add(key)
             if isinstance(constant, SpecialConstantBase):
                 self.special_details[key] = constant.getConstantDetails()
@@ -305,12 +315,13 @@ class ConstantAccessor(GlobalConstantAccessor):
         key = "blob_" + namifyConstant(data)
 
         if key not in self.constants:
+            self.constant_indexes[key] = len(self.constants)
             self.constants.add(key)
             blob = BlobData(data, name)
             self.special_details[key] = blob.getConstantDetails()
             self.constants_writer.addBlobData(data=data, name=name)
 
-        return "%s[%d]" % (self.top_level_name, self.constants.index(key))
+        return "%s[%d]" % (self.top_level_name, self.constant_indexes[key])
 
 
 #     Part of "Nuitka", an optimizing Python compiler that is compatible and
