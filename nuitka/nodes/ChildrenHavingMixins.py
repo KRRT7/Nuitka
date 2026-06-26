@@ -6693,14 +6693,12 @@ class ChildHavingElementsTupleMixin(object):
         # the actual operation.
         old_subnode_elements = self.subnode_elements
 
-        for sub_expression in old_subnode_elements:
+        for count, sub_expression in enumerate(old_subnode_elements):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_elements[
-                        : old_subnode_elements.index(sub_expression)
-                    ],
+                    side_effects=self.subnode_elements[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )
@@ -14784,14 +14782,12 @@ class ChildHavingPairsTupleMixin(object):
         # the actual operation.
         old_subnode_pairs = self.subnode_pairs
 
-        for sub_expression in old_subnode_pairs:
+        for count, sub_expression in enumerate(old_subnode_pairs):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_pairs[
-                        : old_subnode_pairs.index(sub_expression)
-                    ],
+                    side_effects=self.subnode_pairs[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )
@@ -14911,14 +14907,12 @@ class ChildHavingParamsTupleMixin(object):
         # the actual operation.
         old_subnode_params = self.subnode_params
 
-        for sub_expression in old_subnode_params:
+        for count, sub_expression in enumerate(old_subnode_params):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_params[
-                        : old_subnode_params.index(sub_expression)
-                    ],
+                    side_effects=self.subnode_params[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )
@@ -15938,14 +15932,12 @@ class ChildHavingRequirementsTupleMixin(object):
         # the actual operation.
         old_subnode_requirements = self.subnode_requirements
 
-        for sub_expression in old_subnode_requirements:
+        for count, sub_expression in enumerate(old_subnode_requirements):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_requirements[
-                        : old_subnode_requirements.index(sub_expression)
-                    ],
+                    side_effects=self.subnode_requirements[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )
@@ -23293,14 +23285,12 @@ class ChildHavingValuesTupleMixin(object):
         # the actual operation.
         old_subnode_values = self.subnode_values
 
-        for sub_expression in old_subnode_values:
+        for count, sub_expression in enumerate(old_subnode_values):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_values[
-                        : old_subnode_values.index(sub_expression)
-                    ],
+                    side_effects=self.subnode_values[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )

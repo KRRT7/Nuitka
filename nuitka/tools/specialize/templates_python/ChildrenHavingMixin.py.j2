@@ -267,17 +267,16 @@ class {{mixin_class_name}}({{base_class}}):
 {% if named_children_types.get(named_children[0]) == "tuple" %}
         # First apply the sub-expressions, as they are evaluated before
         # the actual operation.
-        {# Keep this around, so we can look up its index, even after it got replaced. This
-           avoids an enumeration that will not be used unless something will raise an
-           exception. #}
+        {# Keep this around, so we can use the pre-replacement tuple for side effects,
+           even after a child got replaced. #}
         old_subnode_{{named_children[0]}} = self.subnode_{{named_children[0]}}
 
-        for sub_expression in old_subnode_{{named_children[0]}}:
+        for count, sub_expression in enumerate(old_subnode_{{named_children[0]}}):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_{{named_children[0]}}[:old_subnode_{{named_children[0]}}.index(sub_expression)],
+                    side_effects=self.subnode_{{named_children[0]}}[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )

@@ -258,14 +258,12 @@ class _ChildHavingArgsTupleFinalNoRaiseMixin(ExpressionBase):
         # the actual operation.
         old_subnode_args = self.subnode_args
 
-        for sub_expression in old_subnode_args:
+        for count, sub_expression in enumerate(old_subnode_args):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_args[
-                        : old_subnode_args.index(sub_expression)
-                    ],
+                    side_effects=self.subnode_args[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )
@@ -1053,14 +1051,12 @@ class _ChildHavingElementsTupleFinalNoRaiseMixin(ExpressionBase):
         # the actual operation.
         old_subnode_elements = self.subnode_elements
 
-        for sub_expression in old_subnode_elements:
+        for count, sub_expression in enumerate(old_subnode_elements):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_elements[
-                        : old_subnode_elements.index(sub_expression)
-                    ],
+                    side_effects=self.subnode_elements[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )
@@ -1459,14 +1455,12 @@ class _ChildHavingInterpolationsTupleStrValuesMixin(ExpressionBase):
         # the actual operation.
         old_subnode_interpolations = self.subnode_interpolations
 
-        for sub_expression in old_subnode_interpolations:
+        for count, sub_expression in enumerate(old_subnode_interpolations):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_interpolations[
-                        : old_subnode_interpolations.index(sub_expression)
-                    ],
+                    side_effects=self.subnode_interpolations[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )
@@ -2340,14 +2334,12 @@ class _ChildHavingPairsTupleFinalNoRaiseMixin(ExpressionBase):
         # the actual operation.
         old_subnode_pairs = self.subnode_pairs
 
-        for sub_expression in old_subnode_pairs:
+        for count, sub_expression in enumerate(old_subnode_pairs):
             expression = trace_collection.onExpression(sub_expression)
 
             if expression.willRaiseAnyException():
                 wrapped_expression = wrapExpressionWithSideEffects(
-                    side_effects=self.subnode_pairs[
-                        : old_subnode_pairs.index(sub_expression)
-                    ],
+                    side_effects=self.subnode_pairs[:count],
                     old_node=sub_expression,
                     new_node=expression,
                 )
