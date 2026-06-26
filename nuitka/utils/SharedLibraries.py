@@ -242,15 +242,26 @@ def _getDLLVersionWindows(filename):
 
 # spell-checker: ignore readelf
 _readelf_usage = "The 'readelf' is used to analyse dependencies on ELF using systems and required to be found."
+_readelf_output_cache = {}
+
+
+def _getReadelfCommandOutput(filename):
+    filename = os.path.abspath(filename)
+
+    if filename not in _readelf_output_cache:
+        _readelf_output_cache[filename] = executeToolChecked(
+            logger=postprocessing_logger,
+            command=("readelf", "-d", filename),
+            absence_message=_readelf_usage,
+        )
+
+    return _readelf_output_cache[filename]
 
 
 def _getSharedLibraryRPATHsElf(filename):
     rpaths = []
-    output = executeToolChecked(
-        logger=postprocessing_logger,
-        command=("readelf", "-d", filename),
-        absence_message=_readelf_usage,
-    )
+
+    output = _getReadelfCommandOutput(filename)
 
     for line in output.split(b"\n"):
         # spell-checker: ignore RUNPATH
@@ -279,6 +290,21 @@ def _getSharedLibraryRPATHsElf(filename):
 
 
 _dump_usage = "The 'dump' is used to analyse dependencies on COFF using systems and required to be found."
+_coff_dump_output_cache = {}
+
+
+def _getCoffDumpCommandOutput(filename):
+    filename = os.path.abspath(filename)
+
+    if filename not in _coff_dump_output_cache:
+        _coff_dump_output_cache[filename] = executeToolChecked(
+            logger=postprocessing_logger,
+            command=("dump", "-H", "-X", "any", filename),
+            absence_message=_dump_usage,
+            decoding=True,
+        )
+
+    return _coff_dump_output_cache[filename]
 
 
 def _parseCoffDumpImportFileStrings(output):
@@ -340,12 +366,7 @@ def _parseCoffDumpImportFileStrings(output):
 def _getSharedLibraryRPATHsCoff(filename):
     rpaths = []
 
-    output = executeToolChecked(
-        logger=postprocessing_logger,
-        command=("dump", "-H", "-X", "any", filename),
-        absence_message=_dump_usage,
-        decoding=True,
-    )
+    output = _getCoffDumpCommandOutput(filename)
 
     import_paths, _imported_libraries = _parseCoffDumpImportFileStrings(output)
 
@@ -367,12 +388,7 @@ def getCoffImportedLibraries(filename):
     Returns:
         List of (base, member) tuples for imported libraries.
     """
-    output = executeToolChecked(
-        logger=postprocessing_logger,
-        command=("dump", "-H", "-X", "any", filename),
-        absence_message=_dump_usage,
-        decoding=True,
-    )
+    output = _getCoffDumpCommandOutput(filename)
 
     _import_paths, imported_libraries = _parseCoffDumpImportFileStrings(output)
 
@@ -388,12 +404,7 @@ def getCoffLibrarySearchPaths(filename):
     Returns:
         List of library search path strings from INDEX 0 of dump -H output.
     """
-    output = executeToolChecked(
-        logger=postprocessing_logger,
-        command=("dump", "-H", "-X", "any", filename),
-        absence_message=_dump_usage,
-        decoding=True,
-    )
+    output = _getCoffDumpCommandOutput(filename)
 
     import_paths, _imported_libraries = _parseCoffDumpImportFileStrings(output)
 
