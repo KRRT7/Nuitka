@@ -5,7 +5,6 @@
 
 import collections
 from abc import abstractmethod
-from contextlib import contextmanager
 
 from nuitka.__past__ import iterItems
 from nuitka.Constants import isMutable
@@ -337,6 +336,23 @@ else:
             )
 
 
+class _CurrentSourceCodeReferenceContext(object):
+    __slots__ = ("context", "value")
+
+    def __init__(self, context, value):
+        self.context = context
+        self.value = value
+
+    def __enter__(self):
+        return self.context.setCurrentSourceCodeReference(self.value)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is None:
+            self.context.setCurrentSourceCodeReference(self.value)
+
+        return False
+
+
 class PythonContextBase(getMetaClassBase("Context", require_slots=True)):
     __slots__ = ("source_ref", "current_source_ref")
 
@@ -358,13 +374,8 @@ class PythonContextBase(getMetaClassBase("Context", require_slots=True)):
 
         return result
 
-    @contextmanager
     def withCurrentSourceCodeReference(self, value):
-        old_source_ref = self.setCurrentSourceCodeReference(value)
-
-        yield old_source_ref
-
-        self.setCurrentSourceCodeReference(value)
+        return _CurrentSourceCodeReferenceContext(self, value)
 
     def getInplaceLeftName(self):
         return self.allocateTempName("inplace_orig", "PyObject *", True)
