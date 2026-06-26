@@ -200,6 +200,8 @@ def _generateStatementSequenceCode(statement_sequence, emit, context):
         return
 
     trace_execution = shallTraceExecution()
+    statement_dispatch_dict = _statement_dispatch_dict
+    get_cleanup_temp_names = context.getCleanupTempNames
 
     for statement in statement_sequence.subnode_statements:
         if trace_execution:
@@ -223,9 +225,23 @@ def _generateStatementSequenceCode(statement_sequence, emit, context):
             )
         else:
             with withSubCollector(emit, context) as statement_emit:
-                generateStatementCode(
-                    statement=statement, emit=statement_emit, context=context
-                )
+                try:
+                    statement_dispatch_dict[statement.kind](
+                        statement=statement, emit=statement_emit, context=context
+                    )
+
+                    # Complain if any temporary was not dealt with yet.
+                    cleanup_temp_names = get_cleanup_temp_names()
+                    assert not cleanup_temp_names, (
+                        statement.asXmlText(),
+                        cleanup_temp_names,
+                    )
+                except Exception:
+                    printError(
+                        "Problem with %r at %s"
+                        % (statement, statement.getSourceReference().getAsString())
+                    )
+                    raise
 
 
 def generateStatementSequenceCode(statement_sequence, emit, context, allow_none=False):
