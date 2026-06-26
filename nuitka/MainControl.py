@@ -1181,7 +1181,7 @@ def _main():
     # to deal with them.  pylint: disable=too-many-branches,too-many-statements
 
     general.info(
-        leader="Starting Python compilation with:",
+        leader="Starting Python compilation in shadow main:",
         message="%s %s %s."
         % doNotBreakSpaces(
             "Version '%s'" % getNuitkaVersion(),
