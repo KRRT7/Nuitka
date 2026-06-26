@@ -5,6 +5,7 @@ name = "Nuitka"
 dynamic = ["version"]
 description = "Python compiler with full language support and CPython compatibility"
 readme = { file = "doc/README.rst", content-type = "text/x-rst" }
+license = { text = "GNU Affero General Public License v3" }
 requires-python = ">=2.7"
 dependencies = [
     "appdirs",
