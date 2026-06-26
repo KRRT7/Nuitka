@@ -45,6 +45,41 @@ from .ErrorCodes import (
 from .ExpressionCTypeSelectionHelpers import decideExpressionCTypes
 
 
+def _getBuiltinTypeComparisonCode(expression, emit, context):
+    left = expression.subnode_left
+    right = expression.subnode_right
+
+    if left.isExpressionBuiltinType1() and right.isCompileTimeConstant():
+        type_arg = left.subnode_value
+        type_value = right.getCompileTimeConstant()
+        needs_inversion = expression.getComparator() == "IsNot"
+    elif right.isExpressionBuiltinType1() and left.isCompileTimeConstant():
+        type_arg = right.subnode_value
+        type_value = left.getCompileTimeConstant()
+        needs_inversion = expression.getComparator() == "IsNot"
+    else:
+        return None
+
+    if type(type_value) is not type:
+        return None
+
+    type_arg_name = context.allocateTempName("type_arg")
+
+    generateExpressionCode(
+        to_name=type_arg_name, expression=type_arg, emit=emit, context=context
+    )
+
+    condition = "Py_TYPE(%s) == (PyTypeObject *)%s" % (
+        type_arg_name,
+        context.getConstantCode(constant=type_value),
+    )
+
+    if needs_inversion:
+        condition = "!(%s)" % condition
+
+    return condition, type_arg_name
+
+
 def _canInvertComparisonToHelperSubset(
     left_shape, right_shape, left_c_type, right_c_type
 ):
@@ -318,6 +353,22 @@ def generateComparisonExpressionCode(to_name, expression, emit, context):
     right = expression.subnode_right
 
     comparator = expression.getComparator()
+
+    if comparator in ("Is", "IsNot"):
+        builtin_type_comparison = _getBuiltinTypeComparisonCode(
+            expression=expression, emit=emit, context=context
+        )
+
+        if builtin_type_comparison is not None:
+            condition, type_arg_name = builtin_type_comparison
+
+            to_name.getCType().emitAssignmentCodeFromBoolCondition(
+                to_name=to_name, condition=condition, emit=emit
+            )
+
+            getReleaseCode(release_name=type_arg_name, emit=emit, context=context)
+
+            return
 
     type_name = "PyObject *"
     if comparator in ("Is", "IsNot"):
