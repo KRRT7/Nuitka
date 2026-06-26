@@ -868,9 +868,15 @@ class TraceCollectionBase(object):
                 continue
 
             # Slow path: collect unique versions, they are different.
-            versions = set(
-                collection.variable_actives[variable] for collection in collections
-            )
+            versions = [first_collection_version]
+
+            for collection in other_collections:
+                version = collection.variable_actives[variable]
+
+                if version not in versions:
+                    versions.append(version)
+
+            versions.sort()
 
             traces = []
             escaped = set()
@@ -878,7 +884,7 @@ class TraceCollectionBase(object):
 
             variable_traces = self.variable_traces[variable]
 
-            for version in sorted(versions):
+            for version in versions:
                 trace = variable_traces[version]
 
                 if version % 3 == 1:
