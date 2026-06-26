@@ -204,6 +204,9 @@ class ExpressionBuiltinEnumerateMixin(object):
         if start_value is None:
             return None
 
+        if not hasattr(self.subnode_sequence, "getIterationValue"):
+            return None
+
         sequence_value = self.subnode_sequence.getIterationValue(element_index)
 
         if sequence_value is None:
