@@ -13,6 +13,7 @@ from nuitka.nodes.shapes.BuiltinTypeShapes import (
     tshape_bytes,
     tshape_float,
     tshape_int,
+    tshape_int_or_long,
     tshape_long,
     tshape_str,
     tshape_unicode,
@@ -54,9 +55,42 @@ def _pickIntFamilyType(expression, context):
         else:
             c_type = CTypePyObjectPtr
     else:
-        c_type = CTypePyObjectPtr
+        if expression.isExpressionOperationBinary() and expression.getOperator() in (
+            "Add",
+            "Sub",
+            "IAdd",
+            "ISub",
+        ):
+            c_type = CTypeNuitkaIntOrLongStruct
+        else:
+            c_type = CTypePyObjectPtr
 
     return c_type
+
+
+def _pickIntStorageType(expression, context):
+    if not expression.isExpressionVariableRefOrTempVariableRef():
+        return None
+
+    variable = expression.getVariable()
+
+    # TODO: Module variables are not doing it (yet?)
+    # TODO: Closure variables should be possible to have non CTypePyObjectPtr eventually.
+    if not variable.isLocalVariable() or variable.isSharedTechnically():
+        return None
+
+    variable_declaration = getLocalVariableDeclaration(
+        context=context,
+        variable=expression.getVariable(),
+        variable_trace=expression.getVariableTrace(),
+    )
+
+    c_type = variable_declaration.getCType()
+
+    if c_type is CTypeNuitkaIntOrLongStruct:
+        return c_type
+
+    return None
 
 
 def _pickFloatFamilyType(expression):
@@ -79,6 +113,7 @@ def _pickBytesFamilyType(expression):
 
 
 _int_types_family = (tshape_int, tshape_long)
+_int_storage_types_family = _int_types_family + (tshape_int_or_long,)
 _float_types_family = (tshape_int, tshape_long, tshape_float)
 _str_types_family = (tshape_str, tshape_unicode)
 
@@ -110,8 +145,10 @@ _bytes_argument_normalization = {
 }
 
 
-def decideExpressionCTypes(left, right, may_swap_arguments, context):
-    # Complex stuff with many cases, pylint: disable=too-many-branches
+def decideExpressionCTypes(
+    left, right, may_swap_arguments, context, use_storage_types=False
+):
+    # Complex stuff with many cases, pylint: disable=too-many-branches,too-many-statements
 
     left_shape = left.getTypeShape()
     right_shape = right.getTypeShape()
@@ -125,7 +162,7 @@ def decideExpressionCTypes(left, right, may_swap_arguments, context):
         needs_argument_swap = (
             may_swap_arguments
             and left_c_type is not right_c_type
-            and _long_argument_normalization[(left_c_type, right_c_type)]
+            and _long_argument_normalization.get((left_c_type, right_c_type), False)
         )
 
         # TODO: The INT and LONG types, do not have distinct C types yet, and maybe
@@ -195,11 +232,57 @@ def decideExpressionCTypes(left, right, may_swap_arguments, context):
                 needs_argument_swap = True
 
         unknown_types = False
+    elif use_storage_types:
+        left_storage_c_type = _pickIntStorageType(left, context)
+        right_storage_c_type = _pickIntStorageType(right, context)
+
+        if (
+            (
+                left_storage_c_type is not None
+                and right_shape in _int_storage_types_family
+            )
+            or (
+                right_storage_c_type is not None
+                and left_shape in _int_storage_types_family
+            )
+            or (left_storage_c_type is not None and right_storage_c_type is not None)
+        ):
+            may_swap_arguments = may_swap_arguments in ("number", "always")
+
+            if left_storage_c_type is not None:
+                left_shape = tshape_int_or_long
+                left_c_type = left_storage_c_type
+            else:
+                left_c_type = _pickIntFamilyType(left, context)
+
+            if right_storage_c_type is not None:
+                right_shape = tshape_int_or_long
+                right_c_type = right_storage_c_type
+            else:
+                right_c_type = _pickIntFamilyType(right, context)
+
+            needs_argument_swap = (
+                may_swap_arguments
+                and left_c_type is not right_c_type
+                and _long_argument_normalization.get((left_c_type, right_c_type), False)
+            )
+
+            unknown_types = False
+        else:
+            left_c_type = right_c_type = CTypePyObjectPtr
+
+            needs_argument_swap = False
+            unknown_types = True
     else:
         left_c_type = right_c_type = CTypePyObjectPtr
 
         needs_argument_swap = False
         unknown_types = True
+
+    if unknown_types:
+        left_c_type = right_c_type = CTypePyObjectPtr
+
+        needs_argument_swap = False
 
     return (
         unknown_types,
