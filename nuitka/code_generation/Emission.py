@@ -45,15 +45,19 @@ class _SubCollector:
 
             return False
 
-        local_declarations = context.variable_storage.makeCLocalDeclarations()
-        context.variable_storage.variable_declarations_locals.pop()
+        local_variable_declarations = (
+            context.variable_storage.variable_declarations_locals.pop()
+        )
 
         emit = self.emit
 
-        if local_declarations:
+        if local_variable_declarations:
             emit("{")
 
-            emit.extend(local_declarations)
+            emit.extend(
+                variable_declaration.makeCFunctionLevelDeclaration()
+                for variable_declaration in local_variable_declarations
+            )
             emit.extend(self.sub_emit)
 
             emit("}")
