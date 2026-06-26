@@ -55,6 +55,7 @@ def locateDLLFromFilesystem(name, paths):
 
 
 _ldconfig_usage = "The 'ldconfig' is used to analyze dependencies on ELF using systems and required to be found."
+_ldconfig_dll_map = None
 
 
 def locateDLL(dll_name):
@@ -89,7 +90,16 @@ def locateDLL(dll_name):
             name=dll_name, paths=["/lib", "/usr/lib", "/usr/local/lib"]
         )
 
-    # TODO: Could and probably should cache "ldconfig -p" output to avoid forks
+    return _getLdconfigDllMap()[dll_name]
+
+
+def _getLdconfigDllMap():
+    # Singleton, pylint: disable=global-statement
+    global _ldconfig_dll_map
+
+    if _ldconfig_dll_map is not None:
+        return _ldconfig_dll_map
+
     output = executeToolChecked(
         logger=postprocessing_logger,
         command=("/sbin/ldconfig", "-p"),
@@ -116,7 +126,9 @@ def locateDLL(dll_name):
         if left not in dll_map:
             dll_map[left] = right
 
-    return dll_map[dll_name]
+    _ldconfig_dll_map = dll_map
+
+    return _ldconfig_dll_map
 
 
 def getSxsFromDLL(filename, with_data=False):
