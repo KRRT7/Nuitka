@@ -387,6 +387,13 @@ def getLocalVariableDeclaration(context, variable, variable_trace):
 
     # Now must be local or temporary variable.
 
+    variable_storage = context.variable_storage
+
+    result = variable_storage.local_variable_declaration_cache.get(variable)
+
+    if result is not None:
+        return result
+
     user = context.getOwner()
     owner = variable.getOwner()
 
@@ -408,15 +415,21 @@ def getLocalVariableDeclaration(context, variable, variable_trace):
 
         result = prefix + result
 
-        result = context.variable_storage.getVariableDeclarationTop(result)
+        result = variable_storage.getVariableDeclarationTop(result)
 
         assert result is not None, variable
+
+        variable_storage.local_variable_declaration_cache[variable] = result
 
         return result
     else:
         closure_index = user.getClosureVariableIndex(variable)
 
-        return context.variable_storage.getVariableDeclarationClosure(closure_index)
+        result = variable_storage.getVariableDeclarationClosure(closure_index)
+
+        variable_storage.local_variable_declaration_cache[variable] = result
+
+        return result
 
 
 def getVariableAssignmentCode(

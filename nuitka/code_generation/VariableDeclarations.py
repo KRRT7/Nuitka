@@ -140,6 +140,7 @@ class VariableStorage(object):
         "variable_declarations_locals",
         "exception_variable_name",
         "variable_declarations_top",
+        "local_variable_declaration_cache",
     )
 
     def __init__(self, heap_name):
@@ -154,6 +155,7 @@ class VariableStorage(object):
         self.exception_variable_name = None
 
         self.variable_declarations_top = {}
+        self.local_variable_declaration_cache = {}
 
     @contextmanager
     def withLocalStorage(self):
