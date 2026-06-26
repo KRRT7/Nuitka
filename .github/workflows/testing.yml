@@ -23,6 +23,7 @@ permissions:
 
 env:
   NUITKA_UPDATE_CHECK: "never"
+  NUITKA_CACHE_DIR: ${{ github.workspace }}/.nuitka-cache
 
 jobs:
   checks:
@@ -72,11 +73,27 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Cache Nuitka tool data
+        uses: actions/cache@v4
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-checks-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-checks-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
+
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install patchelf gdb ccache libfuse2
-          python -m pip install --no-python-version-warning --disable-pip-version-check .
+          uv sync --dev --frozen --no-install-project --python python
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       - name: 🔎 PyLint on Nuitka source code
         run: |
@@ -164,11 +181,35 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Cache Nuitka tool data
+        uses: actions/cache@v4
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: ♻️ Install cached APT packages
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.1
+        with:
+          packages: patchelf gdb ccache libfuse2
+          version: ubuntu-24.04
+          execute_install_scripts: true
+
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install patchelf gdb ccache libfuse2
-          python -m pip install --no-python-version-warning --disable-pip-version-check .
+          uv sync --no-dev --frozen --no-install-project --python python
+          uv pip install --python .venv --no-deps .
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       - name: ⚙️ Verbose scons output in compilation
         run: |
@@ -206,7 +247,7 @@ jobs:
           python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
 
   mac-python3:
-    needs: linux
+    needs: checks
     runs-on: macos-latest
     strategy:
       matrix:
@@ -262,17 +303,36 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Cache Nuitka tool data
+        uses: actions/cache@v4
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
+
       - name: ⚙️ Verbose installation output for Python
         run: |
           set -x
           which python
-          otool -L $(which python)
-          otool -l $(which python)
-          ls -lR $(dirname $(dirname $(which python)))
+          otool -L "$(which python)"
+          otool -l "$(which python)"
+          ls -lR "$(dirname "$(dirname "$(which python)")")"
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          pip install --no-python-version-warning --disable-pip-version-check .
+          uv sync --no-dev --frozen --no-install-project --python python
+          uv pip install --python .venv --no-deps .
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Verbose scons output in compilation
         run: |
@@ -334,7 +394,7 @@ jobs:
           python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
 
   windows:
-    needs: linux
+    needs: checks
     runs-on: windows-latest
     strategy:
       matrix:
@@ -392,11 +452,30 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Cache Nuitka tool data
+        uses: actions/cache@v4
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
+
       - uses: ilammy/msvc-dev-cmd@v1
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          pip install --no-python-version-warning --disable-pip-version-check .
+          uv sync --no-dev --frozen --no-install-project --python python
+          uv pip install --python .venv --no-deps .
+          "$PWD\.venv\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Verbose scons output in compilation
         run: |
@@ -422,7 +501,7 @@ jobs:
           python .\tests\run-tests --no-other-python --no-debug --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
 
   windows-arm:
-    needs: linux
+    needs: checks
     runs-on: windows-11-arm
     strategy:
       matrix:
@@ -476,13 +555,32 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Cache Nuitka tool data
+        uses: actions/cache@v4
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
+
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: arm64
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          pip install --no-python-version-warning --disable-pip-version-check .
+          uv sync --no-dev --frozen --no-install-project --python python
+          uv pip install --python .venv --no-deps .
+          "$PWD\.venv\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Verbose scons output in compilation
         run: |
