@@ -366,7 +366,7 @@ class TraceCollectionBase(object):
 
         self.variable_actives[variable] = version
 
-        if variable in self.variable_escapable:
+        if version % 3 == 0 and variable in self.variable_escapable:
             self.markVariableAsUnescaped(variable)
 
     def markVariableAsEscapable(self, variable):
