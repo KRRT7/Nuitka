@@ -40,7 +40,11 @@ class FinalizeMarkups(VisitorNoopMixin):
         # This has many different things it deals with, so there need to be a
         # lot of branches and statements, pylint: disable=too-many-branches
 
-        if node.isStatementReturn() or node.isStatementGeneratorReturn():
+        kind = node.kind
+
+        if kind.startswith("STATEMENT_RETURN") or kind.startswith(
+            "STATEMENT_GENERATOR_RETURN"
+        ):
             # Search up to the containing function, and check for a try/finally
             # containing the "return" statement.
             search = node.getParentReturnConsumer()
@@ -52,17 +56,17 @@ class FinalizeMarkups(VisitorNoopMixin):
             ):
                 search.markAsNeedsGeneratorReturnHandling()
 
-        if node.isExpressionFunctionCreation():
+        if kind in ("EXPRESSION_FUNCTION_CREATION", "EXPRESSION_FUNCTION_CREATION_OLD"):
             if (
                 not node.getParent().isExpressionFunctionCall()
                 or node.getParent().subnode_function is not node
             ):
                 node.subnode_function_ref.getFunctionBody().markAsNeedsCreation()
 
-        if node.isExpressionFunctionCall():
+        if kind == "EXPRESSION_FUNCTION_CALL":
             node.subnode_function.subnode_function_ref.getFunctionBody().markAsDirectlyCalled()
 
-        if node.isExpressionFunctionRef():
+        if kind == "EXPRESSION_FUNCTION_REF":
             function_body = node.getFunctionBody()
             parent_module = function_body.getParentModule()
 
@@ -71,7 +75,7 @@ class FinalizeMarkups(VisitorNoopMixin):
 
                 self.module.addCrossUsedFunction(function_body)
 
-        if node.isStatementAssignmentVariable():
+        if kind.startswith("STATEMENT_ASSIGNMENT_VARIABLE"):
             target_var = node.getVariable()
             assign_source = node.subnode_source
 
@@ -89,14 +93,14 @@ class FinalizeMarkups(VisitorNoopMixin):
             if target_var.isModuleVariable():
                 pass
 
-        if python_version < 0x300 and node.isStatementPublishException():
+        if python_version < 0x300 and kind == "STATEMENT_PUBLISH_EXCEPTION":
             node.getParentStatementsFrame().markAsFrameExceptionPreserving()
 
         if python_version >= 0x300:
-            if (
-                node.isExpressionYield()
-                or node.isExpressionYieldFrom()
-                or node.isExpressionYieldFromAwaitable()
+            if kind in (
+                "EXPRESSION_YIELD",
+                "EXPRESSION_YIELD_FROM",
+                "EXPRESSION_YIELD_FROM_AWAITABLE",
             ):
                 search = node.getParent()
 
