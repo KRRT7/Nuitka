@@ -103,19 +103,19 @@ jobs:
 
       - name: 🔎 RestLint on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-restlint --assume-yes-for-downloads
+          uv run --frozen python -m nuitka.tools.quality.restlint --assume-yes-for-downloads
 
       - name: 🔎 YamlLint on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-yamllint --assume-yes-for-downloads
+          uv run --frozen python -m nuitka.tools.quality.yamllint --assume-yes-for-downloads
 
       - name: 🔎 Codespell on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-codespell --assume-yes-for-downloads
+          uv run --frozen python -m nuitka.tools.quality.codespell --assume-yes-for-downloads
 
       - name: 🔎 Auto-format check on Nuitka source code
         run: |
-          python ./bin/autoformat-nuitka-source --check-only --assume-yes-for-downloads
+          uv run --frozen python -m nuitka.tools.quality.auto_format --check-only --assume-yes-for-downloads
 
       - name: 🔎 Specialized C code check
         run: |
