@@ -1,11 +1,11 @@
 # Spell checking makes no sense, spell-checker: disable
 
-include LICENSE.txt
-include LICENSE-RUNTIME.txt
+include doc/LICENSE.txt
+include doc/LICENSE-RUNTIME.txt
 include MANIFEST.in
-include README.rst
-include Changelog.rst
-include Developer_Manual.rst
+include doc/README.rst
+include doc/Changelog.rst
+include doc/Developer_Manual.rst
 include doc/nuitka.1
 include doc/nuitka-run.1
 

@@ -5,7 +5,7 @@
    :target: https://pypi.org/project/Nuitka
 
 .. image:: https://img.shields.io/badge/Contributor%20Covenant-v1.4%20adopted-ff69b4.svg
-   :target: CODE_OF_CONDUCT.md
+   :target: CODE_OF_CONDUCT.rst
 
 ####################
  Nuitka User Manual

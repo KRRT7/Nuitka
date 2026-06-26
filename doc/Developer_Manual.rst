@@ -833,11 +833,11 @@ recently added standard plugins ``NumpyPlugin.py`` and
 Going forward, this will also happen for the remaining standard plugins.
 
 Please find `here
-<https://github.com/Nuitka/Nuitka/blob/develop/UserPlugin-Creation.rst>`__
+<https://github.com/Nuitka/Nuitka/blob/develop/doc/UserPlugin-Creation.rst>`__
 a detailed description of how to write your own plugin.
 
 To learn about plugin option specification consult `this document
-<https://github.com/Nuitka/Nuitka/blob/develop/Using-Plugin-Options.rst>`__.
+<https://github.com/Nuitka/Nuitka/blob/develop/doc/Using-Plugin-Options.rst>`__.
 
 *********************************
  Working with the CPython suites
@@ -4667,6 +4667,6 @@ This document is written in REST. That is an ASCII format which is
 readable to human, but easily used to generate PDF or HTML documents.
 
 You will find the current source under:
-https://github.com/Nuitka/Nuitka/blob/develop/Developer_Manual.rst
+https://github.com/Nuitka/Nuitka/blob/develop/doc/Developer_Manual.rst
 
 And the current PDF under: https://nuitka.net/doc/Developer_Manual.pdf

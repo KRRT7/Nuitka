@@ -457,7 +457,7 @@ class NuitkaPluginBase(getMetaClassBase("Plugin", require_slots=False)):
     """Nuitka base class for all plugins.
 
     Derive your plugin from "NuitkaPluginBase" please.
-    For instructions, see https://github.com/Nuitka/Nuitka/blob/orsiris/UserPlugin-Creation.rst
+    For instructions, see https://github.com/Nuitka/Nuitka/blob/orsiris/doc/UserPlugin-Creation.rst
 
     Plugins allow to adapt Nuitka's behavior in a number of ways as explained
     below at the individual methods.

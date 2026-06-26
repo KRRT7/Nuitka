@@ -51,5 +51,5 @@ not collide with other plugins, as we have no per plugin namespace here.
 *********
 
 To see a working example for a user plugin with options, consult `this
-<https://github.com/Nuitka/Nuitka/blob/develop/UserPlugin-Creation.rst>`__
+<https://github.com/Nuitka/Nuitka/blob/develop/doc/UserPlugin-Creation.rst>`__
 document.

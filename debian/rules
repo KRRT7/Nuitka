@@ -36,7 +36,7 @@ endif
 	dh $@ --with $(BUILD_WITH_ARGUMENT) --buildsystem=pybuild
 
 override_dh_auto_build:
-	cp Developer_Manual.rst Developer_Manual.txt
+	cp doc/Developer_Manual.rst Developer_Manual.txt
 
 override_dh_auto_test:
 	# The RUN_TEST_PYTHON is not the one to execute tests, just the for the
