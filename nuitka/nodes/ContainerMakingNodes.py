@@ -38,6 +38,19 @@ class ExpressionMakeSequenceMixin(object):
     def getIterationValue(self, count):
         return self.subnode_elements[count]
 
+    def getIterationValueShape(self, count):
+        result = None
+
+        for element in self.subnode_elements:
+            element_shape = element.getTypeShape()
+
+            if result is None:
+                result = element_shape
+            elif result is not element_shape:
+                return None
+
+        return result
+
     def getIterationValueRange(self, start, stop):
         return self.subnode_elements[start:stop]
 

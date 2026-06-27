@@ -117,6 +117,12 @@ class ExpressionBuiltinIter1(ExpressionBuiltinSingleArgBase):
 
         return None
 
+    def getIterationValueShape(self, element_index):
+        if hasattr(self.subnode_value, "getIterationValueShape"):
+            return self.subnode_value.getIterationValueShape(element_index)
+
+        return None
+
     def getIterationHandle(self):
         return self.subnode_value.getIterationHandle()
 

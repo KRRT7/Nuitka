@@ -214,6 +214,21 @@ class ExpressionConstantUntrackedRefBase(CompileTimeConstantExpressionBase):
             constant=self.constant[count], source_ref=self.source_ref
         )
 
+    def getIterationValueShape(self, count):
+        result = None
+
+        for value in self.constant:
+            value_shape = makeConstantRefNode(
+                constant=value, source_ref=self.source_ref
+            ).getTypeShape()
+
+            if result is None:
+                result = value_shape
+            elif result is not value_shape:
+                return None
+
+        return result
+
     def getIterationValueRange(self, start, stop):
         return [
             makeConstantRefNode(constant=value, source_ref=self.source_ref)
