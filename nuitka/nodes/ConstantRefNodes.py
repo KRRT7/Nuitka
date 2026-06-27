@@ -487,6 +487,21 @@ class ExpressionConstantDictRef(
     def getIterationLength(self):
         return len(self.constant)
 
+    def getIterationValue(self, count):
+        return makeConstantRefNode(
+            constant=tuple(self.constant)[count],
+            user_provided=self.user_provided,
+            source_ref=self.source_ref,
+        )
+
+    def getIterationValueRange(self, start, stop):
+        return [
+            makeConstantRefNode(
+                constant=value, user_provided=self.user_provided, source_ref=self.source_ref
+            )
+            for value in tuple(self.constant)[start:stop]
+        ]
+
     def computeExpressionIter1(self, iter_node, trace_collection):
         result = makeConstantRefNode(
             constant=tuple(self.constant),
