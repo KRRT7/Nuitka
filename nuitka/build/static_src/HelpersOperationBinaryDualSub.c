@@ -46,7 +46,10 @@ bool BINARY_OPERATION_SUB_NILONG_NILONG_NILONG(nuitka_ilong *result, nuitka_ilon
         }
 
         ENFORCE_NILONG_OBJECT_VALUE(operand1);
-        obj_result = BINARY_OPERATION_SUB_OBJECT_LONG_CLONG(operand1->python_value, operand2->c_value);
+        PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2->c_value);
+
+        obj_result = BINARY_OPERATION_SUB_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
+        Py_DECREF(operand2_object);
 
         if (unlikely(obj_result == NULL)) {
             return false;
@@ -60,7 +63,9 @@ bool BINARY_OPERATION_SUB_NILONG_NILONG_NILONG(nuitka_ilong *result, nuitka_ilon
         return true;
 
     } else if (left_c_usable == false && right_c_usable) {
-        PyObject *python_result = BINARY_OPERATION_SUB_OBJECT_LONG_CLONG(operand1->python_value, operand2->c_value);
+        PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2->c_value);
+        PyObject *python_result = BINARY_OPERATION_SUB_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
+        Py_DECREF(operand2_object);
 
         if (unlikely(python_result == NULL)) {
             return false;
@@ -69,7 +74,9 @@ bool BINARY_OPERATION_SUB_NILONG_NILONG_NILONG(nuitka_ilong *result, nuitka_ilon
         *result = Nuitka_NILONG_FromObject(python_result);
         return true;
     } else if (left_c_usable && right_c_usable == false) {
-        PyObject *python_result = BINARY_OPERATION_SUB_OBJECT_CLONG_LONG(operand1->c_value, operand2->python_value);
+        PyObject *operand1_object = Nuitka_PyLong_FromLong(operand1->c_value);
+        PyObject *python_result = BINARY_OPERATION_SUB_OBJECT_OBJECT_OBJECT(operand1_object, operand2->python_value);
+        Py_DECREF(operand1_object);
 
         if (unlikely(python_result == NULL)) {
             return false;
@@ -79,7 +86,8 @@ bool BINARY_OPERATION_SUB_NILONG_NILONG_NILONG(nuitka_ilong *result, nuitka_ilon
 
         return true;
     } else {
-        PyObject *python_result = BINARY_OPERATION_SUB_OBJECT_LONG_LONG(operand1->python_value, operand2->python_value);
+        PyObject *python_result =
+            BINARY_OPERATION_SUB_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2->python_value);
 
         if (unlikely(python_result == NULL)) {
             return false;
@@ -128,7 +136,10 @@ bool BINARY_OPERATION_SUB_NILONG_NILONG_DIGIT(nuitka_ilong *result, nuitka_ilong
         }
 
         ENFORCE_NILONG_OBJECT_VALUE(operand1);
-        obj_result = BINARY_OPERATION_SUB_OBJECT_LONG_DIGIT(operand1->python_value, operand2);
+        PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+
+        obj_result = BINARY_OPERATION_SUB_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
+        Py_DECREF(operand2_object);
 
         if (unlikely(obj_result == NULL)) {
             return false;
@@ -142,7 +153,9 @@ bool BINARY_OPERATION_SUB_NILONG_NILONG_DIGIT(nuitka_ilong *result, nuitka_ilong
         return true;
 
     } else if (left_c_usable == false && right_c_usable) {
-        PyObject *python_result = BINARY_OPERATION_SUB_OBJECT_LONG_DIGIT(operand1->python_value, operand2);
+        PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+        PyObject *python_result = BINARY_OPERATION_SUB_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
+        Py_DECREF(operand2_object);
 
         if (unlikely(python_result == NULL)) {
             return false;
@@ -193,7 +206,10 @@ bool BINARY_OPERATION_SUB_NILONG_DIGIT_NILONG(nuitka_ilong *result, long operand
         }
 
         ENFORCE_NILONG_OBJECT_VALUE(operand2);
-        obj_result = BINARY_OPERATION_SUB_OBJECT_DIGIT_LONG(operand1, operand2->python_value);
+        PyObject *operand1_object = Nuitka_PyLong_FromLong(operand1);
+
+        obj_result = BINARY_OPERATION_SUB_OBJECT_OBJECT_OBJECT(operand1_object, operand2->python_value);
+        Py_DECREF(operand1_object);
 
         if (unlikely(obj_result == NULL)) {
             return false;
@@ -207,7 +223,9 @@ bool BINARY_OPERATION_SUB_NILONG_DIGIT_NILONG(nuitka_ilong *result, long operand
         return true;
 
     } else if (left_c_usable && right_c_usable == false) {
-        PyObject *python_result = BINARY_OPERATION_SUB_OBJECT_DIGIT_LONG(operand1, operand2->python_value);
+        PyObject *operand1_object = Nuitka_PyLong_FromLong(operand1);
+        PyObject *python_result = BINARY_OPERATION_SUB_OBJECT_OBJECT_OBJECT(operand1_object, operand2->python_value);
+        Py_DECREF(operand1_object);
 
         if (unlikely(python_result == NULL)) {
             return false;

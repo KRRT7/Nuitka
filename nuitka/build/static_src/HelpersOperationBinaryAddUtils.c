@@ -233,7 +233,19 @@ long Nuitka_PyLong_AsLongAndOverflow(PyObject *value, int *overflow) {
         }
 
         if (digit_count == 1) {
-            return (long)MEDIUM_VALUE(value);
+            medium_result_value_t result = MEDIUM_VALUE(value);
+
+            if (unlikely(result > LONG_MAX)) {
+                *overflow = 1;
+                return -1;
+            }
+
+            if (unlikely(result < LONG_MIN)) {
+                *overflow = -1;
+                return -1;
+            }
+
+            return (long)result;
         }
 
         digit const *digits = Nuitka_LongGetDigitPointer(value);

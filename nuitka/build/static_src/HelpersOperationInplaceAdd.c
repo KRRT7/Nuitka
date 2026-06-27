@@ -501,19 +501,22 @@ static inline bool _INPLACE_OPERATION_ADD_LONG_LONG(PyObject **operand1, PyObjec
     PyLongObject *operand2_long_object = (PyLongObject *)operand2;
 
     if (Nuitka_LongGetDigitSize(operand1_long_object) <= 1 && Nuitka_LongGetDigitSize(operand2_long_object) <= 1) {
-        long r = (long)(MEDIUM_VALUE(operand1_long_object) + MEDIUM_VALUE(operand2_long_object));
+        medium_result_value_t r = MEDIUM_VALUE(operand1_long_object) + MEDIUM_VALUE(operand2_long_object);
 
-        if (Py_REFCNT(*operand1) == 1) {
-            Nuitka_LongUpdateFromCLong(&*operand1, (long)r);
-            goto exit_result_ok;
-        } else {
-            PyObject *obj = Nuitka_LongFromCLong(r);
+        if (r >= LONG_MIN && r <= LONG_MAX) {
 
-            obj_result = obj;
-            goto exit_result_object;
+            if (Py_REFCNT(*operand1) == 1) {
+                Nuitka_LongUpdateFromCLong(&*operand1, (long)r);
+                goto exit_result_ok;
+            } else {
+                PyObject *obj = Nuitka_LongFromCLong((long)r);
+
+                obj_result = obj;
+                goto exit_result_object;
+            }
+            clong_result = (long)r;
+            goto exit_result_ok_clong;
         }
-        clong_result = r;
-        goto exit_result_ok_clong;
     }
 
     if (Py_REFCNT(*operand1) == 1) {
@@ -1972,19 +1975,22 @@ static inline bool _INPLACE_OPERATION_ADD_LONG_DIGIT(PyObject **operand1, long o
     PyLongObject *operand1_long_object = (PyLongObject *)*operand1;
 
     if (Nuitka_LongGetDigitSize(operand1_long_object) <= 1 && (operand2 == 0 ? 0 : 1) <= 1) {
-        long r = (long)(MEDIUM_VALUE(operand1_long_object) + (sdigit)operand2);
+        medium_result_value_t r = MEDIUM_VALUE(operand1_long_object) + (sdigit)operand2;
 
-        if (Py_REFCNT(*operand1) == 1) {
-            Nuitka_LongUpdateFromCLong(&*operand1, (long)r);
-            goto exit_result_ok;
-        } else {
-            PyObject *obj = Nuitka_LongFromCLong(r);
+        if (r >= LONG_MIN && r <= LONG_MAX) {
 
-            obj_result = obj;
-            goto exit_result_object;
+            if (Py_REFCNT(*operand1) == 1) {
+                Nuitka_LongUpdateFromCLong(&*operand1, (long)r);
+                goto exit_result_ok;
+            } else {
+                PyObject *obj = Nuitka_LongFromCLong((long)r);
+
+                obj_result = obj;
+                goto exit_result_object;
+            }
+            clong_result = (long)r;
+            goto exit_result_ok_clong;
         }
-        clong_result = r;
-        goto exit_result_ok_clong;
     }
 
     if (Py_REFCNT(*operand1) == 1) {
@@ -2107,10 +2113,10 @@ static inline bool _INPLACE_OPERATION_ADD_LONG_CLONG(PyObject **operand1, long o
         unsigned long t = operand2_abs_ival;
 
         while (t != 0) {
-            operand2_digit_count += 1;
-            assert(operand2_digit_count <= (Py_ssize_t)(sizeof(operand2_digit_count) / sizeof(digit)));
+            assert(operand2_digit_count < (Py_ssize_t)(sizeof(operand2_digits) / sizeof(digit)));
 
             operand2_digits[operand2_digit_count] = (digit)(t & PyLong_MASK);
+            operand2_digit_count += 1;
             t >>= PyLong_SHIFT;
         }
     }
@@ -2119,19 +2125,22 @@ static inline bool _INPLACE_OPERATION_ADD_LONG_CLONG(PyObject **operand1, long o
         operand2_is_negative == false ? operand2_digit_count : -operand2_digit_count;
 
     if (Nuitka_LongGetDigitSize(operand1_long_object) <= 1 && operand2_digit_count <= 1) {
-        long r = (long)(MEDIUM_VALUE(operand1_long_object) + (sdigit)operand2);
+        medium_result_value_t r = MEDIUM_VALUE(operand1_long_object) + (sdigit)operand2;
 
-        if (Py_REFCNT(*operand1) == 1) {
-            Nuitka_LongUpdateFromCLong(&*operand1, (long)r);
-            goto exit_result_ok;
-        } else {
-            PyObject *obj = Nuitka_LongFromCLong(r);
+        if (r >= LONG_MIN && r <= LONG_MAX) {
 
-            obj_result = obj;
-            goto exit_result_object;
+            if (Py_REFCNT(*operand1) == 1) {
+                Nuitka_LongUpdateFromCLong(&*operand1, (long)r);
+                goto exit_result_ok;
+            } else {
+                PyObject *obj = Nuitka_LongFromCLong((long)r);
+
+                obj_result = obj;
+                goto exit_result_object;
+            }
+            clong_result = (long)r;
+            goto exit_result_ok_clong;
         }
-        clong_result = r;
-        goto exit_result_ok_clong;
     }
 
     if (Py_REFCNT(*operand1) == 1) {

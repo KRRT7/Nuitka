@@ -465,9 +465,18 @@ def getDirectFunctionCallCode(
 
         variable_c_type = variable_declaration.getCType()
 
-        suffix_args.append(
-            variable_c_type.getVariableArgReferencePassingCode(variable_declaration)
-        )
+        if variable_declaration.c_type == "nuitka_ilong":
+            closure_arg_name = context.allocateTempName(
+                "closure_arg", "PyObject *", unique=True
+            )
+
+            emit("ENFORCE_NILONG_OBJECT_VALUE(&%s);" % variable_declaration)
+            emit("%s = %s.python_value;" % (closure_arg_name, variable_declaration))
+            suffix_args.append("&%s" % closure_arg_name)
+        else:
+            suffix_args.append(
+                variable_c_type.getVariableArgReferencePassingCode(variable_declaration)
+            )
 
     # TODO: We ought to not assume references for direct calls, or make a
     # profile if an argument needs a reference at all. Most functions don't

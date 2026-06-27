@@ -142,23 +142,21 @@
         Py_DECREF(operand2_long);
 
         {{ goto_exit(props, exit_result_object, "r") }}
-    } else {
+    } else if (a > 0 && a <= (LONG_MAX >> b)) {
         long c = a << b;
 
-        if (a != Py_ARITHMETIC_RIGHT_SHIFT(long, c, b)) {
-            PyObject *operand1_long = Nuitka_PyLong_FromLong(a);
-            PyObject *operand2_long = Nuitka_PyLong_FromLong(b);
+        {{ goto_exit(props, exit_result_ok_clong, "c") }}
+    } else {
+        PyObject *operand1_long = Nuitka_PyLong_FromLong(a);
+        PyObject *operand2_long = Nuitka_PyLong_FromLong(b);
 
-            // TODO: Change this to using CLONG once we specialize that too.
-            PyObject *r = _BINARY_OPERATION_LSHIFT_OBJECT_LONG_LONG(operand1_long, operand2_long);
+        // TODO: Change this to using CLONG once we specialize that too.
+        PyObject *r = _BINARY_OPERATION_LSHIFT_OBJECT_LONG_LONG(operand1_long, operand2_long);
 
-            Py_DECREF(operand1_long);
-            Py_DECREF(operand2_long);
+        Py_DECREF(operand1_long);
+        Py_DECREF(operand2_long);
 
-            {{ goto_exit(props, exit_result_object, "r") }}
-        } else {
-            {{ goto_exit(props, exit_result_ok_clong, "c") }}
-        }
+        {{ goto_exit(props, exit_result_object, "r") }}
     }
     {% do props.update(fall_through_needed = 0) %}
 {% elif operator == ">>" %}

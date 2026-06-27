@@ -59,7 +59,7 @@ bool BINARY_OPERATION_MOD_NILONG_NILONG_DIGIT(nuitka_ilong *result, nuitka_ilong
         ENFORCE_NILONG_OBJECT_VALUE(operand1);
         PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
 
-        obj_result = BINARY_OPERATION_MOD_OBJECT_LONG_LONG(operand1->python_value, operand2_object);
+        obj_result = BINARY_OPERATION_MOD_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
         Py_DECREF(operand2_object);
 
         if (unlikely(obj_result == NULL)) {
@@ -75,7 +75,7 @@ bool BINARY_OPERATION_MOD_NILONG_NILONG_DIGIT(nuitka_ilong *result, nuitka_ilong
 
     } else if (left_c_usable == false && right_c_usable) {
         PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
-        PyObject *python_result = BINARY_OPERATION_MOD_OBJECT_LONG_LONG(operand1->python_value, operand2_object);
+        PyObject *python_result = BINARY_OPERATION_MOD_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
         Py_DECREF(operand2_object);
 
         if (unlikely(python_result == NULL)) {
@@ -140,7 +140,7 @@ bool BINARY_OPERATION_MOD_NILONG_DIGIT_NILONG(nuitka_ilong *result, long operand
         ENFORCE_NILONG_OBJECT_VALUE(operand2);
         PyObject *operand1_object = Nuitka_PyLong_FromLong(operand1);
 
-        obj_result = BINARY_OPERATION_MOD_OBJECT_LONG_LONG(operand1_object, operand2->python_value);
+        obj_result = BINARY_OPERATION_MOD_OBJECT_OBJECT_OBJECT(operand1_object, operand2->python_value);
         Py_DECREF(operand1_object);
 
         if (unlikely(obj_result == NULL)) {
@@ -156,7 +156,7 @@ bool BINARY_OPERATION_MOD_NILONG_DIGIT_NILONG(nuitka_ilong *result, long operand
 
     } else if (left_c_usable && right_c_usable == false) {
         PyObject *operand1_object = Nuitka_PyLong_FromLong(operand1);
-        PyObject *python_result = BINARY_OPERATION_MOD_OBJECT_LONG_LONG(operand1_object, operand2->python_value);
+        PyObject *python_result = BINARY_OPERATION_MOD_OBJECT_OBJECT_OBJECT(operand1_object, operand2->python_value);
         Py_DECREF(operand1_object);
 
         if (unlikely(python_result == NULL)) {
