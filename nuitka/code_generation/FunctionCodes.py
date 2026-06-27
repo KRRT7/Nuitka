@@ -155,6 +155,13 @@ def getFunctionMakerCode(
         constant_return_value,
     ) = function_body.getConstantReturnValue()
 
+    co_consts = [function_body.getDoc() if function_body.getDoc() is not None else None]
+
+    if is_constant_returning and constant_return_value is not None:
+        co_consts.append(constant_return_value)
+
+    function_body.getCodeObject().setConstants(co_consts)
+
     if is_constant_returning:
         function_impl_identifier = "NULL"
 

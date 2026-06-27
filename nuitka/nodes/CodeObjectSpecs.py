@@ -25,6 +25,7 @@ class CodeObjectSpec(object):
         "co_kind",
         "co_varnames",
         "co_argcount",
+        "co_consts",
         "co_freevars",
         "co_posonlyargcount",
         "co_kwonlyargcount",
@@ -55,6 +56,7 @@ class CodeObjectSpec(object):
         future_spec,
         co_new_locals=None,
         co_is_optimized=None,
+        co_consts=(),
     ):
         # pylint: disable=I0021,too-many-locals
 
@@ -87,6 +89,7 @@ class CodeObjectSpec(object):
         self.co_freevars = tuple(co_freevars)
 
         self.co_argcount = int(co_argcount)
+        self.co_consts = tuple(co_consts)
 
         self.co_posonlyargcount = int(co_posonlyargcount)
         self.co_kwonlyargcount = int(co_kwonlyargcount)
@@ -135,9 +138,13 @@ class CodeObjectSpec(object):
 
     def getHash(self):
         return getStringHash(
-            "|".join(
-                "%s=%s" % (key, value)
-                for key, value in sorted(self.getDetails().items())
+            "%s|co_consts=%r"
+            % (
+                "|".join(
+                    "%s=%s" % (key, value)
+                    for key, value in sorted(self.getDetails().items())
+                ),
+                self.co_consts,
             )
         )
 
@@ -189,6 +196,12 @@ class CodeObjectSpec(object):
 
     def getArgumentCount(self):
         return self.co_argcount
+
+    def setConstants(self, co_consts):
+        self.co_consts = tuple(co_consts)
+
+    def getConstants(self):
+        return self.co_consts
 
     def getPosOnlyParameterCount(self):
         return self.co_posonlyargcount

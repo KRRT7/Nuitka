@@ -80,6 +80,11 @@ def _getMakeCodeObjectArgs(code_object_handle, context):
             else "NULL"
         ),
         (
+            context.getConstantCode(constant=code_object_handle.co_consts)
+            if code_object_handle.co_consts
+            else "NULL"
+        ),
+        (
             context.getConstantCode(constant=code_object_handle.co_freevars)
             if code_object_handle.co_freevars
             else "NULL"
@@ -127,7 +132,7 @@ def getCodeObjectsInitCode(context):
                 ),
             )
 
-            code = "%s = MAKE_CODE_OBJECT(module_filename_obj, %s);" % args
+            code = "%s = MAKE_CODE_OBJECT_EX(module_filename_obj, %s);" % args
 
             statements.append(code)
 

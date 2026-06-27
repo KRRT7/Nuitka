@@ -108,6 +108,7 @@ _code_flag_define_names = (
         "NUITKA_CONSTANT_BLOB_CODE_FLAG_FUTURE_BARRY_AS_BDFL",
     ),
     ("code_flag_nofree", "NUITKA_CONSTANT_BLOB_CODE_FLAG_NOFREE"),
+    ("code_flag_consts", "NUITKA_CONSTANT_BLOB_CODE_FLAG_CONSTS"),
 )
 
 _code_kind_define_names = (

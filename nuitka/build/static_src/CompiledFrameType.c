@@ -979,7 +979,11 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
 #if PYTHON_VERSION >= 0x3b0
                              PyObject *function_qualname,
 #endif
-                             PyObject *arg_names, PyObject *free_vars, int arg_count
+                             PyObject *arg_names,
+#if PYTHON_VERSION < 0x3b0
+                             PyObject *code_consts,
+#endif
+                             PyObject *free_vars, int arg_count
 #if PYTHON_VERSION >= 0x300
                              ,
                              int kw_only_count
@@ -987,6 +991,10 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
 #if PYTHON_VERSION >= 0x380
                              ,
                              int pos_only_count
+#endif
+#if PYTHON_VERSION >= 0x3b0
+                             ,
+                             PyObject *code_consts
 #endif
 ) {
 
@@ -1054,6 +1062,12 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
     CHECK_OBJECT(free_vars);
     assert(PyTuple_Check(free_vars));
 
+    if (code_consts == NULL || code_consts == Py_None) {
+        code_consts = const_tuple_empty;
+    }
+    CHECK_OBJECT(code_consts);
+    assert(PyTuple_Check(code_consts));
+
     // The PyCode_New has funny code that interns, mutating the tuple that owns
     // it. Really serious non-immutable shit. We have triggered that changes
     // behind our back in the past.
@@ -1068,13 +1082,13 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
 #if PYTHON_VERSION < 0x300
     PyObject *code = const_str_empty;
     PyObject *lnotab = const_str_empty;
-    PyObject *consts = const_tuple_empty;
+    PyObject *consts = code_consts;
     PyObject *names = const_tuple_empty;
     int stacksize = 0;
 #elif PYTHON_VERSION < 0x3b0
     PyObject *code = const_bytes_empty;
     PyObject *lnotab = const_bytes_empty;
-    PyObject *consts = const_tuple_empty;
+    PyObject *consts = code_consts;
     PyObject *names = const_tuple_empty;
     int stacksize = 0;
 #else
@@ -1082,7 +1096,7 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
     // length anymore, so we need a non-empty one.
     static PyObject *empty_code = NULL;
     static PyObject *lnotab = NULL;
-    static PyObject *consts = NULL;
+    static PyObject *default_consts = NULL;
     static PyObject *names = NULL;
     // TODO: Seems removable.
     static PyObject *exception_table = NULL;
@@ -1092,8 +1106,7 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
         // Only needed once here.
         PyThreadState *tstate = PyThreadState_GET();
 
-        PyObject *empty_code_module_object = Py_CompileString(
-            "def empty(): raise RuntimeError('Compiled function bytecode used')", "<exec>", Py_file_input);
+        PyObject *empty_code_module_object = Py_CompileString("def empty(): return None", "<exec>", Py_file_input);
         PyObject *module = PyImport_ExecCodeModule("nuitka_empty_function", empty_code_module_object);
         CHECK_OBJECT(module);
 
@@ -1113,8 +1126,8 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
         lnotab = PyObject_GetAttrString(empty_code_object, "co_lnotab");
         CHECK_OBJECT(lnotab);
 #endif
-        consts = PyObject_GetAttrString(empty_code_object, "co_consts");
-        CHECK_OBJECT(consts);
+        default_consts = PyObject_GetAttrString(empty_code_object, "co_consts");
+        CHECK_OBJECT(default_consts);
         names = PyObject_GetAttrString(empty_code_object, "co_names");
         CHECK_OBJECT(names);
         exception_table = PyObject_GetAttrString(empty_code_object, "co_exceptiontable");
@@ -1124,6 +1137,7 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
     }
 
     PyObject *code = empty_code;
+    PyObject *consts = PyTuple_GET_SIZE(code_consts) > 0 ? code_consts : default_consts;
     CHECK_OBJECT(empty_code);
     assert(PyBytes_Check(code));
     CHECK_OBJECT(lnotab);

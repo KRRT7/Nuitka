@@ -1184,6 +1184,13 @@ static unsigned char const *_unpackBlobConstantObjectCodeObject(PyThreadState *t
     assert(pos_only_count >= 0);
 #endif
 
+    PyObject *code_consts = NULL;
+
+    if (flags & NUITKA_CONSTANT_BLOB_CODE_FLAG_CONSTS) {
+        _slot = (void *)&code_consts;
+        data = _unpackBlobConstant(tstate, &_slot, data);
+    }
+
     switch (flags & NUITKA_CONSTANT_BLOB_CODE_KIND_MASK) {
 #if PYTHON_VERSION >= 0x360
     case NUITKA_CONSTANT_BLOB_CODE_KIND_ASYNCGEN:
@@ -1262,9 +1269,10 @@ static unsigned char const *_unpackBlobConstantObjectCodeObject(PyThreadState *t
         co_flags += CO_NOFREE;
     }
 
-    _finalizeUnpackedConstantObject(output, (PyObject *)MAKE_CODE_OBJECT(Py_None, line_number, co_flags, function_name,
-                                                                         function_qualname, arg_names, free_vars,
-                                                                         arg_count, kw_only_count, pos_only_count));
+    _finalizeUnpackedConstantObject(
+        output, (PyObject *)MAKE_CODE_OBJECT_EX(Py_None, line_number, co_flags, function_name, function_qualname,
+                                                arg_names, code_consts, free_vars, arg_count, kw_only_count,
+                                                pos_only_count));
 
     return data;
 }
