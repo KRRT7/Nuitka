@@ -1244,14 +1244,19 @@ generate_builtin_type_operations = [
             "index",
             "rindex",
             "capitalize",
+            "casefold",
             "upper",
             "lower",
             "swapcase",
             "title",
             "isalnum",
             "isalpha",
+            "isdecimal",
             "isdigit",
+            "isidentifier",
             "islower",
+            "isnumeric",
+            "isprintable",
             "isupper",
             "isspace",
             "istitle",
@@ -1433,6 +1438,17 @@ def makeHelperBuiltinTypeMethods():
                     emit("#if %s" % type_desc.python_requirement)
 
                 for method_name in sorted(method_names):
+                    method_requirement = None
+
+                    if (
+                        type_desc is unicode_desc
+                        and method_name in python3_str_methods
+                        and method_name not in python2_unicode_methods
+                    ):
+                        method_requirement = "PYTHON_VERSION >= 0x300"
+                        emit_c("#if %s" % method_requirement)
+                        emit_h("#if %s" % method_requirement)
+
                     (
                         present,
                         arg_names,
@@ -1497,6 +1513,10 @@ def makeHelperBuiltinTypeMethods():
 
                         emit_c(code)
                         emit_h(getTemplateCodeDeclaredFunction(code))
+
+                    if method_requirement:
+                        emit_c("#endif")
+                        emit_h("#endif")
                 if type_desc.python_requirement:
                     emit("#endif")
 
