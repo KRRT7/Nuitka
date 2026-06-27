@@ -50,11 +50,6 @@ class ExpressionBuiltinNext1(ExpressionBuiltinSingleArgBase):
         return None
 
     def getTypeShape(self):
-        result = self.getIterationValue(0)
-
-        if result is not None:
-            return result.getTypeShape()
-
         result = self.getIterationValueShape(0)
 
         if result is None:
