@@ -1921,6 +1921,13 @@ operation_result_strorunicode_noescape = (
 operation_result_bytes_noescape = tshape_bytes, ControlFlowDescriptionNoEscape
 operation_result_bytearray_noescape = tshape_bytearray, ControlFlowDescriptionNoEscape
 
+operation_result_str_repeat = tshape_str, ControlFlowDescriptionFullEscape
+operation_result_bytes_repeat = tshape_bytes, ControlFlowDescriptionFullEscape
+operation_result_bytearray_repeat = tshape_bytearray, ControlFlowDescriptionFullEscape
+operation_result_unicode_repeat = tshape_unicode, ControlFlowDescriptionFullEscape
+operation_result_tuple_repeat = tshape_tuple, ControlFlowDescriptionFullEscape
+operation_result_list_repeat = tshape_list, ControlFlowDescriptionFullEscape
+
 operation_result_dict_noescape = tshape_dict, ControlFlowDescriptionNoEscape
 operation_result_dict_valueerror = tshape_dict, ControlFlowDescriptionValueErrorNoEscape
 
@@ -2148,12 +2155,12 @@ mult_shapes_bool.update(
         tshape_float: operation_result_float_noescape,
         tshape_complex: operation_result_complex_noescape,
         # Sequence repeat:
-        tshape_str: operation_result_str_noescape,
-        tshape_bytes: operation_result_bytes_noescape,
-        tshape_bytearray: operation_result_bytearray_noescape,
-        tshape_unicode: operation_result_unicode_noescape,
-        tshape_tuple: operation_result_tuple_noescape,
-        tshape_list: operation_result_list_noescape,
+        tshape_str: operation_result_str_repeat,
+        tshape_bytes: operation_result_bytes_repeat,
+        tshape_bytearray: operation_result_bytearray_repeat,
+        tshape_unicode: operation_result_unicode_repeat,
+        tshape_tuple: operation_result_tuple_repeat,
+        tshape_list: operation_result_list_repeat,
         # Unsupported:
         tshape_set: operation_result_unsupported_mul,
         tshape_frozenset: operation_result_unsupported_mul,
@@ -2487,12 +2494,12 @@ mult_shapes_int.update(
         tshape_float: operation_result_float_noescape,
         tshape_complex: operation_result_complex_noescape,
         # Sequence repeat:
-        tshape_str: operation_result_str_noescape,
-        tshape_bytes: operation_result_bytes_noescape,
-        tshape_bytearray: operation_result_bytearray_noescape,
-        tshape_unicode: operation_result_unicode_noescape,
-        tshape_tuple: operation_result_tuple_noescape,
-        tshape_list: operation_result_list_noescape,
+        tshape_str: operation_result_str_repeat,
+        tshape_bytes: operation_result_bytes_repeat,
+        tshape_bytearray: operation_result_bytearray_repeat,
+        tshape_unicode: operation_result_unicode_repeat,
+        tshape_tuple: operation_result_tuple_repeat,
+        tshape_list: operation_result_list_repeat,
         # Unsupported:
         tshape_set: operation_result_unsupported_mul,
         tshape_frozenset: operation_result_unsupported_mul,
@@ -2825,12 +2832,12 @@ mult_shapes_long.update(
         tshape_float: operation_result_float_noescape,
         tshape_complex: operation_result_complex_noescape,
         # Sequence repeat:
-        tshape_str: operation_result_str_noescape,
-        tshape_bytes: operation_result_bytes_noescape,
-        tshape_bytearray: operation_result_bytearray_noescape,
-        tshape_unicode: operation_result_unicode_noescape,
-        tshape_tuple: operation_result_tuple_noescape,
-        tshape_list: operation_result_list_noescape,
+        tshape_str: operation_result_str_repeat,
+        tshape_bytes: operation_result_bytes_repeat,
+        tshape_bytearray: operation_result_bytearray_repeat,
+        tshape_unicode: operation_result_unicode_repeat,
+        tshape_tuple: operation_result_tuple_repeat,
+        tshape_list: operation_result_list_repeat,
         # Unsupported:
         tshape_set: operation_result_unsupported_mul,
         tshape_frozenset: operation_result_unsupported_mul,
@@ -3519,10 +3526,10 @@ mult_shapes_tuple.update(
         tshape_unicode_derived: operation_result_unknown,
         tshape_bytes_derived: operation_result_unknown,
         # Int is sequence repeat
-        tshape_int: operation_result_tuple_noescape,
-        tshape_long: operation_result_tuple_noescape,
-        tshape_int_or_long: operation_result_tuple_noescape,
-        tshape_bool: operation_result_tuple_noescape,
+        tshape_int: operation_result_tuple_repeat,
+        tshape_long: operation_result_tuple_repeat,
+        tshape_int_or_long: operation_result_tuple_repeat,
+        tshape_bool: operation_result_tuple_repeat,
         tshape_float: operation_result_unsupported_mul,
         tshape_complex: operation_result_unsupported_mul,
         # Sequence repeat is not allowed
@@ -3654,10 +3661,10 @@ mult_shapes_list.update(
         tshape_unicode_derived: operation_result_unknown,
         tshape_bytes_derived: operation_result_unknown,
         # Int is sequence repeat
-        tshape_int: operation_result_list_noescape,
-        tshape_long: operation_result_list_noescape,
-        tshape_int_or_long: operation_result_list_noescape,
-        tshape_bool: operation_result_list_noescape,
+        tshape_int: operation_result_list_repeat,
+        tshape_long: operation_result_list_repeat,
+        tshape_int_or_long: operation_result_list_repeat,
+        tshape_bool: operation_result_list_repeat,
     }
 )
 
@@ -3839,10 +3846,10 @@ mult_shapes_str.update(
         tshape_unicode_derived: operation_result_unknown,
         tshape_bytes_derived: operation_result_unknown,
         # Int is sequence repeat
-        tshape_int: operation_result_str_noescape,
-        tshape_long: operation_result_str_noescape,
-        tshape_int_or_long: operation_result_str_noescape,
-        tshape_bool: operation_result_str_noescape,
+        tshape_int: operation_result_str_repeat,
+        tshape_long: operation_result_str_repeat,
+        tshape_int_or_long: operation_result_str_repeat,
+        tshape_bool: operation_result_str_repeat,
         tshape_float: operation_result_unsupported_mul,
         # Sequence repeat is not allowed
         tshape_str: operation_result_unsupported_mul,
@@ -3933,10 +3940,10 @@ mult_shapes_bytes.update(
         tshape_unicode_derived: operation_result_unknown,
         tshape_bytes_derived: operation_result_unknown,
         # Int is sequence repeat
-        tshape_int: operation_result_bytes_noescape,
-        tshape_long: operation_result_bytes_noescape,
-        tshape_int_or_long: operation_result_bytes_noescape,
-        tshape_bool: operation_result_bytes_noescape,
+        tshape_int: operation_result_bytes_repeat,
+        tshape_long: operation_result_bytes_repeat,
+        tshape_int_or_long: operation_result_bytes_repeat,
+        tshape_bool: operation_result_bytes_repeat,
         tshape_float: operation_result_unsupported_mul,
         # Sequence repeat is not allowed
         tshape_str: operation_result_unsupported_mul,
@@ -4033,10 +4040,10 @@ mult_shapes_bytearray.update(
         tshape_unicode_derived: operation_result_unknown,
         tshape_bytes_derived: operation_result_unknown,
         # Int is sequence repeat
-        tshape_int: operation_result_bytearray_noescape,
-        tshape_long: operation_result_bytearray_noescape,
-        tshape_int_or_long: operation_result_bytearray_noescape,
-        tshape_bool: operation_result_bytearray_noescape,
+        tshape_int: operation_result_bytearray_repeat,
+        tshape_long: operation_result_bytearray_repeat,
+        tshape_int_or_long: operation_result_bytearray_repeat,
+        tshape_bool: operation_result_bytearray_repeat,
         tshape_float: operation_result_unsupported_mul,
         # Sequence repeat is not allowed
         tshape_str: operation_result_unsupported_mul,
@@ -4129,10 +4136,10 @@ mult_shapes_unicode.update(
         tshape_unicode_derived: operation_result_unknown,
         tshape_bytes_derived: operation_result_unknown,
         # Int is sequence repeat
-        tshape_int: operation_result_unicode_noescape,
-        tshape_long: operation_result_unicode_noescape,
-        tshape_int_or_long: operation_result_unicode_noescape,
-        tshape_bool: operation_result_unicode_noescape,
+        tshape_int: operation_result_unicode_repeat,
+        tshape_long: operation_result_unicode_repeat,
+        tshape_int_or_long: operation_result_unicode_repeat,
+        tshape_bool: operation_result_unicode_repeat,
         tshape_float: operation_result_unsupported_mul,
         # Sequence repeat is not allowed
         tshape_str: operation_result_unsupported_mul,

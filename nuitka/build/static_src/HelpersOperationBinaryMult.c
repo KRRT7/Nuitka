@@ -3130,6 +3130,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_STR_INT(PyObject *operand1, PyObj
 
         {
             Py_ssize_t count = PyInt_AS_LONG(index_value);
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyString_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand1, count);
@@ -3190,6 +3193,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_STR(PyObject *operand1, PyObj
 
         {
             Py_ssize_t count = PyInt_AS_LONG(index_value);
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyString_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -3247,6 +3253,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_UNICODE_INT(PyObject *operand1, P
 
         {
             Py_ssize_t count = PyInt_AS_LONG(index_value);
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyUnicode_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand1, count);
@@ -3307,6 +3316,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_UNICODE(PyObject *operand1, P
 
         {
             Py_ssize_t count = PyInt_AS_LONG(index_value);
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyUnicode_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -3364,6 +3376,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_TUPLE_INT(PyObject *operand1, PyO
 
         {
             Py_ssize_t count = PyInt_AS_LONG(index_value);
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyTuple_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand1, count);
@@ -3424,6 +3439,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_TUPLE(PyObject *operand1, PyO
 
         {
             Py_ssize_t count = PyInt_AS_LONG(index_value);
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyTuple_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -3481,6 +3499,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_LIST_INT(PyObject *operand1, PyOb
 
         {
             Py_ssize_t count = PyInt_AS_LONG(index_value);
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyList_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand1, count);
@@ -3541,6 +3562,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_INT_LIST(PyObject *operand1, PyOb
 
         {
             Py_ssize_t count = PyInt_AS_LONG(index_value);
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyList_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -3606,6 +3630,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_UNICODE_LONG(PyObject *operand1, 
 #else
                 PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
 #endif
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
                 goto exit_binary_exception;
             }
             {
@@ -3677,6 +3704,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_LONG_UNICODE(PyObject *operand1, 
 #endif
                 goto exit_binary_exception;
             }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyUnicode_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -3737,6 +3767,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_BYTES_LONG(PyObject *operand1, Py
             /* Above conversion indicates an error as -1 */
             if (unlikely(count == -1)) {
                 PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
                 goto exit_binary_exception;
             }
             {
@@ -3805,6 +3838,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_LONG_BYTES(PyObject *operand1, Py
                 PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
                 goto exit_binary_exception;
             }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyBytes_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -3869,6 +3905,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_TUPLE_LONG(PyObject *operand1, Py
 #else
                 PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
 #endif
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
                 goto exit_binary_exception;
             }
             {
@@ -3939,6 +3978,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_LONG_TUPLE(PyObject *operand1, Py
 #endif
                 goto exit_binary_exception;
             }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyTuple_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -4002,6 +4044,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_LIST_LONG(PyObject *operand1, PyO
 #else
                 PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
 #endif
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
                 goto exit_binary_exception;
             }
             {
@@ -4070,6 +4115,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_LONG_LIST(PyObject *operand1, PyO
 #else
                 PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
 #endif
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
                 goto exit_binary_exception;
             }
             {
@@ -4202,6 +4250,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_STR(PyObject *operand1, Py
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type1->tp_name);
                 goto exit_binary_exception;
             }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyString_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -4325,6 +4376,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_STR_OBJECT(PyObject *operand1, Py
             /* Above conversion indicates an error as -1 */
             if (unlikely(count == -1)) {
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
                 goto exit_binary_exception;
             }
             {
@@ -4457,6 +4511,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_UNICODE(PyObject *operand1
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type1->tp_name);
                 goto exit_binary_exception;
             }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyUnicode_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -4578,6 +4635,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_UNICODE_OBJECT(PyObject *operand1
             /* Above conversion indicates an error as -1 */
             if (unlikely(count == -1)) {
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
                 goto exit_binary_exception;
             }
             {
@@ -4710,6 +4770,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_BYTES(PyObject *operand1, 
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type1->tp_name);
                 goto exit_binary_exception;
             }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyBytes_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -4833,6 +4896,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_BYTES_OBJECT(PyObject *operand1, 
             /* Above conversion indicates an error as -1 */
             if (unlikely(count == -1)) {
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
                 goto exit_binary_exception;
             }
             {
@@ -4965,6 +5031,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_TUPLE(PyObject *operand1, 
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type1->tp_name);
                 goto exit_binary_exception;
             }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyTuple_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -5086,6 +5155,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_TUPLE_OBJECT(PyObject *operand1, 
             /* Above conversion indicates an error as -1 */
             if (unlikely(count == -1)) {
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
                 goto exit_binary_exception;
             }
             {
@@ -5217,6 +5289,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_LIST(PyObject *operand1, P
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type1->tp_name);
                 goto exit_binary_exception;
             }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                goto exit_binary_exception;
+            }
             {
                 ssizeargfunc repeatfunc = PyList_Type.tp_as_sequence->sq_repeat;
                 PyObject *r = (*repeatfunc)(operand2, count);
@@ -5338,6 +5413,9 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_LIST_OBJECT(PyObject *operand1, P
             /* Above conversion indicates an error as -1 */
             if (unlikely(count == -1)) {
                 PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
+                goto exit_binary_exception;
+            }
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
                 goto exit_binary_exception;
             }
             {

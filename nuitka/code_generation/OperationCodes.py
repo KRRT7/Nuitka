@@ -16,6 +16,7 @@ from .BinaryOperationHelperDefinitions import (
     getSpecializedBinaryOperations,
 )
 from .c_types.CTypeBooleans import CTypeBool
+from .c_types.CTypeCLongs import CTypeCLongDigit
 from .c_types.CTypeNuitkaBooleans import CTypeNuitkaBoolEnum
 from .c_types.CTypeNuitkaInts import CTypeNuitkaIntOrLongStruct
 from .c_types.CTypeNuitkaVoids import CTypeNuitkaVoidEnum
@@ -172,23 +173,24 @@ def _getBinaryOperationCode(
             or right_c_type is CTypeNuitkaIntOrLongStruct
         )
     ):
-        helper_type, helper_function = selectCodeHelper(
-            prefix=prefix,
-            specialized_helpers_set=specialized_helpers_set,
-            non_specialized_helpers_set=non_specialized_helpers_set,
-            result_type=CTypeNuitkaIntOrLongStruct,
-            left_shape=left_shape,
-            right_shape=right_shape,
-            left_c_type=left_c_type,
-            right_c_type=right_c_type,
-            argument_swap=needs_argument_swap,
-            report_missing=False,
-            source_ref=source_ref,
-        )
+        if _hasDualIntBinaryHelper(operator, left_c_type, right_c_type):
+            helper_type, helper_function = selectCodeHelper(
+                prefix=prefix,
+                specialized_helpers_set=specialized_helpers_set,
+                non_specialized_helpers_set=non_specialized_helpers_set,
+                result_type=CTypeNuitkaIntOrLongStruct,
+                left_shape=left_shape,
+                right_shape=right_shape,
+                left_c_type=left_c_type,
+                right_c_type=right_c_type,
+                argument_swap=needs_argument_swap,
+                report_missing=False,
+                source_ref=source_ref,
+            )
 
-        dual_binary_result = helper_function is not None
-        if not dual_binary_result:
-            helper_type = target_type
+            dual_binary_result = helper_function is not None
+            if not dual_binary_result:
+                helper_type = target_type
 
     if helper_type is not None and not dual_inplace_binary_result:
         if needs_check and helper_type is not None:
@@ -456,6 +458,20 @@ def _getBinaryOperationCode(
                 emit=emit,
                 context=context,
             )
+
+
+def _hasDualIntBinaryHelper(operator, left_c_type, right_c_type):
+    if left_c_type is CTypeNuitkaIntOrLongStruct:
+        if right_c_type is CTypeCLongDigit:
+            return True
+
+        if operator in ("Add", "Sub"):
+            return right_c_type is CTypeNuitkaIntOrLongStruct
+
+    if right_c_type is CTypeNuitkaIntOrLongStruct:
+        return left_c_type is CTypeCLongDigit
+
+    return False
 
 
 unary_operator_codes = {

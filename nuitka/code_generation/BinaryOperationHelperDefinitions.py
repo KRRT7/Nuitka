@@ -317,11 +317,6 @@ def _makeMultOps(in_place):
         ),
         _makeFriendOps(
             "MULT",
-            friend_type_names=("LONG", "BYTES"),
-            result_types=None if in_place else ("OBJECT",),
-        ),
-        _makeFriendOps(
-            "MULT",
             friend_type_names=("LONG", "TUPLE"),
             result_types=None if in_place else ("OBJECT",),
         ),
@@ -382,6 +377,17 @@ specialized_floordiv_helpers_set = _makeDivOps(
     "FLOORDIV",
     # For integer-like inputs this can stay int/long shaped to avoid object roundtrips.
     result_types=("NILONG", "OBJECT"),
+)
+
+specialized_floordiv_helpers_set = OrderedSet(
+    helper_name
+    for helper_name in specialized_floordiv_helpers_set
+    if not helper_name.startswith("BINARY_OPERATION_FLOORDIV_NILONG_")
+    or helper_name
+    in (
+        "BINARY_OPERATION_FLOORDIV_NILONG_NILONG_DIGIT",
+        "BINARY_OPERATION_FLOORDIV_NILONG_DIGIT_NILONG",
+    )
 )
 
 nonspecialized_floordiv_helpers_set = OrderedSet(
