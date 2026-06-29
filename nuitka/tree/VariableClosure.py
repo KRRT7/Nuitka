@@ -62,7 +62,28 @@ class VariableClosureLookupVisitorPhase1(VisitorNoopMixin):
     """
 
     @staticmethod
-    def _handleNonLocal(node):
+    def _hasAssignmentInProvider(provider, variable_name):
+        class AssignmentFinder(VisitorNoopMixin):
+            found = False
+
+            def onEnterNode(self, node):
+                if self.found:
+                    return
+
+                if (
+                    node.isStatementAssignmentVariableName()
+                    and node.provider is provider
+                    and node.getVariableName() == variable_name
+                ):
+                    self.found = True
+
+        visitor = AssignmentFinder()
+        visitTree(provider, visitor)
+
+        return visitor.found
+
+    @classmethod
+    def _handleNonLocal(cls, node):
         # Take closure variables for non-local declarations.
 
         for (
@@ -74,10 +95,26 @@ class VariableClosureLookupVisitorPhase1(VisitorNoopMixin):
                 variable = node.takeVariableForClosure(variable_name=non_local_name)
 
                 if variable.isModuleVariable() and user_provided:
-                    raiseSyntaxError(
-                        "no binding for nonlocal '%s' found" % (non_local_name),
-                        source_ref,
-                    )
+                    if node.isExpressionClassBodyBase():
+                        provider = node.getParentVariableProvider()
+
+                        while provider.isExpressionClassBodyBase():
+                            provider = provider.getParentVariableProvider()
+
+                        if (
+                            provider.isExpressionFunctionBodyBase()
+                            and cls._hasAssignmentInProvider(
+                                provider=provider, variable_name=non_local_name
+                            )
+                        ):
+                            node.taken.discard(variable)
+                            variable = provider.getProvidedVariable(non_local_name)
+
+                    if variable.isModuleVariable():
+                        raiseSyntaxError(
+                            "no binding for nonlocal '%s' found" % (non_local_name),
+                            source_ref,
+                        )
 
                 if node.isExpressionClassBodyBase() and non_local_name == "__class__":
                     pass
