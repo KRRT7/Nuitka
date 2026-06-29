@@ -717,11 +717,22 @@ def buildTemplateStringNode(provider, node, source_ref):
 
 def buildInterpolationNode(provider, node, source_ref):
     """Python3.14 or higher, interpolations in template strings."""
+    if node.conversion == -1:
+        conversion = 0
+    elif node.conversion == ord("s"):
+        conversion = 1
+    elif node.conversion == ord("r"):
+        conversion = 2
+    elif node.conversion == ord("a"):
+        conversion = 3
+    else:
+        assert False, node.conversion
+
     return ExpressionTemplateInterpolation(
         value=buildNode(provider, node.value, source_ref),
         str_value=node.str,
         format_spec=buildNode(provider, node.format_spec, source_ref, allow_none=True),
-        conversion=node.conversion,
+        conversion=conversion,
         source_ref=source_ref,
     )
 

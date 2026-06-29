@@ -42,7 +42,7 @@ class ExpressionTemplateInterpolation(ExpressionTemplateInterpolationBase):
     )
 
     def __init__(self, value, format_spec, str_value, conversion, source_ref):
-        assert conversion == -1, conversion
+        assert conversion in (-1, 0, 1, 2, 3), conversion
 
         ExpressionTemplateInterpolationBase.__init__(
             self,
