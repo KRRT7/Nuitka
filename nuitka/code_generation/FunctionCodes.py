@@ -155,7 +155,17 @@ def getFunctionMakerCode(
         constant_return_value,
     ) = function_body.getConstantReturnValue()
 
-    co_consts = [function_body.getDoc() if function_body.getDoc() is not None else None]
+    function_doc_value = function_body.getDoc()
+
+    if (
+        python_version >= 0x3E0
+        and function_doc_value is None
+        and is_constant_returning
+        and constant_return_value is not None
+    ):
+        co_consts = []
+    else:
+        co_consts = [function_doc_value if function_doc_value is not None else None]
 
     if is_constant_returning and constant_return_value is not None:
         co_consts.append(constant_return_value)

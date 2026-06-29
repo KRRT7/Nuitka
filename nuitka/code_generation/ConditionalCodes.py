@@ -46,6 +46,7 @@ def generateConditionalAndOrCode(to_name, expression, emit, context):
 
     true_target = context.allocateLabel(prefix + "left")
     false_target = context.allocateLabel(prefix + "right")
+    right_eval_target = context.allocateLabel(prefix + "right_eval")
     end_target = context.allocateLabel(prefix + "end")
 
     old_true_target = context.getTrueBranchTarget()
@@ -56,22 +57,113 @@ def generateConditionalAndOrCode(to_name, expression, emit, context):
     left_name = context.allocateTempName(prefix + "left_value", to_name.c_type)
     right_name = context.allocateTempName(prefix + "right_value", to_name.c_type)
 
-    left_value = expression.subnode_left
-
-    generateExpressionCode(
-        to_name=left_name, expression=left_value, emit=emit, context=context
-    )
-
-    # We need to treat this mostly manually here. We remember to release
-    # this, and we better do this manually later.
-    needs_ref1 = context.needsCleanup(left_name)
-
     if expression.isExpressionConditionalOr():
         context.setTrueBranchTarget(true_target)
         context.setFalseBranchTarget(false_target)
     else:
         context.setTrueBranchTarget(false_target)
         context.setFalseBranchTarget(true_target)
+
+    left_value = expression.subnode_left
+
+    if expression.isExpressionConditionalOr() and left_value.isExpressionConditionalAnd():
+        left_inner_value = left_value.subnode_left
+        inner_right_target = context.allocateLabel("or_left_and_right")
+
+        context.setTrueBranchTarget(inner_right_target)
+        context.setFalseBranchTarget(right_eval_target)
+
+        generateExpressionCode(
+            to_name=left_name, expression=left_inner_value, emit=emit, context=context
+        )
+
+        left_name.getCType().emitTruthCheckCode(
+            to_name=truth_name,
+            value_name=left_name,
+            emit=emit,
+        )
+
+        needs_check = left_inner_value.mayRaiseExceptionBool(BaseException)
+
+        if needs_check:
+            getErrorExitBoolCode(
+                condition="%s == -1" % truth_name,
+                needs_check=True,
+                release_name=left_name,
+                emit=emit,
+                context=context,
+            )
+
+        # The false result of an inner "and" is discarded by the outer "or".
+        # Branch directly to the outer right side and avoid calling __bool__
+        # on that value a second time.
+        getReleaseCode(release_name=left_name, emit=emit, context=context)
+        getBranchingCode(condition="%s == 1" % truth_name, emit=emit, context=context)
+
+        getLabelCode(inner_right_target, emit)
+        context.setTrueBranchTarget(true_target)
+        context.setFalseBranchTarget(false_target)
+
+        left_value = left_value.subnode_right
+
+        generateExpressionCode(
+            to_name=left_name, expression=left_value, emit=emit, context=context
+        )
+
+        needs_ref1 = context.needsCleanup(left_name)
+    elif expression.isExpressionConditionalAnd() and left_value.isExpressionConditionalOr():
+        left_inner_value = left_value.subnode_left
+        inner_right_target = context.allocateLabel("and_left_or_right")
+
+        context.setTrueBranchTarget(right_eval_target)
+        context.setFalseBranchTarget(inner_right_target)
+
+        generateExpressionCode(
+            to_name=left_name, expression=left_inner_value, emit=emit, context=context
+        )
+
+        left_name.getCType().emitTruthCheckCode(
+            to_name=truth_name,
+            value_name=left_name,
+            emit=emit,
+        )
+
+        needs_check = left_inner_value.mayRaiseExceptionBool(BaseException)
+
+        if needs_check:
+            getErrorExitBoolCode(
+                condition="%s == -1" % truth_name,
+                needs_check=True,
+                release_name=left_name,
+                emit=emit,
+                context=context,
+            )
+
+        # The true result of an inner "or" is discarded by the outer "and".
+        # Branch directly to the outer right side and avoid calling __bool__
+        # on that value a second time.
+        getReleaseCode(release_name=left_name, emit=emit, context=context)
+        getBranchingCode(condition="%s == 1" % truth_name, emit=emit, context=context)
+
+        getLabelCode(inner_right_target, emit)
+        context.setTrueBranchTarget(false_target)
+        context.setFalseBranchTarget(true_target)
+
+        left_value = left_value.subnode_right
+
+        generateExpressionCode(
+            to_name=left_name, expression=left_value, emit=emit, context=context
+        )
+
+        needs_ref1 = context.needsCleanup(left_name)
+    else:
+        generateExpressionCode(
+            to_name=left_name, expression=left_value, emit=emit, context=context
+        )
+
+        # We need to treat this mostly manually here. We remember to release
+        # this, and we better do this manually later.
+        needs_ref1 = context.needsCleanup(left_name)
 
     left_name.getCType().emitTruthCheckCode(
         to_name=truth_name,
@@ -96,6 +188,7 @@ def generateConditionalAndOrCode(to_name, expression, emit, context):
     # So it's not the left value, then lets release that one right away, it
     # is not needed, but we remember if it should be added above.
     getReleaseCode(release_name=left_name, emit=emit, context=context)
+    getLabelCode(right_eval_target, emit)
 
     right_value = expression.subnode_right
 
