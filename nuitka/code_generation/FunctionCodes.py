@@ -3,6 +3,7 @@
 
 """Code to generate and interact with compiled function objects."""
 
+from nuitka.Constants import isMutable
 from nuitka.PythonVersions import python_version
 from nuitka.Tracing import general
 
@@ -51,6 +52,43 @@ from .VariableCodes import (
     decideLocalVariableCodeType,
     getLocalVariableDeclaration,
 )
+
+
+def _collectCodeObjectConstantsFromNode(node, result):
+    if (
+        hasattr(node, "isExpressionFunctionBodyBase")
+        and node.isExpressionFunctionBodyBase()
+    ):
+        return
+
+    if (
+        hasattr(node, "isCompileTimeConstant")
+        and hasattr(node, "getCompileTimeConstant")
+        and node.isCompileTimeConstant()
+    ):
+        constant = node.getCompileTimeConstant()
+
+        if not isMutable(constant) and constant not in result:
+            result.append(constant)
+
+    for child in node.getVisitableNodes():
+        if child is not None:
+            _collectCodeObjectConstantsFromNode(child, result)
+
+
+def _collectCodeObjectConstants(function_body):
+    body = function_body.subnode_body
+
+    if body is None:
+        return ()
+
+    result = []
+
+    for child in body.getVisitableNodes():
+        if child is not None:
+            _collectCodeObjectConstantsFromNode(child, result)
+
+    return result
 
 
 def getFunctionQualnameObj(owner, context):
@@ -168,7 +206,19 @@ def getFunctionMakerCode(
         co_consts = [function_doc_value if function_doc_value is not None else None]
 
     if is_constant_returning and constant_return_value is not None:
+        if (
+            python_version >= 0x3E0
+            and type(constant_return_value) is tuple
+            and constant_return_value
+        ):
+            first_value = constant_return_value[0]
+
+            if not isMutable(first_value) and first_value not in co_consts:
+                co_consts.append(first_value)
+
         co_consts.append(constant_return_value)
+    elif not is_constant_returning:
+        co_consts.extend(_collectCodeObjectConstants(function_body))
 
     function_body.getCodeObject().setConstants(co_consts)
 
