@@ -121,6 +121,11 @@ static PyObject *Nuitka_Generator_tp_repr(struct Nuitka_GeneratorObject *generat
 #endif
 }
 
+static PyObject *Nuitka_Generator_get_class(PyObject *self, void *data) {
+    Py_INCREF((PyObject *)&PyGen_Type);
+    return (PyObject *)&PyGen_Type;
+}
+
 static long Nuitka_Generator_tp_traverse(struct Nuitka_GeneratorObject *generator, visitproc visit, void *arg) {
     CHECK_OBJECT(generator);
 
@@ -1738,6 +1743,7 @@ static int Nuitka_Generator_set_running(PyObject *self, PyObject *value, void *d
 // spell-checker: ignore gi_yieldfrom
 
 static PyGetSetDef Nuitka_Generator_tp_getset[] = {
+    {(char *)"__class__", Nuitka_Generator_get_class, NULL, NULL},
 #if PYTHON_VERSION < 0x350
     {(char *)"__name__", Nuitka_Generator_get_name, NULL, NULL},
 #else

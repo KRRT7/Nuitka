@@ -80,7 +80,7 @@ class VariableClosureLookupVisitorPhase0(VisitorNoopMixin):
         if node.isStatementAssignmentVariableName():
             provider = node.provider
 
-            if not provider.isExpressionFunctionBodyBase():
+            if not provider.isExpressionFunctionBody():
                 return
 
             variable_name = node.getVariableName()

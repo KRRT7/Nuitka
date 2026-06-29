@@ -62,6 +62,28 @@ static PyObject *_Nuitka_Coroutine_send(PyThreadState *tstate, struct Nuitka_Cor
 
 static Py_hash_t Nuitka_Coroutine_tp_hash(struct Nuitka_CoroutineObject *coroutine) { return coroutine->m_counter; }
 
+static void Nuitka_Coroutine_clear_frame(struct Nuitka_CoroutineObject *coroutine) {
+    if (coroutine->m_frame != NULL) {
+        Nuitka_SetFrameGenerator(coroutine->m_frame, NULL);
+        Py_DECREF(coroutine->m_frame);
+        coroutine->m_frame = NULL;
+    }
+}
+
+static bool Nuitka_Coroutine_ensure_frame(PyThreadState *tstate, struct Nuitka_CoroutineObject *coroutine) {
+    if (coroutine->m_frame == NULL && coroutine->m_status == status_Unused) {
+        coroutine->m_frame = MAKE_FUNCTION_FRAME(tstate, coroutine->m_code_object, coroutine->m_module, 0);
+
+        if (unlikely(coroutine->m_frame == NULL)) {
+            return false;
+        }
+
+        Nuitka_SetFrameGenerator(coroutine->m_frame, (PyObject *)coroutine);
+    }
+
+    return true;
+}
+
 static PyObject *Nuitka_Coroutine_get_name(PyObject *self, void *data) {
     CHECK_OBJECT(self);
 
@@ -134,6 +156,11 @@ static PyObject *Nuitka_Coroutine_get_cr_await(PyObject *self, void *data) {
     }
 }
 
+static PyObject *Nuitka_Coroutine_get_class(PyObject *self, void *data) {
+    Py_INCREF((PyObject *)&PyCoro_Type);
+    return (PyObject *)&PyCoro_Type;
+}
+
 static PyObject *Nuitka_Coroutine_get_code(PyObject *self, void *data) {
     struct Nuitka_CoroutineObject *coroutine = (struct Nuitka_CoroutineObject *)self;
     CHECK_OBJECT(coroutine);
@@ -156,6 +183,10 @@ static PyObject *Nuitka_Coroutine_get_frame(PyObject *self, void *data) {
     struct Nuitka_CoroutineObject *coroutine = (struct Nuitka_CoroutineObject *)self;
     CHECK_OBJECT(coroutine);
     CHECK_OBJECT_X(coroutine->m_frame);
+
+    if (unlikely(Nuitka_Coroutine_ensure_frame(PyThreadState_GET(), coroutine) == false)) {
+        return NULL;
+    }
 
     if (coroutine->m_frame) {
         Py_INCREF(coroutine->m_frame);
@@ -513,12 +544,7 @@ static PySendResult _Nuitka_Coroutine_sendR(PyThreadState *tstate, struct Nuitka
             PRINT_NEW_LINE();
 #endif
             Nuitka_MarkCoroutineAsFinished(coroutine);
-
-            if (coroutine->m_frame != NULL) {
-                Nuitka_SetFrameGenerator(coroutine->m_frame, NULL);
-                Py_DECREF(coroutine->m_frame);
-                coroutine->m_frame = NULL;
-            }
+            Nuitka_Coroutine_clear_frame(coroutine);
 
             Nuitka_Coroutine_release_closure(coroutine);
 
@@ -669,6 +695,10 @@ static bool _Nuitka_Coroutine_close(PyThreadState *tstate, struct Nuitka_Corouti
         } else {
             return DROP_ERROR_OCCURRED_GENERATOR_EXIT_OR_STOP_ITERATION(tstate);
         }
+    } else if (coroutine->m_status == status_Unused) {
+        Nuitka_MarkCoroutineAsFinished(coroutine);
+        Nuitka_Coroutine_clear_frame(coroutine);
+        Nuitka_Coroutine_release_closure(coroutine);
     }
 
     return true;
@@ -1004,7 +1034,7 @@ static PyObject *Nuitka_Coroutine_tp_repr(struct Nuitka_CoroutineObject *corouti
     CHECK_OBJECT(coroutine);
     CHECK_OBJECT(coroutine->m_qualname);
 
-    return PyUnicode_FromFormat("<compiled_coroutine object %s at %p>", Nuitka_String_AsString(coroutine->m_qualname),
+    return PyUnicode_FromFormat("<coroutine object %s at %p>", Nuitka_String_AsString(coroutine->m_qualname),
                                 coroutine);
 }
 
@@ -1173,6 +1203,7 @@ static PyMethodDef Nuitka_Coroutine_methods[] = {{"send", (PyCFunction)Nuitka_Co
 // TODO: Set "__doc__" automatically for method clones of compiled types from
 // the documentation of built-in original type.
 static PyGetSetDef Nuitka_Coroutine_tp_getset[] = {
+    {(char *)"__class__", Nuitka_Coroutine_get_class, NULL, NULL},
     {(char *)"__name__", Nuitka_Coroutine_get_name, Nuitka_Coroutine_set_name, NULL},
     {(char *)"__qualname__", Nuitka_Coroutine_get_qualname, Nuitka_Coroutine_set_qualname, NULL},
     {(char *)"cr_await", Nuitka_Coroutine_get_cr_await, NULL, NULL},
@@ -1544,12 +1575,16 @@ static inline PyCodeObject *_Nuitka_PyGen_GetCode(PyGenObject *gen) {
 }
 
 static int gen_is_coroutine(PyObject *object) {
-    if (PyGen_CheckExact(object)) {
-        PyCodeObject *code = _Nuitka_PyGen_GetCode((PyGenObject *)object);
+    PyCodeObject *code = NULL;
 
-        if (code->co_flags & CO_ITERABLE_COROUTINE) {
-            return 1;
-        }
+    if (PyGen_CheckExact(object)) {
+        code = _Nuitka_PyGen_GetCode((PyGenObject *)object);
+    } else if (Nuitka_Generator_Check(object)) {
+        code = ((struct Nuitka_GeneratorObject *)object)->m_code_object;
+    }
+
+    if (code != NULL && code->co_flags & CO_ITERABLE_COROUTINE) {
+        return 1;
     }
 
     return 0;

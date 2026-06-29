@@ -1018,6 +1018,11 @@ static PyObject *Nuitka_Asyncgen_tp_repr(struct Nuitka_AsyncgenObject *asyncgen)
                                 Nuitka_String_AsString(asyncgen->m_qualname), asyncgen);
 }
 
+static PyObject *Nuitka_Asyncgen_get_class(PyObject *self, void *data) {
+    Py_INCREF((PyObject *)&PyAsyncGen_Type);
+    return (PyObject *)&PyAsyncGen_Type;
+}
+
 static int Nuitka_Asyncgen_tp_traverse(struct Nuitka_AsyncgenObject *asyncgen, visitproc visit, void *arg) {
     CHECK_OBJECT(asyncgen);
 
@@ -1057,6 +1062,7 @@ static PyAsyncMethods Nuitka_Asyncgen_as_async = {
 // TODO: Set "__doc__" automatically for method clones of compiled types from
 // the documentation of built-in original type.
 static PyGetSetDef Nuitka_Asyncgen_tp_getset[] = {
+    {(char *)"__class__", Nuitka_Asyncgen_get_class, NULL, NULL},
     {(char *)"__name__", Nuitka_Asyncgen_get_name, Nuitka_Asyncgen_set_name, NULL},
     {(char *)"__qualname__", Nuitka_Asyncgen_get_qualname, Nuitka_Asyncgen_set_qualname, NULL},
     {(char *)"ag_await", Nuitka_Asyncgen_get_ag_await, NULL, NULL},
