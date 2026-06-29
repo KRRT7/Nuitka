@@ -85,7 +85,7 @@ def _makeIteratorCreation(provider, qual, for_asyncgen, source_ref):
             source_ref=source_ref,
         )
 
-        if not for_asyncgen or python_version < 0x370:
+        if python_version < 0x370:
             result = ExpressionYieldFromAwaitable(
                 expression=result, source_ref=source_ref
             )
@@ -463,7 +463,11 @@ def _buildContractionBodyNode(
         if qual is node.generators[0]:
             iterator_ref = makeVariableRefNode(variable=iter_tmp, source_ref=source_ref)
 
-            if for_asyncgen and python_version >= 0x370:
+            if (
+                for_asyncgen
+                and python_version < 0x370
+                and getattr(qual, "is_async", 0)
+            ):
                 iterator_ref = ExpressionYieldFromAwaitable(
                     expression=iterator_ref, source_ref=source_ref
                 )

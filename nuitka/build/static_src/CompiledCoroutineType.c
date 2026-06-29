@@ -107,6 +107,13 @@ int Nuitka_Coroutine_warn_unawaited(struct Nuitka_CoroutineObject *coroutine) {
     Py_DECREF(warn_func);
 
     if (unlikely(result == NULL)) {
+        struct Nuitka_ExceptionPreservationItem saved_exception;
+        FETCH_ERROR_OCCURRED_STATE(PyThreadState_GET(), &saved_exception);
+
+        (void)PyErr_WarnFormat(PyExc_RuntimeWarning, 1, "coroutine '%S' was never awaited", coroutine->m_qualname);
+
+        RESTORE_ERROR_OCCURRED_STATE(PyThreadState_GET(), &saved_exception);
+
         return -1;
     }
 
@@ -1690,7 +1697,11 @@ static PyObject *Nuitka_GetAwaitableIter(PyThreadState *tstate, PyObject *value)
         return result;
     }
 
+#if PYTHON_VERSION >= 0x3e0
     PyErr_Format(PyExc_TypeError, "'%.200s' object can't be awaited", Nuitka_GetShortTypeName(value));
+#else
+    PyErr_Format(PyExc_TypeError, "object %.200s can't be used in 'await' expression", Nuitka_GetShortTypeName(value));
+#endif
 
     return NULL;
 }
@@ -1936,9 +1947,11 @@ PyObject *ASYNC_MAKE_ITERATOR(PyThreadState *tstate, PyObject *value) {
         Py_DECREF(iter);
         return NULL;
     }
+
+    return iter;
 #endif
 
-#if PYTHON_VERSION >= 0x352
+#if PYTHON_VERSION >= 0x352 && PYTHON_VERSION < 0x370
     /* Starting with Python 3.5.2 it is acceptable to return an async iterator
      * directly, instead of an awaitable.
      */

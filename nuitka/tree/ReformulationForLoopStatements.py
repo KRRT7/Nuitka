@@ -23,6 +23,7 @@ from nuitka.nodes.shapes.BuiltinTypeShapes import tshape_xrange
 from nuitka.nodes.VariableAssignNodes import makeStatementAssignmentVariable
 from nuitka.nodes.VariableRefNodes import ExpressionTempVariableRef
 from nuitka.nodes.YieldNodes import ExpressionYieldFromAwaitable
+from nuitka.PythonVersions import python_version
 
 from .ReformulationAssignmentStatements import buildAssignmentStatements
 from .ReformulationTryExceptStatements import makeTryExceptSingleHandlerNode
@@ -206,12 +207,16 @@ def _buildForLoopNode(provider, node, sync, source_ref):
         iter_source = ExpressionBuiltinIter1(
             value=source, source_ref=source.getSourceReference()
         )
-    else:
+    elif python_version < 0x370:
         iter_source = ExpressionYieldFromAwaitable(
             expression=ExpressionAsyncIter(
                 value=source, source_ref=source.getSourceReference()
             ),
             source_ref=source.getSourceReference(),
+        )
+    else:
+        iter_source = ExpressionAsyncIter(
+            value=source, source_ref=source.getSourceReference()
         )
 
     statements += (

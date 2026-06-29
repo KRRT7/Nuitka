@@ -197,12 +197,10 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
         source_ref=source_ref,
     )
 
-    # Next, assign "__enter__" and "__exit__" attributes to temporary variables, and
-    # depending on Python versions switch the order of these lookups and the order of
-    # awaiting enter.
-    # Normal "with" statements are enter, exit ordered after 3.6, and "async with"
-    # are since 3.9, and since 3.9 the enter is not awaited, until an exit is present.
-    if python_version >= 0x390 and not sync:
+    # Next, assign "__enter__" and "__exit__" attributes to temporary variables,
+    # and depending on Python versions switch the order of these lookups and the
+    # order of awaiting enter.
+    if not sync and python_version >= 0x390:
         enter_await_statement = makeStatementAssignmentVariable(
             variable=tmp_enter_variable,
             source=ExpressionYieldFromAwaitable(
@@ -217,11 +215,19 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
             source_ref=source_ref,
         )
 
-        attribute_assignments = (
-            attribute_exit_assignment,
-            attribute_enter_assignment,
-            enter_await_statement,
-        )
+        # Python 3.14 changed async-with to look up __aexit__ before __aenter__.
+        if python_version >= 0x3E0:
+            attribute_assignments = (
+                attribute_exit_assignment,
+                attribute_enter_assignment,
+                enter_await_statement,
+            )
+        else:
+            attribute_assignments = (
+                attribute_enter_assignment,
+                attribute_exit_assignment,
+                enter_await_statement,
+            )
     # It's weird, but 3.14 looks up __exit__ before __enter__
     elif 0x360 <= python_version < 0x3E0 and sync:
         attribute_assignments = (attribute_enter_assignment, attribute_exit_assignment)
