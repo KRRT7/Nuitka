@@ -55,9 +55,14 @@ extern void Nuitka_Frame_ClearLocals(struct Nuitka_FrameObject *frame_object);
                         kw_only_count, pos_only_count)
 #define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts, free_vars, \
                             arg_count, kw_only_count, pos_only_count)                                                   \
-    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count)
+    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,        \
+                                 free_vars, arg_count, kw_only_count, pos_only_count, NULL)
+#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,    \
+                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)                 \
+    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, code_template)
 extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *function_name,
-                                    PyObject *arg_names, PyObject *code_consts, PyObject *free_vars, int arg_count);
+                                    PyObject *arg_names, PyObject *code_consts, PyObject *free_vars, int arg_count,
+                                    PyObject *code_template);
 #elif PYTHON_VERSION < 0x380
 #define MAKE_CODE_OBJECT(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,     \
                          kw_only_count, pos_only_count)                                                                \
@@ -65,10 +70,15 @@ extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyO
                         kw_only_count, pos_only_count)
 #define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts, free_vars, \
                             arg_count, kw_only_count, pos_only_count)                                                   \
-    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, kw_only_count)
+    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,        \
+                                 free_vars, arg_count, kw_only_count, pos_only_count, NULL)
+#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,    \
+                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)                 \
+    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, kw_only_count,    \
+                   code_template)
 extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *function_name,
                                     PyObject *arg_names, PyObject *code_consts, PyObject *free_vars, int arg_count,
-                                    int kw_only_count);
+                                    int kw_only_count, PyObject *code_template);
 #elif PYTHON_VERSION < 0x3b0
 #define MAKE_CODE_OBJECT(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,     \
                          kw_only_count, pos_only_count)                                                                \
@@ -76,11 +86,15 @@ extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyO
                         kw_only_count, pos_only_count)
 #define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts, free_vars, \
                             arg_count, kw_only_count, pos_only_count)                                                   \
-    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, kw_only_count,   \
-                   pos_only_count)
+    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,        \
+                                 free_vars, arg_count, kw_only_count, pos_only_count, NULL)
+#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,    \
+                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)                 \
+    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, kw_only_count,    \
+                   pos_only_count, code_template)
 extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *function_name,
                                     PyObject *arg_names, PyObject *code_consts, PyObject *free_vars, int arg_count,
-                                    int kw_only_count, int pos_only_count);
+                                    int kw_only_count, int pos_only_count, PyObject *code_template);
 #else
 #define MAKE_CODE_OBJECT(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,     \
                          kw_only_count, pos_only_count)                                                                \
@@ -88,11 +102,16 @@ extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyO
                         kw_only_count, pos_only_count)
 #define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts, free_vars, \
                             arg_count, kw_only_count, pos_only_count)                                                   \
-    makeCodeObject(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,           \
-                   kw_only_count, pos_only_count, code_consts)
+    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,        \
+                                 free_vars, arg_count, kw_only_count, pos_only_count, NULL)
+#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,    \
+                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)                 \
+    makeCodeObject(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,            \
+                   kw_only_count, pos_only_count, code_consts, code_template)
 extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *function_name,
                                     PyObject *function_qualname, PyObject *arg_names, PyObject *free_vars,
-                                    int arg_count, int kw_only_count, int pos_only_count, PyObject *code_consts);
+                                    int arg_count, int kw_only_count, int pos_only_count, PyObject *code_consts,
+                                    PyObject *code_template);
 #endif
 
 NUITKA_MAY_BE_UNUSED static inline bool isFakeCodeObject(PyCodeObject *code) {
@@ -469,6 +488,33 @@ NUITKA_MAY_BE_UNUSED static PyCodeObject *Nuitka_GetFrameCodeObject(struct Nuitk
 
 NUITKA_MAY_BE_UNUSED static int Nuitka_GetFrameLineNumber(struct Nuitka_FrameObject *nuitka_frame) {
     return nuitka_frame->m_frame.f_lineno;
+}
+
+NUITKA_MAY_BE_UNUSED static void Nuitka_Frame_SetLineNumber(struct Nuitka_FrameObject *nuitka_frame, int lineno) {
+    nuitka_frame->m_frame.f_lineno = lineno;
+
+#if PYTHON_VERSION >= 0x3b0
+    PyCodeObject *code_object = Nuitka_GetFrameCodeObject(nuitka_frame);
+
+    if (code_object == (PyCodeObject *)Py_None) {
+        return;
+    }
+
+    Py_ssize_t code_unit_count = Py_SIZE(code_object);
+
+    for (Py_ssize_t code_unit = 0; code_unit < code_unit_count; code_unit++) {
+        int code_addr = (int)(code_unit * sizeof(_Py_CODEUNIT));
+
+        if (PyCode_Addr2Line(code_object, code_addr) == lineno) {
+#if PYTHON_VERSION >= 0x3d0
+            nuitka_frame->m_interpreter_frame.instr_ptr = _PyCode_CODE(code_object) + code_unit;
+#else
+            nuitka_frame->m_interpreter_frame.prev_instr = _PyCode_CODE(code_object) + code_unit;
+#endif
+            return;
+        }
+    }
+#endif
 }
 
 NUITKA_MAY_BE_UNUSED static PyObject **Nuitka_GetCodeVarNames(PyCodeObject *code_object) {

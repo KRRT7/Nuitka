@@ -970,6 +970,10 @@ static bool _Nuitka_Generator_check_throw_args(PyThreadState *tstate, PyObject *
         *exception_value = *exception_type;
         *exception_type = PyExceptionInstance_Class(*exception_type);
         Py_INCREF(*exception_type);
+
+        if (*exception_tb == NULL) {
+            *exception_tb = (PyTracebackObject *)PyException_GetTraceback(*exception_value);
+        }
     } else {
 #if PYTHON_VERSION < 0x300
         PyErr_Format(PyExc_TypeError, "exceptions must be classes, or instances, not %s",
@@ -1053,6 +1057,11 @@ static bool _Nuitka_Generator_check_throw(PyThreadState *tstate,
 
         exception_state->exception_type = PyExceptionInstance_Class(exception_state->exception_type);
         Py_INCREF(exception_state->exception_type);
+
+        if (exception_state->exception_tb == NULL) {
+            exception_state->exception_tb =
+                (PyTracebackObject *)PyException_GetTraceback(exception_state->exception_value);
+        }
     } else {
 #if PYTHON_VERSION < 0x300
         PyErr_Format(PyExc_TypeError, "exceptions must be classes, or instances, not %s",

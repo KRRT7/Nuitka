@@ -653,8 +653,8 @@ def getStatementsPrepended(statement_sequence, statements):
     )
 
 
-def makeReraiseExceptionStatement(source_ref):
-    return StatementReraiseException(source_ref=source_ref)
+def makeReraiseExceptionStatement(source_ref, explicit=False):
+    return StatementReraiseException(explicit=explicit, source_ref=source_ref)
 
 
 def mangleName(name, owner):

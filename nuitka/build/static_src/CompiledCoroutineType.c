@@ -813,6 +813,11 @@ static PyObject *_Nuitka_Coroutine_throw2(PyThreadState *tstate, struct Nuitka_C
             return _Nuitka_Coroutine_send(tstate, coroutine, NULL, false, exception_state);
         }
 
+        // Forwarding a non-close exception through an active await chain must
+        // resume this coroutine first, so its frame remains visible while the
+        // exception is thrown into the awaited object.
+        return _Nuitka_Coroutine_send(tstate, coroutine, NULL, false, exception_state);
+
         PyObject *ret;
 
 #if _DEBUG_COROUTINE
@@ -1181,7 +1186,7 @@ static void Nuitka_Coroutine_tp_finalize(struct Nuitka_CoroutineObject *coroutin
     }
 
     if (unlikely(close_result == false)) {
-#if PYTHON_VERSION >= 0x3d0
+#if PYTHON_VERSION >= 0x3e0
         PyErr_FormatUnraisable("Exception ignored while finalizing coroutine %R", (PyObject *)coroutine);
 #else
         PyErr_WriteUnraisable((PyObject *)coroutine);
@@ -1288,7 +1293,7 @@ static PyAsyncMethods Nuitka_Coroutine_as_async = {
 };
 
 PyTypeObject Nuitka_Coroutine_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0) "compiled_coroutine",                // tp_name
+    PyVarObject_HEAD_INIT(NULL, 0) "coroutine",                         // tp_name
     sizeof(struct Nuitka_CoroutineObject),                              // tp_basicsize
     sizeof(struct Nuitka_CellObject *),                                 // tp_itemsize
     (destructor)Nuitka_Coroutine_tp_dealloc,                            // tp_dealloc
@@ -1483,7 +1488,7 @@ static PyObject *computeCoroutineOrigin(PyThreadState *tstate, int origin_depth)
             continue;
         }
 
-        int line = Nuitka_PyInterpreterFrame_GetLine(frame) + 1;
+        int line = Nuitka_PyInterpreterFrame_GetLine(frame);
 
         assert(code_object->co_filename != NULL);
         assert(code_object->co_name != NULL);

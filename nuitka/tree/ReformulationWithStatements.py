@@ -9,6 +9,7 @@ source code comments with Developer Manual sections.
 """
 
 from nuitka.nodes.AttributeLookupNodes import ExpressionAttributeLookupSpecial
+from nuitka.nodes.AttributeNodes import StatementAssignmentAttribute
 from nuitka.nodes.AttributeNodes import makeExpressionAttributeLookup
 from nuitka.nodes.CallNodes import (
     ExpressionCallEmpty,
@@ -70,6 +71,9 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
     )
     tmp_enter_variable = provider.allocateTempVariable(
         temp_scope=temp_scope, name="enter", temp_type="object"
+    )
+    tmp_traceback_variable = provider.allocateTempVariable(
+        temp_scope=temp_scope, name="traceback", temp_type="object"
     )
 
     # Indicator variable, will end up with C bool type, and need not be released.
@@ -135,7 +139,9 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
             elements=(
                 ExpressionCaughtExceptionTypeRef(source_ref=with_exit_source_ref),
                 ExpressionCaughtExceptionValueRef(source_ref=with_exit_source_ref),
-                ExpressionCaughtExceptionTracebackRef(source_ref=source_ref),
+                ExpressionTempVariableRef(
+                    variable=tmp_traceback_variable, source_ref=source_ref
+                ),
             ),
             source_ref=source_ref,
         ),
@@ -262,10 +268,33 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
                             ),
                             source_ref=source_ref,
                         ),
+                        makeStatementAssignmentVariable(
+                            variable=tmp_traceback_variable,
+                            source=ExpressionCaughtExceptionTracebackRef(
+                                source_ref=source_ref
+                            ),
+                            source_ref=source_ref,
+                        ),
                         makeStatementConditional(
                             condition=exit_value_exception,
-                            no_branch=makeReraiseExceptionStatement(
-                                source_ref=with_exit_source_ref
+                            no_branch=StatementsSequence(
+                                statements=(
+                                    StatementAssignmentAttribute(
+                                        expression=ExpressionCaughtExceptionValueRef(
+                                            source_ref=with_exit_source_ref
+                                        ),
+                                        attribute_name="__traceback__",
+                                        source=ExpressionTempVariableRef(
+                                            variable=tmp_traceback_variable,
+                                            source_ref=source_ref,
+                                        ),
+                                        source_ref=with_exit_source_ref,
+                                    ),
+                                    makeReraiseExceptionStatement(
+                                        source_ref=with_exit_source_ref
+                                    ),
+                                ),
+                                source_ref=with_exit_source_ref,
                             ),
                             yes_branch=None,
                             source_ref=with_exit_source_ref,
@@ -301,6 +330,7 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
             tmp_source_variable,
             tmp_enter_variable,
             tmp_exit_variable,
+            tmp_traceback_variable,
         ),
         source_ref=source_ref,
     )

@@ -109,6 +109,7 @@ _code_flag_define_names = (
     ),
     ("code_flag_nofree", "NUITKA_CONSTANT_BLOB_CODE_FLAG_NOFREE"),
     ("code_flag_consts", "NUITKA_CONSTANT_BLOB_CODE_FLAG_CONSTS"),
+    ("code_flag_template", "NUITKA_CONSTANT_BLOB_CODE_FLAG_TEMPLATE"),
 )
 
 _code_kind_define_names = (

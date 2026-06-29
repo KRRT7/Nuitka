@@ -9,7 +9,7 @@ template_publish_exception_to_handler = """\
     if (exception_tb == NULL) {
         exception_tb = %(tb_making)s;
         SET_EXCEPTION_STATE_TRACEBACK(&%(keeper_exception_state_name)s, exception_tb);
-    } else if (%(keeper_lineno)s != 0) {
+    } else if ((%(keeper_lineno)s != 0) && (exception_tb->tb_frame != &%(frame_identifier)s->m_frame)) {
         exception_tb = ADD_TRACEBACK(exception_tb, %(frame_identifier)s, %(keeper_lineno)s);
         SET_EXCEPTION_STATE_TRACEBACK(&%(keeper_exception_state_name)s, exception_tb);
     }

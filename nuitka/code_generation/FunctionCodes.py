@@ -3,7 +3,7 @@
 
 """Code to generate and interact with compiled function objects."""
 
-from nuitka.Constants import isMutable
+from nuitka.Constants import compareConstants, isMutable
 from nuitka.PythonVersions import python_version
 from nuitka.Tracing import general
 
@@ -54,6 +54,10 @@ from .VariableCodes import (
 )
 
 
+def _hasCodeObjectConstant(constants, constant):
+    return any(compareConstants(existing, constant) for existing in constants)
+
+
 def _collectCodeObjectConstantsFromNode(node, result):
     if (
         hasattr(node, "isExpressionFunctionBodyBase")
@@ -68,7 +72,7 @@ def _collectCodeObjectConstantsFromNode(node, result):
     ):
         constant = node.getCompileTimeConstant()
 
-        if not isMutable(constant) and constant not in result:
+        if not isMutable(constant) and not _hasCodeObjectConstant(result, constant):
             result.append(constant)
 
     for child in node.getVisitableNodes():
@@ -194,8 +198,11 @@ def getFunctionMakerCode(
     ) = function_body.getConstantReturnValue()
 
     function_doc_value = function_body.getDoc()
+    preserved_consts = function_body.getCodeObject().getPreservedConstants()
 
-    if (
+    if preserved_consts:
+        co_consts = list(preserved_consts)
+    elif (
         python_version >= 0x3E0
         and function_doc_value is None
         and is_constant_returning
@@ -205,7 +212,9 @@ def getFunctionMakerCode(
     else:
         co_consts = [function_doc_value if function_doc_value is not None else None]
 
-    if is_constant_returning and constant_return_value is not None:
+    if preserved_consts:
+        pass
+    elif is_constant_returning and constant_return_value is not None:
         if (
             python_version >= 0x3E0
             and type(constant_return_value) is tuple
@@ -213,10 +222,20 @@ def getFunctionMakerCode(
         ):
             first_value = constant_return_value[0]
 
-            if not isMutable(first_value) and first_value not in co_consts:
+            if not isMutable(first_value) and not _hasCodeObjectConstant(
+                co_consts, first_value
+            ):
                 co_consts.append(first_value)
 
-        co_consts.append(constant_return_value)
+        if _hasCodeObjectConstant(co_consts, constant_return_value):
+            pass
+        elif not (
+            python_version >= 0x3E0
+            and function_doc_value is not None
+            and type(constant_return_value) is int
+            and 0 <= constant_return_value <= 255
+        ):
+            co_consts.append(constant_return_value)
     elif not is_constant_returning:
         co_consts.extend(_collectCodeObjectConstants(function_body))
 

@@ -1005,6 +1005,8 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
                              ,
                              PyObject *code_consts
 #endif
+                             ,
+                             PyObject *code_template
 ) {
 
     if (filename == Py_None) {
@@ -1088,6 +1090,8 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
 #endif
 
     // spell-checker: ignore lnotab
+    PyObject *cell_vars = const_tuple_empty;
+
 #if PYTHON_VERSION < 0x300
     PyObject *code = const_str_empty;
     PyObject *lnotab = const_str_empty;
@@ -1147,6 +1151,34 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
 
     PyObject *code = empty_code;
     PyObject *consts = PyTuple_GET_SIZE(code_consts) > 0 ? code_consts : default_consts;
+
+    if (code_template != NULL && code_template != Py_None) {
+        CHECK_OBJECT(code_template);
+        assert(PyTuple_CheckExact(code_template));
+        assert(PyTuple_GET_SIZE(code_template) == 6);
+
+        code = PyTuple_GET_ITEM(code_template, 0);
+        names = PyTuple_GET_ITEM(code_template, 1);
+        PyObject *stacksize_obj = PyTuple_GET_ITEM(code_template, 2);
+        lnotab = PyTuple_GET_ITEM(code_template, 3);
+        exception_table = PyTuple_GET_ITEM(code_template, 4);
+        cell_vars = PyTuple_GET_ITEM(code_template, 5);
+
+        stacksize = (int)PyLong_AsLong(stacksize_obj);
+        assert(stacksize >= 0);
+
+        CHECK_OBJECT(code);
+        assert(PyBytes_Check(code));
+        CHECK_OBJECT(names);
+        assert(PyTuple_Check(names));
+        CHECK_OBJECT(lnotab);
+        assert(PyBytes_Check(lnotab));
+        CHECK_OBJECT(exception_table);
+        assert(PyBytes_Check(exception_table));
+        CHECK_OBJECT(cell_vars);
+        assert(PyTuple_Check(cell_vars));
+    }
+
     CHECK_OBJECT(empty_code);
     assert(PyBytes_Check(code));
     CHECK_OBJECT(lnotab);
@@ -1187,10 +1219,10 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
                                                      flags,             // flags
                                                      code,              // code (bytecode)
                                                      consts,            // consts (we are not going to be compatible)
-                                                     names,             // names (we are not going to be compatible)
+                                                     names,             // names
                                                      arg_names,         // var_names (we are not going to be compatible)
                                                      free_vars,         // free_vars
-                                                     const_tuple_empty, // cell_vars (we are not going to be compatible)
+                                                     cell_vars,         // cell_vars
                                                      filename,          // filename
                                                      function_name,     // name
 #if PYTHON_VERSION >= 0x3b0

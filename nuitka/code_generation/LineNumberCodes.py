@@ -24,7 +24,7 @@ def getLineNumberUpdateCode(context):
     if lineno_value:
         frame_handle = context.getFrameHandle()
 
-        return "%s->m_frame.f_lineno = %s;" % (frame_handle, lineno_value)
+        return "Nuitka_Frame_SetLineNumber(%s, %s);" % (frame_handle, lineno_value)
     else:
         return ""
 
@@ -61,10 +61,14 @@ def emitLineNumberUpdateCode(expression, emit, context):
         emit(code)
 
 
+def generateFrameLineUpdateCode(statement, emit, context):
+    emitLineNumberUpdateCode(statement, emit, context)
+
+
 def getSetLineNumberCodeRaw(to_name, emit, context):
     assert context.getFrameHandle() is not None
 
-    emit("%s->m_frame.f_lineno = %s;" % (context.getFrameHandle(), to_name))
+    emit("Nuitka_Frame_SetLineNumber(%s, %s);" % (context.getFrameHandle(), to_name))
 
 
 def getLineNumberCode(to_name, emit, context):

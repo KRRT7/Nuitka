@@ -429,6 +429,9 @@ def _writeConstantValueCodeObject(output, code_object, blob_spec):
     if code_object.getConstants():
         flags |= blob_spec.code_flag_consts
 
+    if code_object.getCodeTemplateData() is not None:
+        flags |= blob_spec.code_flag_template
+
     output.write(_encodeVariableLength(flags))
 
     # Name is mandatory, no flag needed.
@@ -470,6 +473,9 @@ def _writeConstantValueCodeObject(output, code_object, blob_spec):
     # runtime default.
     if flags & blob_spec.code_flag_consts:
         _writeConstantValue(output, code_object.getConstants(), blob_spec)
+
+    if flags & blob_spec.code_flag_template:
+        _writeConstantValue(output, code_object.getCodeTemplateData(), blob_spec)
 
 
 def _writeConstantStream(constants_reader, blob_spec):

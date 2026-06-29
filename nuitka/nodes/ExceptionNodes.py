@@ -46,10 +46,36 @@ class StatementRaiseException(
     )
     auto_compute_handling = "post_init,operation"
 
-    __slots__ = ("reraise_finally",)
+    __slots__ = ("explicit", "reraise_finally")
+
+    def __init__(
+        self,
+        exception_type,
+        exception_value,
+        exception_trace,
+        exception_cause,
+        source_ref,
+        explicit=False,
+    ):
+        StatementRaiseExceptionBase.__init__(
+            self,
+            exception_type=exception_type,
+            exception_value=exception_value,
+            exception_trace=exception_trace,
+            exception_cause=exception_cause,
+            source_ref=source_ref,
+        )
+
+        self.explicit = explicit
 
     def postInitNode(self):
         self.reraise_finally = False
+
+    def isExplicitRaise(self):
+        return self.explicit
+
+    def getDetails(self):
+        return {"explicit": self.explicit}
 
     def computeStatementOperation(self, trace_collection):
         # TODO: Limit by known type.
@@ -99,8 +125,21 @@ class StatementRaiseException(
 class StatementReraiseException(StatementRaiseExceptionMixin, StatementBase):
     kind = "STATEMENT_RERAISE_EXCEPTION"
 
+    __slots__ = ("explicit",)
+
+    def __init__(self, explicit, source_ref):
+        StatementBase.__init__(self, source_ref=source_ref)
+
+        self.explicit = explicit
+
     def finalize(self):
         del self.parent
+
+    def isExplicitReraise(self):
+        return self.explicit
+
+    def getDetails(self):
+        return {"explicit": self.explicit}
 
     def computeStatement(self, trace_collection):
         trace_collection.onExceptionRaiseExit(BaseException)

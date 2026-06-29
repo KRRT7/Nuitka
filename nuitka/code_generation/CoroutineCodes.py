@@ -153,6 +153,8 @@ struct %(function_identifier)s_locals *coroutine_heap = \
 
 
 def generateMakeCoroutineObjectCode(to_name, expression, emit, context):
+    emitLineNumberUpdateCode(expression, emit, context)
+
     coroutine_object_body = expression.subnode_coroutine_ref.getFunctionBody()
 
     closure_variables = expression.getClosureVariableVersions()

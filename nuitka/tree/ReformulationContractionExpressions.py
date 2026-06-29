@@ -61,6 +61,7 @@ from nuitka.nodes.YieldNodes import (
 from nuitka.PythonVersions import python_version
 
 from .ReformulationAssignmentStatements import buildAssignmentStatements
+from .CodeObjectTemplates import attachCodeObjectTemplate
 from .ReformulationBooleanExpressions import makeAndNode
 from .ReformulationTryExceptStatements import makeTryExceptSingleHandlerNode
 from .ReformulationTryFinallyStatements import makeTryFinallyReleaseStatement
@@ -244,12 +245,24 @@ def buildGeneratorExpressionNode(provider, node, source_ref):
         co_lineno=source_ref.getLineNumber(),
         future_spec=parent_module.getFutureSpec(),
     )
+    attachCodeObjectTemplate(code_object)
+
+    entry_point = provider.getEntryPoint()
+
+    if entry_point.isExpressionFunctionBodyBase():
+        entry_point.getCodeObject().addPreservedConstant(code_object)
 
     is_async = any(getattr(qual, "is_async", 0) for qual in node.generators)
 
     # Some of the newly allowed stuff in 3.7 fails to set the async flag.
     if not is_async and python_version >= 0x370:
-        is_async = detectFunctionBodyKind(nodes=node.generators + [node.elt])[0] in (
+        detection_nodes = (
+            node.generators
+            if getKind(node.elt) == "GeneratorExp"
+            else node.generators + [node.elt]
+        )
+
+        is_async = detectFunctionBodyKind(nodes=detection_nodes)[0] in (
             "Asyncgen",
             "Coroutine",
         )

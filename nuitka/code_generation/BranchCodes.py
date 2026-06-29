@@ -9,6 +9,7 @@ from .CodeHelpers import generateStatementSequenceCode
 from .ConditionalCodes import generateConditionCode
 from .Emission import withSubCollector
 from .LabelCodes import getGotoCode, getLabelCode
+from .LineNumberCodes import emitLineNumberUpdateCode
 
 
 def _isSwitchCaseConstant(constant):
@@ -549,6 +550,8 @@ def _generateBranchCodeNormal(statement, emit, context):
 
     # Have own declaration scope for condition, to limit visibility from branches
     # which can be huge.
+    emitLineNumberUpdateCode(statement.subnode_condition, emit, context)
+
     with withSubCollector(emit, context) as condition_emit:
         generateConditionCode(
             condition=statement.subnode_condition, emit=condition_emit, context=context

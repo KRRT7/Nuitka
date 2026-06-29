@@ -218,6 +218,33 @@ class StatementExpressionOnly(StatementExpressionOnlyBase):
         return {"expression": self.subnode_expression.kind}
 
 
+class StatementFrameLineUpdate(StatementBase):
+    kind = "STATEMENT_FRAME_LINE_UPDATE"
+
+    __slots__ = ()
+
+    def __init__(self, source_ref):
+        StatementBase.__init__(self, source_ref=source_ref)
+
+    def finalize(self):
+        del self.parent
+
+    @staticmethod
+    def mayHaveSideEffects():
+        return True
+
+    @staticmethod
+    def mayRaiseException(exception_type):
+        return False
+
+    def computeStatement(self, trace_collection):
+        return self, None, None
+
+    @staticmethod
+    def getStatementNiceName():
+        return "frame line update"
+
+
 class StatementPreserveFrameException(StatementBase):
     kind = "STATEMENT_PRESERVE_FRAME_EXCEPTION"
 

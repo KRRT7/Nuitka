@@ -15,6 +15,9 @@ static PyObject *module_inspect;
 #if PYTHON_VERSION >= 0x350
 static PyObject *module_types;
 #endif
+#if PYTHON_VERSION >= 0x3d0
+static PyObject *module_interpreters;
+#endif
 
 static char *kw_list_object[] = {(char *)"object", NULL};
 
@@ -101,6 +104,80 @@ static PyObject *_types_coroutine_replacement(PyObject *self, PyObject *args, Py
 
 #endif
 
+#if PYTHON_VERSION >= 0x3d0
+static PyObject *old_interpreters_run_func = NULL;
+
+static char *kw_list_run_func[] = {(char *)"id", (char *)"func", (char *)"shared", (char *)"restrict", NULL};
+
+static int _checkInterpretersSharedKeys(PyObject *shared) {
+    if (shared == NULL) {
+        return 0;
+    }
+
+    Py_ssize_t pos = 0;
+    PyObject *key;
+    PyObject *value;
+
+    while (PyDict_Next(shared, &pos, &key, &value)) {
+        if (PyUnicode_Check(key) && PyUnicode_AsUTF8(key) == NULL) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+static PyObject *_interpreters_run_func_replacement(PyObject *self, PyObject *args, PyObject *kwds) {
+    PyObject *id;
+    PyObject *func;
+    PyObject *shared = NULL;
+    int restricted = 0;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|O!$p:_interpreters.run_func", kw_list_run_func, &id, &func,
+                                     &PyDict_Type, &shared, &restricted)) {
+        return NULL;
+    }
+
+    if (!Nuitka_Function_Check(func)) {
+        return PyObject_Call(old_interpreters_run_func, args, kwds);
+    }
+
+    if (_checkInterpretersSharedKeys(shared) < 0) {
+        return NULL;
+    }
+
+    PyObject *code_object = (PyObject *)((struct Nuitka_FunctionObject *)func)->m_code_object;
+
+    PyObject *replacement_args = shared == NULL ? PyTuple_Pack(2, id, code_object) : PyTuple_Pack(3, id, code_object, shared);
+    if (unlikely(replacement_args == NULL)) {
+        return NULL;
+    }
+
+    PyObject *replacement_kwds = NULL;
+
+    if (restricted) {
+        replacement_kwds = PyDict_New();
+        if (unlikely(replacement_kwds == NULL)) {
+            Py_DECREF(replacement_args);
+            return NULL;
+        }
+
+        if (unlikely(PyDict_SetItemString(replacement_kwds, "restrict", Py_True) < 0)) {
+            Py_DECREF(replacement_args);
+            Py_DECREF(replacement_kwds);
+            return NULL;
+        }
+    }
+
+    PyObject *result = PyObject_Call(old_interpreters_run_func, replacement_args, replacement_kwds);
+
+    Py_DECREF(replacement_args);
+    Py_XDECREF(replacement_kwds);
+
+    return result;
+}
+#endif
+
 #if PYTHON_VERSION >= 0x300
 static PyMethodDef _method_def_inspect_getgeneratorstate_replacement = {
     "getgeneratorstate", CAST_METHOD_KW(_inspect_getgeneratorstate_replacement), METH_VARARGS | METH_KEYWORDS, NULL};
@@ -112,6 +189,11 @@ static PyMethodDef _method_def_inspect_getcoroutinestate_replacement = {
 static PyMethodDef _method_def_types_coroutine_replacement = {"coroutine", CAST_METHOD_KW(_types_coroutine_replacement),
                                                               METH_VARARGS | METH_KEYWORDS, NULL};
 
+#endif
+
+#if PYTHON_VERSION >= 0x3d0
+static PyMethodDef _method_def_interpreters_run_func_replacement = {
+    "run_func", CAST_METHOD_KW(_interpreters_run_func_replacement), METH_VARARGS | METH_KEYWORDS, NULL};
 #endif
 
 #if PYTHON_VERSION >= 0x3c0
@@ -289,6 +371,28 @@ inspect._get_code_position=_get_code_position\n\
 
 #endif
 
+#if PYTHON_VERSION >= 0x3d0
+    module_interpreters = PyImport_ImportModule("_interpreters");
+
+    if (module_interpreters == NULL) {
+        CLEAR_ERROR_OCCURRED(tstate);
+    } else {
+        old_interpreters_run_func = PyObject_GetAttrString(module_interpreters, "run_func");
+        CHECK_OBJECT(old_interpreters_run_func);
+
+        PyObject *interpreters_run_func_replacement =
+            PyCFunction_New(&_method_def_interpreters_run_func_replacement, NULL);
+        CHECK_OBJECT(interpreters_run_func_replacement);
+
+        int set_attr_result = PyObject_SetAttrString(module_interpreters, "run_func", interpreters_run_func_replacement);
+        Py_DECREF(interpreters_run_func_replacement);
+
+        if (unlikely(set_attr_result < 0)) {
+            return;
+        }
+    }
+#endif
+
 #if PYTHON_VERSION >= 0x3c0
     orig_sys_getframemodulename = Nuitka_SysGetObject("_getframemodulename");
 
@@ -357,10 +461,12 @@ void patchTypeComparison(void) {
 
 #include "nuitka/freelists.h"
 
+#if PYTHON_VERSION < 0x3e0
 // Freelist setup
 #define MAX_TRACEBACK_FREE_LIST_COUNT 1000
 static PyTracebackObject *free_list_tracebacks = NULL;
 static int free_list_tracebacks_count = 0;
+#endif
 
 // Create a traceback for a given frame, using a free list hacked into the
 // existing type.
@@ -381,7 +487,14 @@ PyTracebackObject *MAKE_TRACEBACK(struct Nuitka_FrameObject *frame, int lineno) 
 
     PyTracebackObject *result;
 
+#if PYTHON_VERSION < 0x3e0
     allocateFromFreeListFixed(free_list_tracebacks, PyTracebackObject, PyTraceBack_Type);
+#else
+    result = PyObject_GC_New(PyTracebackObject, &PyTraceBack_Type);
+    if (unlikely(result == NULL)) {
+        return NULL;
+    }
+#endif
 
     result->tb_next = NULL;
     result->tb_frame = (PyFrameObject *)frame;
@@ -395,6 +508,7 @@ PyTracebackObject *MAKE_TRACEBACK(struct Nuitka_FrameObject *frame, int lineno) 
     return result;
 }
 
+#if PYTHON_VERSION < 0x3e0
 static void Nuitka_tb_dealloc(PyTracebackObject *tb) {
     // Need to use official method as it checks for recursion.
     Nuitka_GC_UnTrack(tb);
@@ -422,6 +536,9 @@ static void Nuitka_tb_dealloc(PyTracebackObject *tb) {
 }
 
 void patchTracebackDealloc(void) { PyTraceBack_Type.tp_dealloc = (destructor)Nuitka_tb_dealloc; }
+#else
+void patchTracebackDealloc(void) {}
+#endif
 
 //     Part of "Nuitka", an optimizing Python compiler that is compatible and
 //     integrates with CPython, but also works on its own.

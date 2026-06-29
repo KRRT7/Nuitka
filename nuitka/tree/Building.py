@@ -108,7 +108,7 @@ from nuitka.nodes.OperatorNodes import makeBinaryOperationNode
 from nuitka.nodes.OperatorNodesUnary import makeExpressionOperationUnary
 from nuitka.nodes.ReturnNodes import makeStatementReturn
 from nuitka.nodes.SliceNodes import makeExpressionBuiltinSlice
-from nuitka.nodes.StatementNodes import StatementExpressionOnly
+from nuitka.nodes.StatementNodes import StatementExpressionOnly, StatementFrameLineUpdate
 from nuitka.nodes.StringConcatenationNodes import ExpressionStringConcatenation
 from nuitka.nodes.VariableNameNodes import (
     ExpressionVariableNameRef,
@@ -257,6 +257,19 @@ def buildNamedConstantNode(node, source_ref):
     )
 
 
+def _buildConditionalBranch(provider, nodes, source_ref):
+    branch = buildStatementsNode(provider=provider, nodes=nodes, source_ref=source_ref)
+
+    if branch is None and nodes:
+        branch_source_ref = source_ref.atLineNumber(nodes[0].lineno)
+
+        branch = makeStatementsSequenceFromStatement(
+            statement=StatementFrameLineUpdate(source_ref=branch_source_ref)
+        )
+
+    return branch
+
+
 def buildConditionNode(provider, node, source_ref):
     # Conditional statements may have one or two branches. We will never see an
     # "elif", because that's already dealt with by module "ast", which turns it
@@ -264,10 +277,10 @@ def buildConditionNode(provider, node, source_ref):
 
     return makeStatementConditional(
         condition=buildNode(provider, node.test, source_ref),
-        yes_branch=buildStatementsNode(
+        yes_branch=_buildConditionalBranch(
             provider=provider, nodes=node.body, source_ref=source_ref
         ),
-        no_branch=buildStatementsNode(
+        no_branch=_buildConditionalBranch(
             provider=provider,
             nodes=node.orelse if node.orelse else None,
             source_ref=source_ref,
@@ -356,13 +369,14 @@ def buildRaiseNode(provider, node, source_ref):
         assert exception_trace is None
         assert exception_cause is None
 
-        result = makeReraiseExceptionStatement(source_ref=source_ref)
+        result = makeReraiseExceptionStatement(source_ref=source_ref, explicit=True)
     else:
         result = StatementRaiseException(
             exception_type=exception_type,
             exception_value=exception_value,
             exception_trace=exception_trace,
             exception_cause=exception_cause,
+            explicit=True,
             source_ref=source_ref,
         )
 

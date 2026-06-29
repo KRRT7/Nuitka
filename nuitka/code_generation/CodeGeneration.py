@@ -226,6 +226,7 @@ from .IteratorCodes import (
     generateUnpackCheckCode,
     generateUnpackCheckFromIteratedCode,
 )
+from .LineNumberCodes import generateFrameLineUpdateCode
 from .ListCodes import (
     generateBuiltinListCode,
     generateListCreationCode,
@@ -1080,6 +1081,7 @@ setStatementDispatchDict(
         "STATEMENT_RELEASE_VARIABLE_LOCAL": generateVariableReleaseCode,
         "STATEMENT_RELEASE_VARIABLE_PARAMETER": generateVariableReleaseCode,
         "STATEMENT_EXPRESSION_ONLY": generateExpressionOnlyCode,
+        "STATEMENT_FRAME_LINE_UPDATE": generateFrameLineUpdateCode,
         "STATEMENT_RETURN": generateReturnCode,
         "STATEMENT_RETURN_TRUE": generateReturnConstantCode,
         "STATEMENT_RETURN_FALSE": generateReturnConstantCode,

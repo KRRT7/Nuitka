@@ -95,6 +95,7 @@ from .TreeHelpers import (
     makeStatementsSequenceFromStatements,
     mangleName,
 )
+from .CodeObjectTemplates import attachCodeObjectTemplate
 
 
 def _insertFinalReturnStatement(function_statements_body, return_statement):
@@ -1111,6 +1112,9 @@ def buildFunctionWithParsing(
         code_prefix="function",
         source_ref=source_ref,
     )
+
+    code_object.setCodeObjectQualname(outer_body.getFunctionQualname())
+    attachCodeObjectTemplate(code_object)
 
     # Wrap if necessary for special nested arguments.
     if special_args:
