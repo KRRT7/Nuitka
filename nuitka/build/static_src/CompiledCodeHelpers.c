@@ -1297,22 +1297,14 @@ struct Nuitka_QuickIterator {
     } iterator_data;
 };
 
-// spell-checker: ignore compiled_enumerate
-#define ENUMERATE_GENERIC 0
-#define ENUMERATE_TUPLE 1
-#define ENUMERATE_LIST 2
-
 struct Nuitka_EnumerateObject {
     PyObject_HEAD
 
-        int enumerate_mode;
+    Py_ssize_t enumerate_index;
 
     PyObject *enumerate_iterator;
-    PyObject *enumerate_source;
+    PyObject *enumerate_result;
     PyObject *enumerate_long_index;
-
-    Py_ssize_t enumerate_source_index;
-    Py_ssize_t enumerate_index;
 };
 
 static PyTypeObject Nuitka_Enumerate_Type;
@@ -1320,7 +1312,7 @@ static PyObject *MAKE_ENUMERATE(PyThreadState *tstate, PyObject *sequence, PyObj
 
 static int Nuitka_Enumerate_tp_traverse(struct Nuitka_EnumerateObject *enumerate, visitproc visit, void *arg) {
     Py_VISIT(enumerate->enumerate_iterator);
-    Py_VISIT(enumerate->enumerate_source);
+    Py_VISIT(enumerate->enumerate_result);
     Py_VISIT(enumerate->enumerate_long_index);
 
     return 0;
@@ -1328,7 +1320,7 @@ static int Nuitka_Enumerate_tp_traverse(struct Nuitka_EnumerateObject *enumerate
 
 static int Nuitka_Enumerate_tp_clear(struct Nuitka_EnumerateObject *enumerate) {
     Py_CLEAR(enumerate->enumerate_iterator);
-    Py_CLEAR(enumerate->enumerate_source);
+    Py_CLEAR(enumerate->enumerate_result);
     Py_CLEAR(enumerate->enumerate_long_index);
 
     return 0;
@@ -1344,36 +1336,15 @@ static void Nuitka_Enumerate_tp_dealloc(struct Nuitka_EnumerateObject *enumerate
 
 static PyObject *Nuitka_Enumerate_tp_iternext(struct Nuitka_EnumerateObject *enumerate) {
     PyThreadState *tstate = PyThreadState_GET();
-    PyObject *item;
 
-    if (enumerate->enumerate_mode == ENUMERATE_TUPLE) {
-        PyTupleObject *tuple = (PyTupleObject *)enumerate->enumerate_source;
+    PyObject *item = ITERATOR_NEXT_ITERATOR(enumerate->enumerate_iterator);
 
-        if (enumerate->enumerate_source_index >= PyTuple_GET_SIZE(tuple)) {
+    if (unlikely(item == NULL)) {
+        if (unlikely(!CHECK_AND_CLEAR_STOP_ITERATION_OCCURRED(tstate))) {
             return NULL;
         }
 
-        item = PyTuple_GET_ITEM(tuple, enumerate->enumerate_source_index);
-        Py_INCREF(item);
-    } else if (enumerate->enumerate_mode == ENUMERATE_LIST) {
-        PyListObject *list = (PyListObject *)enumerate->enumerate_source;
-
-        if (enumerate->enumerate_source_index >= PyList_GET_SIZE(list)) {
-            return NULL;
-        }
-
-        item = PyList_GET_ITEM(list, enumerate->enumerate_source_index);
-        Py_INCREF(item);
-    } else {
-        item = ITERATOR_NEXT_ITERATOR(enumerate->enumerate_iterator);
-
-        if (unlikely(item == NULL)) {
-            if (unlikely(!CHECK_AND_CLEAR_STOP_ITERATION_OCCURRED(tstate))) {
-                return NULL;
-            }
-
-            return NULL;
-        }
+        return NULL;
     }
 
     PyObject *index_object;
@@ -1406,9 +1377,28 @@ static PyObject *Nuitka_Enumerate_tp_iternext(struct Nuitka_EnumerateObject *enu
         Py_SETREF(enumerate->enumerate_long_index, next_index);
     }
 
-    enumerate->enumerate_source_index += 1;
+    PyObject *result = enumerate->enumerate_result;
 
-    PyObject *result = MAKE_TUPLE_EMPTY(tstate, 2);
+    if (Py_REFCNT(result) == 1) {
+        Py_INCREF(result);
+
+        PyObject *old_index = PyTuple_GET_ITEM(result, 0);
+        PyObject *old_item = PyTuple_GET_ITEM(result, 1);
+
+        PyTuple_SET_ITEM(result, 0, index_object);
+        PyTuple_SET_ITEM(result, 1, item);
+
+        Py_DECREF(old_index);
+        Py_DECREF(old_item);
+
+        if (!_PyObject_GC_IS_TRACKED(result)) {
+            Nuitka_GC_Track(result);
+        }
+
+        return result;
+    }
+
+    result = MAKE_TUPLE_EMPTY(tstate, 2);
 
     if (unlikely(result == NULL)) {
         Py_DECREF(index_object);
@@ -1416,42 +1406,17 @@ static PyObject *Nuitka_Enumerate_tp_iternext(struct Nuitka_EnumerateObject *enu
         return NULL;
     }
 
-    PyTuple_SET_ITEM0(result, 0, index_object);
-    PyTuple_SET_ITEM0(result, 1, item);
+    PyTuple_SET_ITEM(result, 0, index_object);
+    PyTuple_SET_ITEM(result, 1, item);
 
     return result;
 }
 
 static PyObject *Nuitka_Enumerate_reduce(struct Nuitka_EnumerateObject *enumerate, PyObject *unused) {
-    PyThreadState *tstate = PyThreadState_GET();
+    NUITKA_MAY_BE_UNUSED PyThreadState *tstate = PyThreadState_GET();
 
-    PyObject *iterator;
-
-    if (enumerate->enumerate_mode == ENUMERATE_GENERIC) {
-        iterator = enumerate->enumerate_iterator;
-        Py_INCREF(iterator);
-    } else {
-        iterator = MAKE_ITERATOR(tstate, enumerate->enumerate_source);
-
-        if (unlikely(iterator == NULL)) {
-            return NULL;
-        }
-
-        for (Py_ssize_t i = 0; i < enumerate->enumerate_source_index; i++) {
-            PyObject *item = ITERATOR_NEXT_ITERATOR(iterator);
-
-            if (unlikely(item == NULL)) {
-                if (!CHECK_AND_CLEAR_STOP_ITERATION_OCCURRED(tstate)) {
-                    Py_DECREF(iterator);
-                    return NULL;
-                }
-
-                break;
-            }
-
-            Py_DECREF(item);
-        }
-    }
+    PyObject *iterator = enumerate->enumerate_iterator;
+    Py_INCREF(iterator);
 
     PyObject *index_object;
 
@@ -1566,11 +1531,9 @@ static PyObject *MAKE_ENUMERATE(PyThreadState *tstate, PyObject *sequence, PyObj
         return NULL;
     }
 
-    result->enumerate_mode = ENUMERATE_GENERIC;
     result->enumerate_iterator = NULL;
-    result->enumerate_source = NULL;
+    result->enumerate_result = NULL;
     result->enumerate_long_index = NULL;
-    result->enumerate_source_index = 0;
     result->enumerate_index = 0;
 
     PyObject *start_index = Nuitka_Number_IndexAsLong(start);
@@ -1590,23 +1553,26 @@ static PyObject *MAKE_ENUMERATE(PyThreadState *tstate, PyObject *sequence, PyObj
         Py_DECREF(start_index);
     }
 
-    if (PyTuple_CheckExact(sequence)) {
-        result->enumerate_mode = ENUMERATE_TUPLE;
-        result->enumerate_source = sequence;
-        Py_INCREF(sequence);
-    } else if (PyList_CheckExact(sequence)) {
-        result->enumerate_mode = ENUMERATE_LIST;
-        result->enumerate_source = sequence;
-        Py_INCREF(sequence);
-    } else {
-        result->enumerate_iterator = MAKE_ITERATOR(tstate, sequence);
+    result->enumerate_iterator = MAKE_ITERATOR(tstate, sequence);
 
-        if (unlikely(result->enumerate_iterator == NULL)) {
-            Nuitka_Enumerate_tp_clear(result);
-            PyObject_GC_Del(result);
-            return NULL;
-        }
+    if (unlikely(result->enumerate_iterator == NULL)) {
+        Nuitka_Enumerate_tp_clear(result);
+        PyObject_GC_Del(result);
+        return NULL;
     }
+
+    result->enumerate_result = MAKE_TUPLE_EMPTY(tstate, 2);
+
+    if (unlikely(result->enumerate_result == NULL)) {
+        Nuitka_Enumerate_tp_clear(result);
+        PyObject_GC_Del(result);
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    PyTuple_SET_ITEM(result->enumerate_result, 0, Py_None);
+    Py_INCREF(Py_None);
+    PyTuple_SET_ITEM(result->enumerate_result, 1, Py_None);
 
     Nuitka_GC_Track(result);
 

@@ -280,6 +280,9 @@ Nuitka_Frame_ClearLocals(%(frame_identifier)s);
     elif frame_node.isStatementsFrameFunction():
         attach_locals_code = getFrameAttachLocalsCode(context, frame_identifier)
 
+        if context.isForCreatedFunction():
+            code_identifier = "self->m_code_object"
+
         make_frame_code = (
             """MAKE_FUNCTION_FRAME(tstate, %(code_identifier)s, %(module_identifier)s, %(locals_size)s)"""
             % {

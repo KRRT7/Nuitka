@@ -18,8 +18,11 @@ from nuitka.utils.PrivatePipSpace import (
 from nuitka.utils.Utils import counted
 
 
-def cleanupWindowsNewlines(filename, effective_filename):
+def cleanupWindowsNewlines(filename, effective_filename=None):
     """Remove Windows new-lines from a file."""
+
+    if effective_filename is None:
+        effective_filename = filename
 
     with open(filename, "rb") as f:
         source_code = f.read()
