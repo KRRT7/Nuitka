@@ -703,6 +703,11 @@ static PyObject *Nuitka_Frame_clear(struct Nuitka_FrameObject *frame, PyObject *
         }
 
         if (unlikely(close_exception)) {
+#if PYTHON_VERSION >= 0x3d0
+            if (Nuitka_Coroutine_Check(f_gen)) {
+                PyErr_FormatUnraisable("Exception ignored while finalizing coroutine %R", f_gen);
+            } else
+#endif
             PyErr_WriteUnraisable(f_gen);
         }
 

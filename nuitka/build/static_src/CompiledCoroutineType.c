@@ -89,7 +89,30 @@ static bool Nuitka_Coroutine_ensure_frame(PyThreadState *tstate, struct Nuitka_C
 }
 
 int Nuitka_Coroutine_warn_unawaited(struct Nuitka_CoroutineObject *coroutine) {
-    return PyErr_WarnFormat(PyExc_RuntimeWarning, 1, "coroutine '%S' was never awaited", coroutine->m_qualname);
+    PyObject *warnings_module = PyImport_ImportModule("warnings");
+
+    if (unlikely(warnings_module == NULL)) {
+        return PyErr_WarnFormat(PyExc_RuntimeWarning, 1, "coroutine '%S' was never awaited", coroutine->m_qualname);
+    }
+
+    PyObject *warn_func = PyObject_GetAttrString(warnings_module, "_warn_unawaited_coroutine");
+    Py_DECREF(warnings_module);
+
+    if (unlikely(warn_func == NULL)) {
+        CLEAR_ERROR_OCCURRED(PyThreadState_GET());
+        return PyErr_WarnFormat(PyExc_RuntimeWarning, 1, "coroutine '%S' was never awaited", coroutine->m_qualname);
+    }
+
+    PyObject *result = PyObject_CallFunctionObjArgs(warn_func, (PyObject *)coroutine, NULL);
+    Py_DECREF(warn_func);
+
+    if (unlikely(result == NULL)) {
+        return -1;
+    }
+
+    Py_DECREF(result);
+
+    return 0;
 }
 
 static PyObject *Nuitka_Coroutine_get_name(PyObject *self, void *data) {
@@ -1151,7 +1174,11 @@ static void Nuitka_Coroutine_tp_finalize(struct Nuitka_CoroutineObject *coroutin
     }
 
     if (unlikely(close_result == false)) {
+#if PYTHON_VERSION >= 0x3d0
+        PyErr_FormatUnraisable("Exception ignored while finalizing coroutine %R", (PyObject *)coroutine);
+#else
         PyErr_WriteUnraisable((PyObject *)coroutine);
+#endif
     }
 
     /* Restore the saved exception if any. */
@@ -1449,7 +1476,7 @@ static PyObject *computeCoroutineOrigin(PyThreadState *tstate, int origin_depth)
             continue;
         }
 
-        int line = Nuitka_PyInterpreterFrame_GetLine(frame);
+        int line = Nuitka_PyInterpreterFrame_GetLine(frame) + 1;
 
         assert(code_object->co_filename != NULL);
         assert(code_object->co_name != NULL);
@@ -1491,7 +1518,7 @@ static PyObject *computeCoroutineOrigin(PyThreadState *tstate, int origin_depth)
         PyObject *co_name = frame->f_code->co_name;
         CHECK_OBJECT(co_name);
 
-        PyObject *frame_info = Py_BuildValue("OiO", filename, PyFrame_GetLineNumber(frame), co_name);
+        PyObject *frame_info = Py_BuildValue("OiO", filename, PyFrame_GetLineNumber(frame) + 1, co_name);
 
         assert(frame_info);
 
