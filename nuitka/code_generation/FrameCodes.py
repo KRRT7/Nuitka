@@ -114,6 +114,14 @@ def generateStatementsFrameCode(statement_sequence, emit, context):
     # the frame stuff around it.
     local_emit = SourceCodeCollector()
 
+    if (
+        hasattr(context, "isForCreatedFunction")
+        and context.isForCreatedFunction()
+        and not context.tail_recursion_label_emitted
+    ):
+        context.tail_recursion_label_emitted = True
+        local_emit("function_tail_reentry:;")
+
     _generateStatementSequenceCode(
         statement_sequence=statement_sequence, emit=local_emit, context=context
     )

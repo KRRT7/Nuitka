@@ -990,6 +990,7 @@ class PythonFunctionContext(
         "function",
         "frame_handle",
         "variable_storage",
+        "tail_recursion_label_emitted",
         # FrameDeclarationsMixin
         "frame_variables_stack",
         "frame_type_descriptions",
@@ -1030,6 +1031,7 @@ class PythonFunctionContext(
         self.setReturnTarget("function_return_exit")
 
         self.frame_handle = None
+        self.tail_recursion_label_emitted = False
 
         self.variable_storage = self._makeVariableStorage()
 

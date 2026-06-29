@@ -700,7 +700,17 @@ def setupFunctionLocalVariables(
 
 
 def finalizeFunctionLocalVariables(context):
-    function_cleanup = []
+    if hasattr(context, "isForCreatedFunction") and (
+        context.isForCreatedFunction() or context.isForDirectCall()
+    ):
+        function_cleanup = [
+            "while (nuitka_tail_recursion_depth > 0) {",
+            "    nuitka_tail_recursion_depth -= 1;",
+            "    Nuitka_LeaveRecursivePythonCall(tstate);",
+            "}",
+        ]
+    else:
+        function_cleanup = []
 
     # TODO: Many times it will not be necessary to release locals dict, because
     # they already were, but our tracing doesn't yet allow us to know.

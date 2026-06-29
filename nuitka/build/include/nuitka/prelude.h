@@ -776,8 +776,6 @@ extern PyThreadState *_PyThreadState_Current;
 #define Py_LeaveRecursiveCall()
 #endif
 
-#define NUITKA_MAX_NATIVE_PYTHON_RECURSION 8000
-
 NUITKA_MAY_BE_UNUSED static inline int Nuitka_EnterRecursivePythonCall(PyThreadState *tstate, char const *where) {
 #if PYTHON_VERSION >= 0x3e0
     if (unlikely((Py_EnterRecursiveCall)(where))) {
@@ -785,20 +783,6 @@ NUITKA_MAY_BE_UNUSED static inline int Nuitka_EnterRecursivePythonCall(PyThreadS
     }
 
     tstate->py_recursion_remaining--;
-
-    // Compiled Python calls still consume native C stack. Until Nuitka can
-    // trampoline compiled Python frames, fail safely before frame recursion can
-    // overflow the C stack.
-    if (unlikely(tstate->py_recursion_limit - tstate->py_recursion_remaining > NUITKA_MAX_NATIVE_PYTHON_RECURSION)) {
-        tstate->recursion_headroom++;
-        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded");
-        tstate->recursion_headroom--;
-
-        tstate->py_recursion_remaining++;
-        (Py_LeaveRecursiveCall)();
-
-        return -1;
-    }
 
     if (unlikely(tstate->py_recursion_remaining <= 0)) {
         if (tstate->recursion_headroom) {

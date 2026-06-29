@@ -53,6 +53,7 @@ static PyObject *impl_%(function_identifier)s(PyThreadState *tstate, %(parameter
 
     // Local variable declarations.
 %(function_locals)s
+    NUITKA_MAY_BE_UNUSED Py_ssize_t nuitka_tail_recursion_depth = 0;
 
     // Actual function body.
 %(function_body)s
@@ -90,6 +91,7 @@ function_direct_body_template = """\
 
     // Local variable declarations.
 %(function_locals)s
+    NUITKA_MAY_BE_UNUSED Py_ssize_t nuitka_tail_recursion_depth = 0;
 
     // Actual function body.
 %(function_body)s
