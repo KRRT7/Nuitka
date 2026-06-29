@@ -776,6 +776,66 @@ extern PyThreadState *_PyThreadState_Current;
 #define Py_LeaveRecursiveCall()
 #endif
 
+#define NUITKA_MAX_NATIVE_PYTHON_RECURSION 8000
+
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_EnterRecursivePythonCall(PyThreadState *tstate, char const *where) {
+#if PYTHON_VERSION >= 0x3e0
+    if (unlikely((Py_EnterRecursiveCall)(where))) {
+        return -1;
+    }
+
+    tstate->py_recursion_remaining--;
+
+    // Compiled Python calls still consume native C stack. Until Nuitka can
+    // trampoline compiled Python frames, fail safely before frame recursion can
+    // overflow the C stack.
+    if (unlikely(tstate->py_recursion_limit - tstate->py_recursion_remaining > NUITKA_MAX_NATIVE_PYTHON_RECURSION)) {
+        tstate->recursion_headroom++;
+        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded");
+        tstate->recursion_headroom--;
+
+        tstate->py_recursion_remaining++;
+        (Py_LeaveRecursiveCall)();
+
+        return -1;
+    }
+
+    if (unlikely(tstate->py_recursion_remaining <= 0)) {
+        if (tstate->recursion_headroom) {
+            if (unlikely(tstate->py_recursion_remaining < -50)) {
+                Py_FatalError("Cannot recover from Python stack overflow.");
+            }
+        } else {
+            tstate->recursion_headroom++;
+            PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded");
+            tstate->recursion_headroom--;
+
+            tstate->py_recursion_remaining++;
+            (Py_LeaveRecursiveCall)();
+
+            return -1;
+        }
+    }
+
+    return 0;
+#elif defined(_NUITKA_FULL_COMPAT)
+    return Py_EnterRecursiveCall(where);
+#else
+    return 0;
+#endif
+}
+
+NUITKA_MAY_BE_UNUSED static inline void Nuitka_LeaveRecursivePythonCall(PyThreadState *tstate) {
+#if PYTHON_VERSION >= 0x3e0
+    tstate->py_recursion_remaining++;
+    (Py_LeaveRecursiveCall)();
+#elif defined(_NUITKA_FULL_COMPAT)
+    Py_LeaveRecursiveCall();
+#else
+    (void)tstate;
+#endif
+}
+
 #if PYTHON_VERSION < 0x300
 #define TP_RICHCOMPARE(t) (PyType_HasFeature((t), Py_TPFLAGS_HAVE_RICHCOMPARE) ? (t)->tp_richcompare : NULL)
 #else

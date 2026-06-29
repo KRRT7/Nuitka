@@ -24,7 +24,7 @@ PyObject *CALL_FUNCTION_NO_ARGS(PyThreadState *tstate, PyObject *called) {
     CHECK_OBJECT(called);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -45,7 +45,7 @@ PyObject *CALL_FUNCTION_NO_ARGS(PyThreadState *tstate, PyObject *called) {
             result = Nuitka_CallFunctionNoArgs(tstate, function);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -61,7 +61,7 @@ PyObject *CALL_FUNCTION_NO_ARGS(PyThreadState *tstate, PyObject *called) {
                 GET_CLASS_NAME(method->m_class));
             return NULL;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -95,7 +95,7 @@ PyObject *CALL_FUNCTION_NO_ARGS(PyThreadState *tstate, PyObject *called) {
                 result = Nuitka_CallMethodFunctionNoArgs(tstate, function, method->m_object);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -432,7 +432,7 @@ PyObject *CALL_FUNCTION_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *called,
     CHECK_OBJECTS(args, 1);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -458,7 +458,7 @@ PyObject *CALL_FUNCTION_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *called,
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 1);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -490,7 +490,7 @@ PyObject *CALL_FUNCTION_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *called,
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -527,7 +527,7 @@ PyObject *CALL_FUNCTION_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *called,
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 1);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -897,7 +897,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS1(PyThreadState *tstate, PyObject *called, 
     CHECK_OBJECTS(args, 1);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -923,7 +923,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS1(PyThreadState *tstate, PyObject *called, 
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 1);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -955,7 +955,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS1(PyThreadState *tstate, PyObject *called, 
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -992,7 +992,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS1(PyThreadState *tstate, PyObject *called, 
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 1);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -1332,7 +1332,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS2(PyThreadState *tstate, PyObject *called, PyOb
     CHECK_OBJECTS(args, 2);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -1360,7 +1360,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS2(PyThreadState *tstate, PyObject *called, PyOb
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 2);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -1392,7 +1392,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS2(PyThreadState *tstate, PyObject *called, PyOb
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -1431,7 +1431,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS2(PyThreadState *tstate, PyObject *called, PyOb
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 2);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -1778,7 +1778,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS2(PyThreadState *tstate, PyObject *called, 
     CHECK_OBJECTS(args, 2);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -1806,7 +1806,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS2(PyThreadState *tstate, PyObject *called, 
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 2);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -1838,7 +1838,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS2(PyThreadState *tstate, PyObject *called, 
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -1877,7 +1877,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS2(PyThreadState *tstate, PyObject *called, 
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 2);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -2194,7 +2194,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS3(PyThreadState *tstate, PyObject *called, PyOb
     CHECK_OBJECTS(args, 3);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -2222,7 +2222,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS3(PyThreadState *tstate, PyObject *called, PyOb
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 3);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -2254,7 +2254,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS3(PyThreadState *tstate, PyObject *called, PyOb
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -2293,7 +2293,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS3(PyThreadState *tstate, PyObject *called, PyOb
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 3);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -2640,7 +2640,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS3(PyThreadState *tstate, PyObject *called, 
     CHECK_OBJECTS(args, 3);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -2668,7 +2668,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS3(PyThreadState *tstate, PyObject *called, 
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 3);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -2700,7 +2700,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS3(PyThreadState *tstate, PyObject *called, 
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -2739,7 +2739,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS3(PyThreadState *tstate, PyObject *called, 
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 3);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -3056,7 +3056,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS4(PyThreadState *tstate, PyObject *called, PyOb
     CHECK_OBJECTS(args, 4);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -3084,7 +3084,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS4(PyThreadState *tstate, PyObject *called, PyOb
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 4);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -3116,7 +3116,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS4(PyThreadState *tstate, PyObject *called, PyOb
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -3155,7 +3155,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS4(PyThreadState *tstate, PyObject *called, PyOb
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 4);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -3502,7 +3502,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS4(PyThreadState *tstate, PyObject *called, 
     CHECK_OBJECTS(args, 4);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -3530,7 +3530,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS4(PyThreadState *tstate, PyObject *called, 
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 4);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -3562,7 +3562,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS4(PyThreadState *tstate, PyObject *called, 
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -3601,7 +3601,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS4(PyThreadState *tstate, PyObject *called, 
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 4);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -3918,7 +3918,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS5(PyThreadState *tstate, PyObject *called, PyOb
     CHECK_OBJECTS(args, 5);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -3946,7 +3946,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS5(PyThreadState *tstate, PyObject *called, PyOb
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 5);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -3978,7 +3978,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS5(PyThreadState *tstate, PyObject *called, PyOb
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -4017,7 +4017,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS5(PyThreadState *tstate, PyObject *called, PyOb
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 5);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -4364,7 +4364,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS5(PyThreadState *tstate, PyObject *called, 
     CHECK_OBJECTS(args, 5);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -4392,7 +4392,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS5(PyThreadState *tstate, PyObject *called, 
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 5);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -4424,7 +4424,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS5(PyThreadState *tstate, PyObject *called, 
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -4463,7 +4463,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS5(PyThreadState *tstate, PyObject *called, 
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 5);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -4780,7 +4780,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS6(PyThreadState *tstate, PyObject *called, PyOb
     CHECK_OBJECTS(args, 6);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -4808,7 +4808,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS6(PyThreadState *tstate, PyObject *called, PyOb
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 6);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -4840,7 +4840,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS6(PyThreadState *tstate, PyObject *called, PyOb
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -4879,7 +4879,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS6(PyThreadState *tstate, PyObject *called, PyOb
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 6);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -5226,7 +5226,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS6(PyThreadState *tstate, PyObject *called, 
     CHECK_OBJECTS(args, 6);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -5254,7 +5254,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS6(PyThreadState *tstate, PyObject *called, 
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 6);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -5286,7 +5286,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS6(PyThreadState *tstate, PyObject *called, 
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -5325,7 +5325,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS6(PyThreadState *tstate, PyObject *called, 
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 6);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -5642,7 +5642,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS7(PyThreadState *tstate, PyObject *called, PyOb
     CHECK_OBJECTS(args, 7);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -5670,7 +5670,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS7(PyThreadState *tstate, PyObject *called, PyOb
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 7);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -5702,7 +5702,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS7(PyThreadState *tstate, PyObject *called, PyOb
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -5741,7 +5741,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS7(PyThreadState *tstate, PyObject *called, PyOb
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 7);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -6088,7 +6088,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS7(PyThreadState *tstate, PyObject *called, 
     CHECK_OBJECTS(args, 7);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -6116,7 +6116,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS7(PyThreadState *tstate, PyObject *called, 
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 7);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -6148,7 +6148,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS7(PyThreadState *tstate, PyObject *called, 
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -6187,7 +6187,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS7(PyThreadState *tstate, PyObject *called, 
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 7);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -6504,7 +6504,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS8(PyThreadState *tstate, PyObject *called, PyOb
     CHECK_OBJECTS(args, 8);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -6532,7 +6532,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS8(PyThreadState *tstate, PyObject *called, PyOb
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 8);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -6564,7 +6564,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS8(PyThreadState *tstate, PyObject *called, PyOb
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -6603,7 +6603,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS8(PyThreadState *tstate, PyObject *called, PyOb
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 8);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -6950,7 +6950,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS8(PyThreadState *tstate, PyObject *called, 
     CHECK_OBJECTS(args, 8);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -6978,7 +6978,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS8(PyThreadState *tstate, PyObject *called, 
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 8);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -7010,7 +7010,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS8(PyThreadState *tstate, PyObject *called, 
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -7049,7 +7049,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS8(PyThreadState *tstate, PyObject *called, 
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 8);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -7366,7 +7366,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS9(PyThreadState *tstate, PyObject *called, PyOb
     CHECK_OBJECTS(args, 9);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -7394,7 +7394,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS9(PyThreadState *tstate, PyObject *called, PyOb
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 9);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -7426,7 +7426,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS9(PyThreadState *tstate, PyObject *called, PyOb
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -7465,7 +7465,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS9(PyThreadState *tstate, PyObject *called, PyOb
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 9);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -7812,7 +7812,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS9(PyThreadState *tstate, PyObject *called, 
     CHECK_OBJECTS(args, 9);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -7840,7 +7840,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS9(PyThreadState *tstate, PyObject *called, 
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 9);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -7872,7 +7872,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS9(PyThreadState *tstate, PyObject *called, 
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -7911,7 +7911,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS9(PyThreadState *tstate, PyObject *called, 
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 9);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -8228,7 +8228,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS10(PyThreadState *tstate, PyObject *called, PyO
     CHECK_OBJECTS(args, 10);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -8256,7 +8256,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS10(PyThreadState *tstate, PyObject *called, PyO
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 10);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -8288,7 +8288,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS10(PyThreadState *tstate, PyObject *called, PyO
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -8327,7 +8327,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS10(PyThreadState *tstate, PyObject *called, PyO
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 10);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 
@@ -8674,7 +8674,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS10(PyThreadState *tstate, PyObject *called,
     CHECK_OBJECTS(args, 10);
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -8702,7 +8702,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS10(PyThreadState *tstate, PyObject *called,
             result = Nuitka_CallFunctionPosArgs(tstate, function, args, 10);
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -8734,7 +8734,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS10(PyThreadState *tstate, PyObject *called,
 
             return result;
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -8773,7 +8773,7 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS10(PyThreadState *tstate, PyObject *called,
                 result = Nuitka_CallMethodFunctionPosArgs(tstate, function, method->m_object, args, 10);
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 

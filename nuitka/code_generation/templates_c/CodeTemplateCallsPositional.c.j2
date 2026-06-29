@@ -20,7 +20,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject 
     {{ CHECK_OBJECTS(args, args_count) }}
 
     if (Nuitka_Function_Check(called)) {
-        if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+        if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }
 
@@ -59,7 +59,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject 
 {% endif %}
         }
 
-        Py_LeaveRecursiveCall();
+        Nuitka_LeaveRecursivePythonCall(tstate);
 
         CHECK_OBJECT_X(result);
 
@@ -100,7 +100,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject 
             return result;
 {% endif %}
         } else {
-            if (unlikely(Py_EnterRecursiveCall((char *)" while calling a Python object"))) {
+            if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
                 return NULL;
             }
 
@@ -148,7 +148,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject 
 {% endif %}
             }
 
-            Py_LeaveRecursiveCall();
+            Nuitka_LeaveRecursivePythonCall(tstate);
 
             CHECK_OBJECT_X(result);
 

@@ -34,6 +34,78 @@ class TooManyArguments(Exception):
         return self.real_exception
 
 
+def _getEditDistanceBounded(a, b, max_cost):
+    if abs(len(a) - len(b)) > max_cost:
+        return max_cost + 1
+
+    previous = list(range(len(b) + 1))
+
+    for i, a_char in enumerate(a, 1):
+        current = [i]
+
+        for j, b_char in enumerate(b, 1):
+            if a_char == b_char or a_char.lower() == b_char.lower():
+                substitute_cost = 0
+            else:
+                substitute_cost = 1
+
+            current.append(
+                min(
+                    previous[j] + 1,
+                    current[j - 1] + 1,
+                    previous[j - 1] + substitute_cost,
+                )
+            )
+
+        if min(current) > max_cost:
+            return max_cost + 1
+
+        previous = current
+
+    return previous[-1]
+
+
+def _getUnexpectedKeywordSuggestion(unexpected, candidates):
+    if python_version < 0x3E0 or not isinstance(unexpected, str):
+        return None
+
+    max_cost = 2 if len(unexpected) <= 5 else len(unexpected) // 3
+    if max_cost < 1:
+        max_cost = 1
+
+    best_candidate = None
+    best_cost = max_cost + 1
+
+    for candidate in candidates:
+        if not isinstance(candidate, str):
+            continue
+
+        cost = _getEditDistanceBounded(unexpected, candidate, max_cost)
+
+        if cost < best_cost:
+            best_candidate = candidate
+            best_cost = cost
+
+            if cost == 0:
+                break
+
+    return best_candidate if best_cost <= max_cost else None
+
+
+def _getUnexpectedKeywordErrorMessage(func_name, unexpected, candidates):
+    message = "%s() got an unexpected keyword argument '%s'" % (
+        func_name,
+        unexpected,
+    )
+
+    suggestion = _getUnexpectedKeywordSuggestion(unexpected, candidates)
+
+    if suggestion is not None:
+        message += ". Did you mean '%s'?" % suggestion
+
+    return message
+
+
 class ParameterSpec(object):
     # These got many attributes, in part duplicating name and instance of
     # variables, pylint: disable=too-many-instance-attributes
@@ -415,6 +487,14 @@ def matchCall(
                     template = "'%(arg_name)s' is an invalid keyword argument for this function"
                 elif python_version < 0x3D0 and not improved:
                     template = "'%(arg_name)s' is an invalid keyword argument for %(func_name)s()"
+                elif python_version >= 0x3E0:
+                    message = _getUnexpectedKeywordErrorMessage(
+                        func_name=func_name,
+                        unexpected=pair[0],
+                        candidates=args[num_pos_only:] + kw_only_args,
+                    )
+
+                    raise TooManyArguments(TypeError(message))
                 else:
                     template = "%(func_name)s() got an unexpected keyword argument '%(arg_name)s'"
 
@@ -539,10 +619,17 @@ def matchCall(
         unexpected = next(iter(dict(pairs)))
 
         if improved or python_version >= 0x3D0:
-            message = "%s() got an unexpected keyword argument '%s'" % (
-                func_name,
-                unexpected,
-            )
+            if python_version >= 0x3E0:
+                message = _getUnexpectedKeywordErrorMessage(
+                    func_name=func_name,
+                    unexpected=unexpected,
+                    candidates=args[num_pos_only:] + kw_only_args,
+                )
+            else:
+                message = "%s() got an unexpected keyword argument '%s'" % (
+                    func_name,
+                    unexpected,
+                )
         else:
             message = (
                 "'%s' is an invalid keyword argument for this function" % unexpected

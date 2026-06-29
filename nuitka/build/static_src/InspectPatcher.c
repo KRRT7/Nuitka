@@ -18,6 +18,9 @@ static PyObject *module_types;
 #if PYTHON_VERSION >= 0x3d0
 static PyObject *module_interpreters;
 #endif
+#if PYTHON_VERSION >= 0x380
+static PyObject *module_testcapi;
+#endif
 
 static char *kw_list_object[] = {(char *)"object", NULL};
 
@@ -178,6 +181,31 @@ static PyObject *_interpreters_run_func_replacement(PyObject *self, PyObject *ar
 }
 #endif
 
+#if PYTHON_VERSION >= 0x380
+static PyObject *old_testcapi_function_setvectorcall = NULL;
+
+static PyObject *_testcapi_overridden_vectorcall(struct Nuitka_FunctionObject *function, PyObject *const *stack,
+                                                 size_t nargsf, PyObject *kw_names) {
+    return Nuitka_String_FromString("overridden");
+}
+
+static PyObject *_testcapi_function_setvectorcall_replacement(PyObject *self, PyObject *args) {
+    PyObject *func;
+
+    if (!PyArg_ParseTuple(args, "O:function_setvectorcall", &func)) {
+        return NULL;
+    }
+
+    if (!Nuitka_Function_Check(func)) {
+        return PyObject_Call(old_testcapi_function_setvectorcall, args, NULL);
+    }
+
+    ((struct Nuitka_FunctionObject *)func)->m_vectorcall = (vectorcallfunc)_testcapi_overridden_vectorcall;
+
+    Py_RETURN_NONE;
+}
+#endif
+
 #if PYTHON_VERSION >= 0x300
 static PyMethodDef _method_def_inspect_getgeneratorstate_replacement = {
     "getgeneratorstate", CAST_METHOD_KW(_inspect_getgeneratorstate_replacement), METH_VARARGS | METH_KEYWORDS, NULL};
@@ -194,6 +222,11 @@ static PyMethodDef _method_def_types_coroutine_replacement = {"coroutine", CAST_
 #if PYTHON_VERSION >= 0x3d0
 static PyMethodDef _method_def_interpreters_run_func_replacement = {
     "run_func", CAST_METHOD_KW(_interpreters_run_func_replacement), METH_VARARGS | METH_KEYWORDS, NULL};
+#endif
+
+#if PYTHON_VERSION >= 0x380
+static PyMethodDef _method_def_testcapi_function_setvectorcall_replacement = {
+    "function_setvectorcall", _testcapi_function_setvectorcall_replacement, METH_VARARGS, NULL};
 #endif
 
 #if PYTHON_VERSION >= 0x3c0
@@ -389,6 +422,32 @@ inspect._get_code_position=_get_code_position\n\
 
         if (unlikely(set_attr_result < 0)) {
             return;
+        }
+    }
+#endif
+
+#if PYTHON_VERSION >= 0x380
+    module_testcapi = PyImport_ImportModule("_testcapi");
+
+    if (module_testcapi == NULL) {
+        CLEAR_ERROR_OCCURRED(tstate);
+    } else {
+        old_testcapi_function_setvectorcall = PyObject_GetAttrString(module_testcapi, "function_setvectorcall");
+
+        if (old_testcapi_function_setvectorcall == NULL) {
+            CLEAR_ERROR_OCCURRED(tstate);
+        } else {
+            PyObject *function_setvectorcall_replacement =
+                PyCFunction_New(&_method_def_testcapi_function_setvectorcall_replacement, NULL);
+            CHECK_OBJECT(function_setvectorcall_replacement);
+
+            int set_attr_result =
+                PyObject_SetAttrString(module_testcapi, "function_setvectorcall", function_setvectorcall_replacement);
+            Py_DECREF(function_setvectorcall_replacement);
+
+            if (unlikely(set_attr_result < 0)) {
+                return;
+            }
         }
     }
 #endif

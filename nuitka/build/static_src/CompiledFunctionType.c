@@ -23,6 +23,161 @@ int count_allocated_Nuitka_Function_Type;
 int count_released_Nuitka_Function_Type;
 #endif
 
+#if PYTHON_VERSION >= 0x3e0
+static Py_ssize_t getEditDistanceBounded(char const *a, Py_ssize_t a_len, char const *b, Py_ssize_t b_len,
+                                         Py_ssize_t max_cost) {
+    if (a_len < 0 || b_len < 0) {
+        return max_cost + 1;
+    }
+
+    Py_ssize_t len_delta = a_len > b_len ? a_len - b_len : b_len - a_len;
+    if (len_delta > max_cost) {
+        return max_cost + 1;
+    }
+
+    Py_ssize_t *previous = PyMem_Malloc(sizeof(Py_ssize_t) * (b_len + 1));
+    Py_ssize_t *current = PyMem_Malloc(sizeof(Py_ssize_t) * (b_len + 1));
+
+    if (unlikely(previous == NULL || current == NULL)) {
+        PyMem_Free(previous);
+        PyMem_Free(current);
+        return max_cost + 1;
+    }
+
+    for (Py_ssize_t j = 0; j <= b_len; j++) {
+        previous[j] = j;
+    }
+
+    for (Py_ssize_t i = 1; i <= a_len; i++) {
+        current[0] = i;
+        Py_ssize_t row_min = current[0];
+
+        for (Py_ssize_t j = 1; j <= b_len; j++) {
+            unsigned char a_char = (unsigned char)a[i - 1];
+            unsigned char b_char = (unsigned char)b[j - 1];
+            Py_ssize_t substitute_cost;
+
+            if (a_char == b_char) {
+                substitute_cost = 0;
+            } else if ('A' <= a_char && a_char <= 'Z' && a_char + ('a' - 'A') == b_char) {
+                substitute_cost = 0;
+            } else if ('A' <= b_char && b_char <= 'Z' && b_char + ('a' - 'A') == a_char) {
+                substitute_cost = 0;
+            } else {
+                substitute_cost = 1;
+            }
+            Py_ssize_t delete_cost = previous[j] + 1;
+            Py_ssize_t insert_cost = current[j - 1] + 1;
+            Py_ssize_t substitute = previous[j - 1] + substitute_cost;
+            Py_ssize_t best = delete_cost < insert_cost ? delete_cost : insert_cost;
+
+            if (substitute < best) {
+                best = substitute;
+            }
+
+            current[j] = best;
+
+            if (best < row_min) {
+                row_min = best;
+            }
+        }
+
+        if (row_min > max_cost) {
+            PyMem_Free(previous);
+            PyMem_Free(current);
+            return max_cost + 1;
+        }
+
+        Py_ssize_t *swap = previous;
+        previous = current;
+        current = swap;
+    }
+
+    Py_ssize_t result = previous[b_len];
+
+    PyMem_Free(previous);
+    PyMem_Free(current);
+
+    return result;
+}
+
+static PyObject *getKeywordSuggestion(struct Nuitka_FunctionObject const *function, PyObject *kw_name) {
+    if (unlikely(!PyUnicode_Check(kw_name))) {
+        return NULL;
+    }
+
+    Py_ssize_t kw_name_size;
+    char const *kw_name_utf8 = PyUnicode_AsUTF8AndSize(kw_name, &kw_name_size);
+
+    if (unlikely(kw_name_utf8 == NULL)) {
+        return NULL;
+    }
+
+    Py_ssize_t max_cost = kw_name_size <= 5 ? 2 : kw_name_size / 3;
+    if (max_cost < 1) {
+        max_cost = 1;
+    }
+
+    Py_ssize_t best_cost = max_cost + 1;
+    PyObject *best_candidate = NULL;
+
+    if (function->m_args_keywords_count <= function->m_args_pos_only_count) {
+        return NULL;
+    }
+
+    PyObject **var_names = function->m_varnames;
+
+    for (Py_ssize_t i = function->m_args_pos_only_count; i < function->m_args_keywords_count; i++) {
+        PyObject *candidate = var_names[i];
+        Py_ssize_t candidate_size;
+        char const *candidate_utf8 = PyUnicode_AsUTF8AndSize(candidate, &candidate_size);
+
+        if (unlikely(candidate_utf8 == NULL)) {
+            PyErr_Clear();
+            continue;
+        }
+
+        Py_ssize_t cost = getEditDistanceBounded(kw_name_utf8, kw_name_size, candidate_utf8, candidate_size, max_cost);
+
+        if (cost < best_cost) {
+            best_cost = cost;
+            best_candidate = candidate;
+
+            if (cost == 0) {
+                break;
+            }
+        }
+    }
+
+    if (best_candidate == NULL || best_cost > max_cost) {
+        return NULL;
+    }
+
+    Py_INCREF(best_candidate);
+    return best_candidate;
+}
+
+static void formatErrorUnexpectedKeywordArgument(struct Nuitka_FunctionObject const *function, PyObject *kw_name) {
+#if PYTHON_VERSION < 0x3a0
+    char const *function_name = Nuitka_String_AsString(function->m_name);
+#else
+    char const *function_name = Nuitka_String_AsString(function->m_qualname);
+#endif
+
+    PyObject *suggestion = getKeywordSuggestion(function, kw_name);
+
+    if (suggestion != NULL) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s() got an unexpected keyword argument '%s'. Did you mean '%U'?", function_name,
+                     Nuitka_String_AsString(kw_name), suggestion);
+        Py_DECREF(suggestion);
+    } else {
+        PyErr_Format(PyExc_TypeError, "%s() got an unexpected keyword argument '%s'", function_name,
+                     Nuitka_String_Check(kw_name) ? Nuitka_String_AsString(kw_name) : "<non-string>");
+    }
+}
+#endif
+
 // tp_descr_get slot, bind a function to an object.
 static PyObject *Nuitka_Function_descr_get(PyObject *function, PyObject *object, PyObject *class_object) {
     assert(Nuitka_Function_Check(function));
@@ -1692,8 +1847,12 @@ static void formatErrorNoArgumentAllowedKwSplit(struct Nuitka_FunctionObject con
     char const *function_name = Nuitka_String_AsString(function->m_qualname);
 #endif
 
+#if PYTHON_VERSION >= 0x3e0
+    formatErrorUnexpectedKeywordArgument(function, kw_name);
+#else
     PyErr_Format(PyExc_TypeError, "%s() got an unexpected keyword argument '%s'", function_name,
                  Nuitka_String_AsString(kw_name));
+#endif
 }
 #endif
 
@@ -1718,8 +1877,12 @@ static void formatErrorNoArgumentAllowed(struct Nuitka_FunctionObject const *fun
         PyObject *tmp_arg_name = PyIter_Next(tmp_iter);
         Py_DECREF(tmp_iter);
 
+#if PYTHON_VERSION >= 0x3e0
+        formatErrorUnexpectedKeywordArgument(function, tmp_arg_name);
+#else
         PyErr_Format(PyExc_TypeError, "%s() got an unexpected keyword argument '%s'", function_name,
                      Nuitka_String_AsString(tmp_arg_name));
+#endif
 
         Py_DECREF(tmp_arg_name);
     }
@@ -2140,8 +2303,12 @@ static Py_ssize_t handleKeywordArgs(PyThreadState *tstate, struct Nuitka_Functio
                              Nuitka_String_Check(key) ? Nuitka_String_AsString(key) : "<non-string>");
 
             } else {
+#if PYTHON_VERSION >= 0x3e0
+                formatErrorUnexpectedKeywordArgument(function, key);
+#else
                 PyErr_Format(PyExc_TypeError, "%s() got an unexpected keyword argument '%s'", function_name,
                              Nuitka_String_Check(key) ? Nuitka_String_AsString(key) : "<non-string>");
+#endif
             }
 
             Py_DECREF(key);
@@ -2255,8 +2422,12 @@ static Py_ssize_t handleKeywordArgsSplit(struct Nuitka_FunctionObject const *fun
                              Nuitka_String_Check(key) ? Nuitka_String_AsString(key) : "<non-string>");
 
             } else {
+#if PYTHON_VERSION >= 0x3e0
+                formatErrorUnexpectedKeywordArgument(function, key);
+#else
                 PyErr_Format(PyExc_TypeError, "%s() got an unexpected keyword argument '%s'", function_name,
                              Nuitka_String_Check(key) ? Nuitka_String_AsString(key) : "<non-string>");
+#endif
             }
 
             Py_DECREF(value);
@@ -3273,8 +3444,12 @@ static Py_ssize_t _handleVectorcallKeywordArgs(PyThreadState *tstate, struct Nui
                              Nuitka_String_Check(key) ? Nuitka_String_AsString(key) : "<non-string>");
 
             } else {
+#if PYTHON_VERSION >= 0x3e0
+                formatErrorUnexpectedKeywordArgument(function, key);
+#else
                 PyErr_Format(PyExc_TypeError, "%s() got an unexpected keyword argument '%s'", function_name,
                              Nuitka_String_Check(key) ? Nuitka_String_AsString(key) : "<non-string>");
+#endif
             }
 
             return -1;
@@ -3388,8 +3563,12 @@ static bool parseArgumentsVectorcall(PyThreadState *tstate, struct Nuitka_Functi
             PyErr_Format(PyExc_TypeError, "%s() takes 0 positional arguments but %zd was given", function_name,
                          args_size);
         } else {
+#if PYTHON_VERSION >= 0x3e0
+            formatErrorUnexpectedKeywordArgument(function, kw_names[0]);
+#else
             PyErr_Format(PyExc_TypeError, "%s() got an unexpected keyword argument '%s'", function_name,
                          Nuitka_String_AsString(kw_names[0]));
+#endif
         }
 
         releaseParameters(function, python_pars);
