@@ -12,7 +12,7 @@ from .CodeHelpers import (
     generateExpressionCode,
     withObjectCodeTemporaryAssignment,
 )
-from .ErrorCodes import getErrorExitCode
+from .ErrorCodes import getErrorExitCode, getReleaseCode
 from .PythonAPICodes import generateCAPIObjectCode, makeArgDescFromExpression
 from .TupleCodes import getTupleCreationCode
 
@@ -289,6 +289,10 @@ def generateStrFormatMethodCode(to_name, expression, emit, context):
 
 def generateTemplateStringCode(to_name, expression, emit, context):
     interpolations_name = context.allocateTempName("template_values")
+    if to_name.c_type == "nuitka_void":
+        result_name = context.allocateTempName("template_result")
+    else:
+        result_name = to_name
 
     getTupleCreationCode(
         to_name=interpolations_name,
@@ -302,28 +306,39 @@ def generateTemplateStringCode(to_name, expression, emit, context):
 %(to_name)s = _PyTemplate_Build(%(str_values_name)s, %(interpolations_name)s);
 """
         % {
-            "to_name": to_name,
+            "to_name": result_name,
             "str_values_name": context.getConstantCode(constant=expression.str_values),
             "interpolations_name": interpolations_name,
         }
     )
 
     getErrorExitCode(
-        check_name=to_name, release_name=interpolations_name, emit=emit, context=context
+        check_name=result_name,
+        release_name=interpolations_name,
+        emit=emit,
+        context=context,
     )
+
+    if result_name is not to_name:
+        context.addCleanupTempName(result_name)
+        getReleaseCode(release_name=result_name, emit=emit, context=context)
 
 
 def generateTemplateInterpolationCode(to_name, expression, emit, context):
     value_name, format_spec_name = generateChildExpressionsCode(
         expression, emit, context
     )
+    if to_name.c_type == "nuitka_void":
+        result_name = context.allocateTempName("interpolation_result")
+    else:
+        result_name = to_name
 
     emit(
         """\
 %(to_name)s = _PyInterpolation_Build(%(value_name)s, %(str_value_name)s, %(conversion)s, %(format_spec_name)s);
 """
         % {
-            "to_name": to_name,
+            "to_name": result_name,
             "value_name": value_name,
             "str_value_name": context.getConstantCode(constant=expression.str_value),
             "conversion": expression.conversion if expression.conversion != -1 else 0,
@@ -336,11 +351,15 @@ def generateTemplateInterpolationCode(to_name, expression, emit, context):
     )
 
     getErrorExitCode(
-        check_name=to_name,
+        check_name=result_name,
         release_names=(value_name, format_spec_name),
         emit=emit,
         context=context,
     )
+
+    if result_name is not to_name:
+        context.addCleanupTempName(result_name)
+        getReleaseCode(release_name=result_name, emit=emit, context=context)
 
 
 #     Part of "Nuitka", an optimizing Python compiler that is compatible and
