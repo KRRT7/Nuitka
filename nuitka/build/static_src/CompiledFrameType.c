@@ -678,7 +678,11 @@ static PyObject *Nuitka_Frame_clear(struct Nuitka_FrameObject *frame, PyObject *
             struct Nuitka_CoroutineObject *coroutine = (struct Nuitka_CoroutineObject *)f_gen;
             Nuitka_SetFrameGenerator(frame, NULL);
 
-            close_exception = !_Nuitka_Coroutine_close(tstate, coroutine);
+            if (coroutine->m_status == status_Unused && Nuitka_Coroutine_warn_unawaited(coroutine) < 0) {
+                close_exception = true;
+            } else {
+                close_exception = !_Nuitka_Coroutine_close(tstate, coroutine);
+            }
         }
 #endif
 #if PYTHON_VERSION >= 0x360

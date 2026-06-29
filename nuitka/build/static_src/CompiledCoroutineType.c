@@ -79,9 +79,17 @@ static bool Nuitka_Coroutine_ensure_frame(PyThreadState *tstate, struct Nuitka_C
         }
 
         Nuitka_SetFrameGenerator(coroutine->m_frame, (PyObject *)coroutine);
+
+#if PYTHON_VERSION >= 0x3b0
+        coroutine->m_frame->m_frame_state = FRAME_CREATED;
+#endif
     }
 
     return true;
+}
+
+int Nuitka_Coroutine_warn_unawaited(struct Nuitka_CoroutineObject *coroutine) {
+    return PyErr_WarnFormat(PyExc_RuntimeWarning, 1, "coroutine '%S' was never awaited", coroutine->m_qualname);
 }
 
 static PyObject *Nuitka_Coroutine_get_name(PyObject *self, void *data) {
@@ -148,8 +156,14 @@ static PyObject *Nuitka_Coroutine_get_cr_await(PyObject *self, void *data) {
     CHECK_OBJECT_X(coroutine->m_yield_from);
 
     if (coroutine->m_yield_from) {
-        Py_INCREF(coroutine->m_yield_from);
-        return coroutine->m_yield_from;
+        PyObject *result = coroutine->m_yield_from;
+
+        if (Nuitka_CoroutineWrapper_Check(result)) {
+            result = (PyObject *)((struct Nuitka_CoroutineWrapperObject *)result)->m_coroutine;
+        }
+
+        Py_INCREF(result);
+        return result;
     } else {
         Py_INCREF_IMMORTAL(Py_None);
         return Py_None;
@@ -1117,7 +1131,7 @@ static PySendResult _Nuitka_Coroutine_am_send(struct Nuitka_CoroutineObject *cor
 #endif
 
 static void Nuitka_Coroutine_tp_finalize(struct Nuitka_CoroutineObject *coroutine) {
-    if (coroutine->m_status != status_Running) {
+    if (coroutine->m_status == status_Finished) {
         return;
     }
 
@@ -1126,7 +1140,15 @@ static void Nuitka_Coroutine_tp_finalize(struct Nuitka_CoroutineObject *coroutin
     struct Nuitka_ExceptionPreservationItem saved_exception_state;
     FETCH_ERROR_OCCURRED_STATE(tstate, &saved_exception_state);
 
-    bool close_result = _Nuitka_Coroutine_close(tstate, coroutine);
+    bool close_result = true;
+
+    if (coroutine->m_status == status_Unused && Nuitka_Coroutine_warn_unawaited(coroutine) < 0) {
+        close_result = false;
+    }
+
+    if (_Nuitka_Coroutine_close(tstate, coroutine) == false) {
+        close_result = false;
+    }
 
     if (unlikely(close_result == false)) {
         PyErr_WriteUnraisable((PyObject *)coroutine);
@@ -1590,6 +1612,13 @@ static int gen_is_coroutine(PyObject *object) {
     return 0;
 }
 
+static char const *Nuitka_GetShortTypeName(PyObject *value) {
+    char const *type_name = Py_TYPE(value)->tp_name;
+    char const *dot = strrchr(type_name, '.');
+
+    return dot == NULL ? type_name : dot + 1;
+}
+
 static PyObject *Nuitka_GetAwaitableIter(PyThreadState *tstate, PyObject *value) {
     CHECK_OBJECT(value);
 
@@ -1634,7 +1663,7 @@ static PyObject *Nuitka_GetAwaitableIter(PyThreadState *tstate, PyObject *value)
         return result;
     }
 
-    SET_CURRENT_EXCEPTION_TYPE_COMPLAINT("object %s can't be used in 'await' expression", value);
+    PyErr_Format(PyExc_TypeError, "'%.200s' object can't be awaited", Nuitka_GetShortTypeName(value));
 
     return NULL;
 }

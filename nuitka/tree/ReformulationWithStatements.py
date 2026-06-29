@@ -218,8 +218,8 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
         )
 
         attribute_assignments = (
-            attribute_enter_assignment,
             attribute_exit_assignment,
+            attribute_enter_assignment,
             enter_await_statement,
         )
     # It's weird, but 3.14 looks up __exit__ before __enter__
