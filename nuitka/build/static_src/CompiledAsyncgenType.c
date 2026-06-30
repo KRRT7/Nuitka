@@ -61,6 +61,24 @@ static void Nuitka_MarkAsyncgenAsNotRunning(struct Nuitka_AsyncgenObject *asyncg
     }
 }
 
+static bool Nuitka_Asyncgen_ensure_frame(PyThreadState *tstate, struct Nuitka_AsyncgenObject *asyncgen) {
+    if (asyncgen->m_frame == NULL && asyncgen->m_status == status_Unused) {
+        asyncgen->m_frame = MAKE_FUNCTION_FRAME(tstate, asyncgen->m_code_object, asyncgen->m_module, 0);
+
+        if (unlikely(asyncgen->m_frame == NULL)) {
+            return false;
+        }
+
+        Nuitka_SetFrameGenerator(asyncgen->m_frame, (PyObject *)asyncgen);
+
+#if PYTHON_VERSION >= 0x3b0
+        asyncgen->m_frame->m_frame_state = FRAME_CREATED;
+#endif
+    }
+
+    return true;
+}
+
 static Py_hash_t Nuitka_Asyncgen_tp_hash(struct Nuitka_AsyncgenObject *asyncgen) { return asyncgen->m_counter; }
 
 static PyObject *Nuitka_Asyncgen_get_name(PyObject *self, void *data) {
@@ -156,6 +174,10 @@ static PyObject *Nuitka_Asyncgen_get_frame(PyObject *self, void *data) {
     struct Nuitka_AsyncgenObject *asyncgen = (struct Nuitka_AsyncgenObject *)self;
     CHECK_OBJECT(asyncgen);
     CHECK_OBJECT_X(asyncgen->m_frame);
+
+    if (unlikely(Nuitka_Asyncgen_ensure_frame(PyThreadState_GET(), asyncgen) == false)) {
+        return NULL;
+    }
 
     if (asyncgen->m_frame) {
         Py_INCREF(asyncgen->m_frame);

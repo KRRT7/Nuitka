@@ -97,6 +97,9 @@ static PyObject *_types_coroutine_replacement(PyObject *self, PyObject *args, Py
 
         if (function->m_code_object->co_flags & CO_GENERATOR) {
             function->m_code_object->co_flags |= 0x100;
+
+            Py_INCREF(func);
+            return func;
         }
     }
 

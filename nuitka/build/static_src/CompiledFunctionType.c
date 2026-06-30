@@ -214,6 +214,7 @@ static long Nuitka_Function_tp_traverse(struct Nuitka_FunctionObject *function, 
     // TODO: Identify the impact of not visiting other owned objects. It appears
     // to be mostly harmless, as these are strings.
     Py_VISIT(function->m_dict);
+    Py_VISIT(function->m_code_replacement);
 
     for (Py_ssize_t i = 0; i < function->m_closure_given; i++) {
         Py_VISIT(function->m_closure[i]);
@@ -404,14 +405,156 @@ static PyObject *Nuitka_Function_get_code(PyObject *self, void *data) {
     return result;
 }
 
+#if PYTHON_VERSION >= 0x300
+static PyObject *Nuitka_Function_makeReplacementClosure(struct Nuitka_FunctionObject *function) {
+    if (function->m_closure_given == 0) {
+        Py_INCREF_IMMORTAL(Py_None);
+        return Py_None;
+    }
+
+    PyObject *result = PyTuple_New(function->m_closure_given);
+
+    if (unlikely(result == NULL)) {
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < function->m_closure_given; i++) {
+        PyObject *cell_value = Nuitka_CellOrPyCell_GET((PyObject *)function->m_closure[i]);
+        PyObject *cell = PyCell_New(cell_value);
+
+        if (unlikely(cell == NULL)) {
+            Py_DECREF(result);
+            return NULL;
+        }
+
+        PyTuple_SET_ITEM(result, i, cell);
+    }
+
+    return result;
+}
+
+static int Nuitka_Function_syncReplacementMetadata(struct Nuitka_FunctionObject *function, PyObject *replacement) {
+    PyObject *defaults = function->m_defaults;
+
+    if (unlikely(PyFunction_SetDefaults(replacement, defaults) < 0)) {
+        return -1;
+    }
+
+    PyObject *kwdefaults = function->m_kwdefaults == NULL ? Py_None : function->m_kwdefaults;
+
+    if (unlikely(PyFunction_SetKwDefaults(replacement, kwdefaults) < 0)) {
+        return -1;
+    }
+
+    if (function->m_annotations != NULL &&
+        unlikely(PyFunction_SetAnnotations(replacement, function->m_annotations) < 0)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static PyObject *Nuitka_Function_makeCodeReplacement(struct Nuitka_FunctionObject *function, PyObject *code_object) {
+    PyObject *module_dict;
+
+    if (PyModule_Check(function->m_module)) {
+        module_dict = PyModule_GetDict(function->m_module);
+    } else if (PyDict_Check(function->m_module)) {
+        module_dict = function->m_module;
+    } else {
+        module_dict = PyEval_GetGlobals();
+    }
+
+    if (unlikely(module_dict == NULL)) {
+        PyErr_SetString(PyExc_SystemError, "compiled function has no globals for replacement code");
+        return NULL;
+    }
+
+    PyObject *result = PyFunction_NewWithQualName(code_object, module_dict, function->m_qualname);
+
+    if (unlikely(result == NULL)) {
+        return NULL;
+    }
+
+    PyObject *closure = Nuitka_Function_makeReplacementClosure(function);
+
+    if (unlikely(closure == NULL)) {
+        Py_DECREF(result);
+        return NULL;
+    }
+
+    if (closure != Py_None && unlikely(PyFunction_SetClosure(result, closure) < 0)) {
+        Py_DECREF(closure);
+        Py_DECREF(result);
+        return NULL;
+    }
+
+    Py_DECREF(closure);
+
+    if (unlikely(Nuitka_Function_syncReplacementMetadata(function, result) < 0)) {
+        Py_DECREF(result);
+        return NULL;
+    }
+
+    return result;
+}
+#endif
+
 static int Nuitka_Function_set_code(PyObject *self, PyObject *value, void *data) {
     CHECK_OBJECT(self);
     assert(Nuitka_Function_Check(self));
     assert(_PyObject_GC_IS_TRACKED(self));
 
+#if PYTHON_VERSION < 0x300
     PyThreadState *tstate = PyThreadState_GET();
     SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_RuntimeError, "__code__ is not writable in Nuitka");
     return -1;
+#else
+    if (unlikely(value == NULL || !PyCode_Check(value))) {
+        PyErr_SetString(PyExc_TypeError, "__code__ must be set to a code object");
+        return -1;
+    }
+
+    struct Nuitka_FunctionObject *function = (struct Nuitka_FunctionObject *)self;
+    int nfree = ((PyCodeObject *)value)->co_nfreevars;
+
+    if (unlikely(function->m_closure_given != nfree)) {
+        PyErr_Format(PyExc_ValueError, "%U() requires a code object with %zd free vars, not %d", function->m_name,
+                     function->m_closure_given, nfree);
+        return -1;
+    }
+
+    int old_flags = function->m_code_object->co_flags;
+    int new_flags = ((PyCodeObject *)value)->co_flags;
+    int mask = CO_GENERATOR | CO_COROUTINE | CO_ASYNC_GENERATOR;
+
+    if (unlikely((old_flags & mask) != (new_flags & mask))) {
+        if (PyErr_Warn(PyExc_DeprecationWarning, "Assigning a code object of non-matching type is deprecated "
+                                                 "(e.g., from a generator to a plain function)") < 0) {
+            return -1;
+        }
+    }
+
+    PyObject *replacement = Nuitka_Function_makeCodeReplacement(function, value);
+
+    if (unlikely(replacement == NULL)) {
+        return -1;
+    }
+
+    PyCodeObject *old_code_object = function->m_code_object;
+    PyObject *old_replacement = function->m_code_replacement;
+
+    Py_INCREF(value);
+    function->m_code_object = (PyCodeObject *)value;
+    function->m_code_replacement = replacement;
+
+    if (old_replacement != NULL) {
+        Py_DECREF(old_code_object);
+        Py_DECREF(old_replacement);
+    }
+
+    return 0;
+#endif
 }
 
 static PyObject *Nuitka_Function_get_compiled(PyObject *self, void *data) {
@@ -551,6 +694,13 @@ static int Nuitka_Function_set_defaults(PyObject *self, PyObject *value, void *d
 
     _onUpdatedCompiledFunctionDefaultsValue(function);
 
+#if PYTHON_VERSION >= 0x300
+    if (function->m_code_replacement != NULL &&
+        unlikely(Nuitka_Function_syncReplacementMetadata(function, function->m_code_replacement) < 0)) {
+        return -1;
+    }
+#endif
+
     return 0;
 }
 
@@ -661,6 +811,11 @@ static int Nuitka_Function_set_annotations(PyObject *self, PyObject *value, void
     function->m_annotate = NULL;
     Py_XDECREF(old);
 #endif
+
+    if (function->m_code_replacement != NULL &&
+        unlikely(Nuitka_Function_syncReplacementMetadata(function, function->m_code_replacement) < 0)) {
+        return -1;
+    }
 
     return 0;
 }
@@ -1033,6 +1188,14 @@ static PyObject *Nuitka_Function_clone(struct Nuitka_FunctionObject *function, P
     }
 #endif
 
+#if PYTHON_VERSION >= 0x300
+    if (function->m_code_replacement != NULL &&
+        unlikely(Nuitka_Function_set_code((PyObject *)result, (PyObject *)function->m_code_object, NULL) < 0)) {
+        Py_DECREF(result);
+        return NULL;
+    }
+#endif
+
     return (PyObject *)result;
 }
 
@@ -1073,6 +1236,11 @@ static void Nuitka_Function_tp_dealloc(struct Nuitka_FunctionObject *function) {
 #if PYTHON_VERSION >= 0x3c0
     Py_XDECREF(function->m_type_params);
 #endif
+
+    if (function->m_code_replacement != NULL) {
+        Py_DECREF(function->m_code_object);
+        Py_DECREF(function->m_code_replacement);
+    }
 
     // These may actually resurrect the object, not?
     Py_XDECREF(function->m_dict);
@@ -1789,7 +1957,78 @@ static PyObject *Nuitka_Function_tp_vectorcall(struct Nuitka_FunctionObject *fun
                                                size_t nargsf, PyObject *kw_names);
 
 bool Nuitka_Function_UsesDefaultVectorcall(struct Nuitka_FunctionObject const *function) {
-    return function->m_vectorcall == (vectorcallfunc)Nuitka_Function_tp_vectorcall;
+    return function->m_code_replacement == NULL &&
+           function->m_vectorcall == (vectorcallfunc)Nuitka_Function_tp_vectorcall;
+}
+#endif
+
+#if PYTHON_VERSION >= 0x300
+static PyObject *Nuitka_Function_CallReplacementPosArgs(struct Nuitka_FunctionObject const *function,
+                                                        PyObject *const *args, Py_ssize_t args_size) {
+    PyObject *tuple_args = PyTuple_New(args_size);
+
+    if (unlikely(tuple_args == NULL)) {
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < args_size; i++) {
+        PyObject *item = args[i];
+        Py_INCREF(item);
+        PyTuple_SET_ITEM(tuple_args, i, item);
+    }
+
+    PyObject *result = PyObject_Call(function->m_code_replacement, tuple_args, NULL);
+    Py_DECREF(tuple_args);
+
+    return result;
+}
+
+static PyObject *Nuitka_Function_CallReplacementPosArgsKwArgs(struct Nuitka_FunctionObject const *function,
+                                                              PyObject *const *args, Py_ssize_t args_size,
+                                                              PyObject *kw) {
+    PyObject *tuple_args = PyTuple_New(args_size);
+
+    if (unlikely(tuple_args == NULL)) {
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < args_size; i++) {
+        PyObject *item = args[i];
+        Py_INCREF(item);
+        PyTuple_SET_ITEM(tuple_args, i, item);
+    }
+
+    PyObject *result = PyObject_Call(function->m_code_replacement, tuple_args, kw);
+    Py_DECREF(tuple_args);
+
+    return result;
+}
+
+static PyObject *Nuitka_Function_CallReplacementKwSplit(struct Nuitka_FunctionObject const *function,
+                                                        PyObject *const *args, Py_ssize_t args_size,
+                                                        PyObject *const *kw_values, PyObject *kw_names,
+                                                        Py_ssize_t kw_size) {
+    if (kw_size == 0) {
+        return Nuitka_Function_CallReplacementPosArgs(function, args, args_size);
+    }
+
+    PyObject *kw = PyDict_New();
+
+    if (unlikely(kw == NULL)) {
+        return NULL;
+    }
+
+    for (Py_ssize_t i = 0; i < kw_size; i++) {
+        if (unlikely(PyDict_SetItem(kw, PyTuple_GET_ITEM(kw_names, i), kw_values[i]) < 0)) {
+            Py_DECREF(kw);
+            return NULL;
+        }
+    }
+
+    PyObject *result = Nuitka_Function_CallReplacementPosArgsKwArgs(function, args, args_size, kw);
+    Py_DECREF(kw);
+
+    return result;
 }
 #endif
 
@@ -1879,6 +2118,7 @@ Nuitka_Function_New(function_impl_code c_code, PyObject *name, PyObject *qualnam
 #endif
 
     result->m_code_object = code_object;
+    result->m_code_replacement = NULL;
     result->m_args_positional_count = code_object->co_argcount;
     result->m_args_keywords_count = result->m_args_positional_count;
 #if PYTHON_VERSION >= 0x300
@@ -3384,6 +3624,12 @@ static bool parseArgumentsFull(PyThreadState *tstate, struct Nuitka_FunctionObje
 }
 
 PyObject *Nuitka_CallFunctionNoArgs(PyThreadState *tstate, struct Nuitka_FunctionObject const *function) {
+#if PYTHON_VERSION >= 0x300
+    if (unlikely(function->m_code_replacement != NULL)) {
+        return Nuitka_Function_CallReplacementPosArgs(function, NULL, 0);
+    }
+#endif
+
     NUITKA_DYNAMIC_ARRAY_DECL(python_pars, PyObject *, function->m_args_overall_count);
     memset(python_pars, 0, function->m_args_overall_count * sizeof(PyObject *));
 
@@ -3396,6 +3642,12 @@ PyObject *Nuitka_CallFunctionNoArgs(PyThreadState *tstate, struct Nuitka_Functio
 
 PyObject *Nuitka_CallFunctionPosArgs(PyThreadState *tstate, struct Nuitka_FunctionObject const *function,
                                      PyObject *const *args, Py_ssize_t args_size) {
+#if PYTHON_VERSION >= 0x300
+    if (unlikely(function->m_code_replacement != NULL)) {
+        return Nuitka_Function_CallReplacementPosArgs(function, args, args_size);
+    }
+#endif
+
     NUITKA_DYNAMIC_ARRAY_DECL(python_pars, PyObject *, function->m_args_overall_count);
     memset(python_pars, 0, function->m_args_overall_count * sizeof(PyObject *));
 
@@ -3408,6 +3660,12 @@ PyObject *Nuitka_CallFunctionPosArgs(PyThreadState *tstate, struct Nuitka_Functi
 
 PyObject *Nuitka_CallFunctionPosArgsKwArgs(PyThreadState *tstate, struct Nuitka_FunctionObject const *function,
                                            PyObject *const *args, Py_ssize_t args_size, PyObject *kw) {
+#if PYTHON_VERSION >= 0x300
+    if (unlikely(function->m_code_replacement != NULL)) {
+        return Nuitka_Function_CallReplacementPosArgsKwArgs(function, args, args_size, kw);
+    }
+#endif
+
     NUITKA_DYNAMIC_ARRAY_DECL(python_pars, PyObject *, function->m_args_overall_count);
     memset(python_pars, 0, function->m_args_overall_count * sizeof(PyObject *));
 
@@ -3421,6 +3679,14 @@ PyObject *Nuitka_CallFunctionPosArgsKwArgs(PyThreadState *tstate, struct Nuitka_
 PyObject *Nuitka_CallFunctionPosArgsKwSplit(PyThreadState *tstate, struct Nuitka_FunctionObject const *function,
                                             PyObject *const *args, Py_ssize_t args_size, PyObject *const *kw_values,
                                             PyObject *kw_names) {
+#if PYTHON_VERSION >= 0x300
+    if (unlikely(function->m_code_replacement != NULL)) {
+        Py_ssize_t kw_size = kw_names == NULL ? 0 : PyTuple_GET_SIZE(kw_names);
+
+        return Nuitka_Function_CallReplacementKwSplit(function, args, args_size, kw_values, kw_names, kw_size);
+    }
+#endif
+
     NUITKA_DYNAMIC_ARRAY_DECL(python_pars, PyObject *, function->m_args_overall_count);
     memset(python_pars, 0, function->m_args_overall_count * sizeof(PyObject *));
 
@@ -3433,6 +3699,12 @@ PyObject *Nuitka_CallFunctionPosArgsKwSplit(PyThreadState *tstate, struct Nuitka
 
 PyObject *Nuitka_CallMethodFunctionNoArgs(PyThreadState *tstate, struct Nuitka_FunctionObject const *function,
                                           PyObject *object) {
+#if PYTHON_VERSION >= 0x300
+    if (unlikely(function->m_code_replacement != NULL)) {
+        return Nuitka_Function_CallReplacementPosArgs(function, &object, 1);
+    }
+#endif
+
     NUITKA_DYNAMIC_ARRAY_DECL(python_pars, PyObject *, function->m_args_overall_count);
     memset(python_pars, 0, function->m_args_overall_count * sizeof(PyObject *));
 
@@ -3445,6 +3717,17 @@ PyObject *Nuitka_CallMethodFunctionNoArgs(PyThreadState *tstate, struct Nuitka_F
 
 PyObject *Nuitka_CallMethodFunctionPosArgs(PyThreadState *tstate, struct Nuitka_FunctionObject const *function,
                                            PyObject *object, PyObject *const *args, Py_ssize_t args_size) {
+#if PYTHON_VERSION >= 0x300
+    if (unlikely(function->m_code_replacement != NULL)) {
+        NUITKA_DYNAMIC_ARRAY_DECL(new_args, PyObject *, args_size + 1);
+
+        new_args[0] = object;
+        memcpy(new_args + 1, args, args_size * sizeof(PyObject *));
+
+        return Nuitka_Function_CallReplacementPosArgs(function, new_args, args_size + 1);
+    }
+#endif
+
     NUITKA_DYNAMIC_ARRAY_DECL(python_pars, PyObject *, function->m_args_overall_count);
     memset(python_pars, 0, function->m_args_overall_count * sizeof(PyObject *));
 
@@ -3749,6 +4032,32 @@ static bool parseArgumentsVectorcall(PyThreadState *tstate, struct Nuitka_Functi
 PyObject *Nuitka_CallFunctionVectorcall(PyThreadState *tstate, struct Nuitka_FunctionObject const *function,
                                         PyObject *const *args, Py_ssize_t args_size, PyObject *const *kw_names,
                                         Py_ssize_t kw_size) {
+#if PYTHON_VERSION >= 0x300
+    if (unlikely(function->m_code_replacement != NULL)) {
+        PyObject *kw_names_tuple = NULL;
+
+        if (kw_size > 0) {
+            kw_names_tuple = PyTuple_New(kw_size);
+
+            if (unlikely(kw_names_tuple == NULL)) {
+                return NULL;
+            }
+
+            for (Py_ssize_t i = 0; i < kw_size; i++) {
+                PyObject *name = kw_names[i];
+                Py_INCREF(name);
+                PyTuple_SET_ITEM(kw_names_tuple, i, name);
+            }
+        }
+
+        PyObject *result = Nuitka_Function_CallReplacementKwSplit(function, args, args_size, args + args_size,
+                                                                  kw_names_tuple, kw_size);
+        Py_XDECREF(kw_names_tuple);
+
+        return result;
+    }
+#endif
+
     NUITKA_DYNAMIC_ARRAY_DECL(python_pars, PyObject *, function->m_args_overall_count);
     memset(python_pars, 0, function->m_args_overall_count * sizeof(PyObject *));
 
@@ -3761,6 +4070,12 @@ PyObject *Nuitka_CallFunctionVectorcall(PyThreadState *tstate, struct Nuitka_Fun
 static PyObject *Nuitka_Function_tp_call(struct Nuitka_FunctionObject *function, PyObject *tuple_args, PyObject *kw) {
     CHECK_OBJECT(tuple_args);
     assert(PyTuple_CheckExact(tuple_args));
+
+#if PYTHON_VERSION >= 0x300
+    if (unlikely(function->m_code_replacement != NULL)) {
+        return PyObject_Call(function->m_code_replacement, tuple_args, kw);
+    }
+#endif
 
     PyThreadState *tstate = PyThreadState_GET();
 
@@ -3811,6 +4126,10 @@ static PyObject *Nuitka_Function_tp_vectorcall(struct Nuitka_FunctionObject *fun
     Py_ssize_t nargs = PyVectorcall_NARGS(nargsf);
     assert(nargs >= 0);
     assert((nargs == 0 && kwargs_count == 0) || stack != NULL);
+
+    if (unlikely(function->m_code_replacement != NULL)) {
+        return PyObject_Vectorcall(function->m_code_replacement, stack, nargsf, kw_names);
+    }
 
     PyThreadState *tstate = PyThreadState_GET();
     return Nuitka_CallFunctionVectorcall(tstate, function, stack, nargs,

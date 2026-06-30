@@ -1773,10 +1773,25 @@ static PyMethodDef Nuitka_Generator_methods[] = {{"send", (PyCFunction)Nuitka_Ge
 
 // This is only used.
 #if PYTHON_VERSION >= 0x3a0
+static PyObject *Nuitka_Generator_am_await(struct Nuitka_GeneratorObject *generator) {
+    if ((generator->m_code_object->co_flags & CO_ITERABLE_COROUTINE) != 0) {
+        Py_INCREF(generator);
+        return (PyObject *)generator;
+    }
+
+#if PYTHON_VERSION >= 0x3e0
+    PyErr_Format(PyExc_TypeError, "'compiled_generator' object can't be awaited");
+#else
+    PyErr_Format(PyExc_TypeError, "object compiled_generator can't be used in 'await' expression");
+#endif
+
+    return NULL;
+}
+
 static PyAsyncMethods Nuitka_Generator_as_async = {
-    NULL, /* am_await */
-    NULL, /* am_aiter */
-    NULL, /* am_anext */
+    (unaryfunc)Nuitka_Generator_am_await, /* am_await */
+    NULL,                                 /* am_aiter */
+    NULL,                                 /* am_anext */
     // TODO: have this too, (sendfunc)_Nuitka_Generator_am_send
     NULL /* am_send */
 };

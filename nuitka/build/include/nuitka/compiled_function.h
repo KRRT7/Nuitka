@@ -29,6 +29,7 @@ struct Nuitka_FunctionObject {
     PyObject *m_doc;
 
     PyCodeObject *m_code_object;
+    PyObject *m_code_replacement;
     Py_ssize_t m_args_overall_count;
     Py_ssize_t m_args_positional_count;
     Py_ssize_t m_args_keywords_count;
@@ -94,7 +95,9 @@ extern PyTypeObject Nuitka_Function_Type;
 #if PYTHON_VERSION >= 0x380 && !defined(_NUITKA_EXPERIMENTAL_DISABLE_VECTORCALL_SLOT)
 extern bool Nuitka_Function_UsesDefaultVectorcall(struct Nuitka_FunctionObject const *function);
 #else
-static inline bool Nuitka_Function_UsesDefaultVectorcall(struct Nuitka_FunctionObject const *function) { return true; }
+static inline bool Nuitka_Function_UsesDefaultVectorcall(struct Nuitka_FunctionObject const *function) {
+    return function->m_code_replacement == NULL;
+}
 #endif
 
 // Make a function with context.

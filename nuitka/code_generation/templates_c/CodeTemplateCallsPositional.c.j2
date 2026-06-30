@@ -109,7 +109,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject 
 
             PyObject *result;
 
-            if (function->m_args_simple && {{args_count}} + 1 == function->m_args_positional_count) {
+            if (Nuitka_Function_UsesDefaultVectorcall(function) && function->m_args_simple && {{args_count}} + 1 == function->m_args_positional_count) {
                 PyObject *python_pars[{{args_count}} + 1];
 
                 python_pars[0] = method->m_object;
@@ -125,7 +125,7 @@ PyObject *CALL_FUNCTION_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject 
                 }
 {% endif %}
                 result = function->m_c_code(tstate, function, python_pars);
-            } else if (function->m_args_simple && {{args_count}} + 1 + function->m_defaults_given == function->m_args_positional_count) {
+            } else if (Nuitka_Function_UsesDefaultVectorcall(function) && function->m_args_simple && {{args_count}} + 1 + function->m_defaults_given == function->m_args_positional_count) {
                 NUITKA_DYNAMIC_ARRAY_DECL(python_pars, PyObject *, function->m_args_positional_count);
 
                 python_pars[0] = method->m_object;
