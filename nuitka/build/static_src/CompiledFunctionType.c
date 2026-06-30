@@ -406,6 +406,14 @@ static PyObject *Nuitka_Function_get_code(PyObject *self, void *data) {
 }
 
 #if PYTHON_VERSION >= 0x300
+static int Nuitka_Function_getCodeFreeVarsCount(PyCodeObject *code_object) {
+#if PYTHON_VERSION < 0x3b0
+    return (int)PyTuple_GET_SIZE(code_object->co_freevars);
+#else
+    return code_object->co_nfreevars;
+#endif
+}
+
 static PyObject *Nuitka_Function_makeReplacementClosure(struct Nuitka_FunctionObject *function) {
     if (function->m_closure_given == 0) {
         Py_INCREF_IMMORTAL(Py_None);
@@ -516,7 +524,7 @@ static int Nuitka_Function_set_code(PyObject *self, PyObject *value, void *data)
     }
 
     struct Nuitka_FunctionObject *function = (struct Nuitka_FunctionObject *)self;
-    int nfree = ((PyCodeObject *)value)->co_nfreevars;
+    int nfree = Nuitka_Function_getCodeFreeVarsCount((PyCodeObject *)value);
 
     if (unlikely(function->m_closure_given != nfree)) {
         PyErr_Format(PyExc_ValueError, "%U() requires a code object with %zd free vars, not %d", function->m_name,
@@ -4128,7 +4136,7 @@ static PyObject *Nuitka_Function_tp_vectorcall(struct Nuitka_FunctionObject *fun
     assert((nargs == 0 && kwargs_count == 0) || stack != NULL);
 
     if (unlikely(function->m_code_replacement != NULL)) {
-        return PyObject_Vectorcall(function->m_code_replacement, stack, nargsf, kw_names);
+        return Nuitka_Function_CallReplacementKwSplit(function, stack, nargs, stack + nargs, kw_names, kwargs_count);
     }
 
     PyThreadState *tstate = PyThreadState_GET();
