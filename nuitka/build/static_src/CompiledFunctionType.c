@@ -1521,10 +1521,9 @@ static int Nuitka_Function_TraceConstantReturn(PyThreadState *tstate, struct Nui
 #if PYTHON_VERSION >= 0x3b0
     int first_lineno = function->m_code_object->co_firstlineno;
     int last_emitted_lineno = 0;
-    Py_ssize_t code_unit_count = Py_SIZE(function->m_code_object);
+    Py_ssize_t code_size = Nuitka_Code_GetCodeSize(function->m_code_object);
 
-    for (Py_ssize_t code_unit = 0; code_unit < code_unit_count; code_unit++) {
-        int code_addr = (int)(code_unit * sizeof(_Py_CODEUNIT));
+    for (Py_ssize_t code_addr = 0; code_addr < code_size; code_addr++) {
         int trace_lineno = PyCode_Addr2Line(function->m_code_object, code_addr);
 
         if (trace_lineno <= first_lineno || trace_lineno == last_emitted_lineno) {
