@@ -6,7 +6,6 @@
 from nuitka.PythonVersions import python_version
 
 from .CodeHelpers import generateStatementSequenceCode
-from .CodeObjectCodes import getCodeObjectAccessCode
 from .Emission import SourceCodeCollector
 from .FunctionCodes import (
     finalizeFunctionLocalVariables,
@@ -33,6 +32,18 @@ def _getGeneratorMakerIdentifier(function_identifier):
     return "MAKE_GENERATOR_" + function_identifier
 
 
+def _getGeneratorCodeObjectIdentifier(generator_object_body, context):
+    if (
+        generator_object_body.getFunctionName() != "<genexpr>"
+        and context.isForCreatedFunction()
+    ):
+        return "self->m_code_object"
+
+    return context.getCodeObjectHandle(
+        code_object=generator_object_body.getCodeObject()
+    )
+
+
 def getGeneratorObjectDeclCode(function_identifier, closure_variables):
     generator_creation_args = getFunctionCreationArgs(
         defaults_name=None,
@@ -41,6 +52,7 @@ def getGeneratorObjectDeclCode(function_identifier, closure_variables):
         closure_variables=closure_variables,
         type_params_name=None,
     )
+    generator_creation_args.append("PyCodeObject *generator_code_object")
 
     return template_generator_context_maker_decl % {
         "generator_maker_identifier": _getGeneratorMakerIdentifier(function_identifier),
@@ -125,6 +137,7 @@ struct %(function_identifier)s_locals *generator_heap = \
         closure_variables=closure_variables,
         type_params_name=None,
     )
+    generator_creation_args.append("PyCodeObject *generator_code_object")
 
     return template_generator_context_body_template % {
         "function_identifier": function_identifier,
@@ -144,9 +157,6 @@ struct %(function_identifier)s_locals *generator_heap = \
         "generator_qualname_obj": getFunctionQualnameObj(
             generator_object_body, context
         ),
-        "code_identifier": getCodeObjectAccessCode(
-            code_object=generator_object_body.getCodeObject(), context=context
-        ),
         "closure_name": "closure" if closure_variables else "NULL",
         "closure_count": len(closure_variables),
     }
@@ -164,6 +174,7 @@ def generateMakeGeneratorObjectCode(to_name, expression, emit, context):
     args = ["tstate"]
     if closure_name:
         args.append(closure_name)
+    args.append(_getGeneratorCodeObjectIdentifier(generator_object_body, context))
 
     # Special case empty generators.
     if generator_object_body.subnode_body is None:
@@ -179,8 +190,8 @@ def generateMakeGeneratorObjectCode(to_name, expression, emit, context):
                 "generator_qualname_obj": getFunctionQualnameObj(
                     generator_object_body, context
                 ),
-                "code_identifier": context.getCodeObjectHandle(
-                    code_object=generator_object_body.getCodeObject()
+                "code_identifier": _getGeneratorCodeObjectIdentifier(
+                    generator_object_body, context
                 ),
                 "closure_name": closure_name if closure_name is not None else "NULL",
                 "closure_count": len(closure_variables),

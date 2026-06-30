@@ -18,13 +18,68 @@ def getCurrentLineNumberCode(context):
             return str(source_ref.getLineNumber())
 
 
-def getLineNumberUpdateCode(context):
+def getLineNumberUpdateCode(context, allow_backward=True):
     lineno_value = getCurrentLineNumberCode(context)
 
     if lineno_value:
         frame_handle = context.getFrameHandle()
+        exception_exit = context.getExceptionEscape()
 
-        return "Nuitka_Frame_SetLineNumber(%s, %s);" % (frame_handle, lineno_value)
+        if exception_exit is not None:
+            (
+                exception_state_name,
+                exception_lineno,
+            ) = context.variable_storage.getExceptionVariableDescriptions()
+
+            code = """\
+if (Nuitka_Frame_TraceLine(tstate, %(frame_handle)s, %(lineno_value)s) < 0) {
+    FETCH_ERROR_OCCURRED_STATE(tstate, &%(exception_state_name)s);
+
+	%(exception_lineno)s = %(lineno_value)s;
+	    goto %(exception_exit)s;
+	}
+	if (Nuitka_Frame_TraceOpcode(tstate, %(frame_handle)s, %(lineno_value)s) < 0) {
+	    FETCH_ERROR_OCCURRED_STATE(tstate, &%(exception_state_name)s);
+
+	%(exception_lineno)s = %(lineno_value)s;
+	    goto %(exception_exit)s;
+	}
+		Nuitka_Frame_SetLineNumber(%(frame_handle)s, %(lineno_value)s);""" % {
+                "frame_handle": frame_handle,
+                "lineno_value": lineno_value,
+                "exception_exit": exception_exit,
+                "exception_state_name": exception_state_name,
+                "exception_lineno": exception_lineno,
+            }
+
+            if allow_backward:
+                return code
+            else:
+                return """\
+if (%(lineno_value)s > Nuitka_GetFrameLineNumber(%(frame_handle)s)) {
+%(code)s
+}""" % {
+                    "frame_handle": frame_handle,
+                    "lineno_value": lineno_value,
+                    "code": code,
+                }
+        else:
+            code = "Nuitka_Frame_SetLineNumber(%s, %s);" % (
+                frame_handle,
+                lineno_value,
+            )
+
+            if allow_backward:
+                return code
+            else:
+                return """\
+if (%(lineno_value)s > Nuitka_GetFrameLineNumber(%(frame_handle)s)) {
+    %(code)s
+}""" % {
+                    "frame_handle": frame_handle,
+                    "lineno_value": lineno_value,
+                    "code": code,
+                }
     else:
         return ""
 
@@ -56,6 +111,48 @@ def emitLineNumberUpdateCode(expression, emit, context):
         context.setCurrentSourceCodeReference(expression.getCompatibleSourceReference())
 
     code = getLineNumberUpdateCode(context)
+
+    if code:
+        emit(code)
+
+
+def emitLineNumberUpdateCodeForReturn(statement, emit, context):
+    source_ref = statement.getCompatibleSourceReference()
+
+    if source_ref.isInternal():
+        return
+
+    frame_handle = context.getFrameHandle()
+    exception_exit = context.getExceptionEscape()
+
+    if frame_handle is not None and exception_exit is not None:
+        (
+            exception_state_name,
+            exception_lineno,
+        ) = context.variable_storage.getExceptionVariableDescriptions()
+
+        lineno_value = str(source_ref.getLineNumber())
+
+        emit(
+            """\
+if (Nuitka_Frame_TraceLinesToLine(tstate, %(frame_handle)s, %(lineno_value)s) < 0) {
+    FETCH_ERROR_OCCURRED_STATE(tstate, &%(exception_state_name)s);
+
+%(exception_lineno)s = Nuitka_GetFrameLineNumber(%(frame_handle)s);
+    goto %(exception_exit)s;
+}"""
+            % {
+                "frame_handle": frame_handle,
+                "lineno_value": lineno_value,
+                "exception_exit": exception_exit,
+                "exception_state_name": exception_state_name,
+                "exception_lineno": exception_lineno,
+            }
+        )
+
+    context.setCurrentSourceCodeReference(source_ref)
+
+    code = getLineNumberUpdateCode(context, allow_backward=False)
 
     if code:
         emit(code)

@@ -45,6 +45,7 @@ extern struct Nuitka_FrameObject *MAKE_CLASS_FRAME(PyThreadState *tstate, PyCode
                                                    PyObject *f_locals, Py_ssize_t locals_size);
 extern void Nuitka_Frame_AssignLocals(struct Nuitka_FrameObject *frame_object, PyObject *locals_value);
 extern void Nuitka_Frame_ClearLocals(struct Nuitka_FrameObject *frame_object);
+extern void Nuitka_Frame_ClearTrace(struct Nuitka_FrameObject *frame_object);
 
 // Create a code object for the given filename and function name
 
@@ -515,6 +516,300 @@ NUITKA_MAY_BE_UNUSED static void Nuitka_Frame_SetLineNumber(struct Nuitka_FrameO
         }
     }
 #endif
+}
+
+NUITKA_MAY_BE_UNUSED static int Nuitka_Code_GetFirstTraceLine(PyCodeObject *code_object) {
+    int first_lineno = code_object->co_firstlineno;
+    int result = first_lineno + 1;
+
+#if PYTHON_VERSION >= 0x3b0
+    Py_ssize_t code_unit_count = Py_SIZE(code_object);
+
+    for (Py_ssize_t code_unit = 0; code_unit < code_unit_count; code_unit++) {
+        int code_addr = (int)(code_unit * sizeof(_Py_CODEUNIT));
+        int lineno = PyCode_Addr2Line(code_object, code_addr);
+
+        if (lineno > first_lineno) {
+            return lineno;
+        }
+    }
+#endif
+
+    return result;
+}
+
+NUITKA_MAY_BE_UNUSED static int Nuitka_Code_GetLastTraceLine(PyCodeObject *code_object) {
+    int result = code_object->co_firstlineno;
+
+#if PYTHON_VERSION >= 0x3b0
+    Py_ssize_t code_unit_count = Py_SIZE(code_object);
+
+    for (Py_ssize_t code_unit = 0; code_unit < code_unit_count; code_unit++) {
+        int code_addr = (int)(code_unit * sizeof(_Py_CODEUNIT));
+        int lineno = PyCode_Addr2Line(code_object, code_addr);
+
+        if (lineno > result) {
+            result = lineno;
+        }
+    }
+#endif
+
+    return result;
+}
+
+NUITKA_MAY_BE_UNUSED static int Nuitka_Code_GetLineBeforeLastTraceLine(PyCodeObject *code_object) {
+    int last_lineno = Nuitka_Code_GetLastTraceLine(code_object);
+    int result = code_object->co_firstlineno;
+
+#if PYTHON_VERSION >= 0x3b0
+    Py_ssize_t code_unit_count = Py_SIZE(code_object);
+
+    for (Py_ssize_t code_unit = 0; code_unit < code_unit_count; code_unit++) {
+        int code_addr = (int)(code_unit * sizeof(_Py_CODEUNIT));
+        int lineno = PyCode_Addr2Line(code_object, code_addr);
+
+        if (lineno > result && lineno < last_lineno) {
+            result = lineno;
+        }
+    }
+#endif
+
+    return result;
+}
+
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_Frame_TraceLine(PyThreadState *tstate,
+                                                              struct Nuitka_FrameObject *nuitka_frame, int lineno);
+
+NUITKA_MAY_BE_UNUSED static inline int
+Nuitka_Frame_TraceLinesToLine(PyThreadState *tstate, struct Nuitka_FrameObject *nuitka_frame, int target_lineno) {
+    PyCodeObject *code_object = Nuitka_GetFrameCodeObject(nuitka_frame);
+
+    if (code_object == (PyCodeObject *)Py_None) {
+        return 0;
+    }
+
+    int current_lineno = Nuitka_GetFrameLineNumber(nuitka_frame);
+    int last_emitted_lineno = current_lineno;
+
+#if PYTHON_VERSION >= 0x3b0
+    Py_ssize_t code_unit_count = Py_SIZE(code_object);
+    bool seen_replayed_lineno = false;
+
+    for (Py_ssize_t code_unit = 0; code_unit < code_unit_count; code_unit++) {
+        int code_addr = (int)(code_unit * sizeof(_Py_CODEUNIT));
+        int lineno = PyCode_Addr2Line(code_object, code_addr);
+
+        if (seen_replayed_lineno && lineno <= current_lineno) {
+            return 0;
+        }
+
+        if (lineno <= current_lineno || lineno >= target_lineno || lineno == last_emitted_lineno) {
+            continue;
+        }
+
+        last_emitted_lineno = lineno;
+        seen_replayed_lineno = true;
+    }
+
+    last_emitted_lineno = current_lineno;
+
+    for (Py_ssize_t code_unit = 0; code_unit < code_unit_count; code_unit++) {
+        int code_addr = (int)(code_unit * sizeof(_Py_CODEUNIT));
+        int lineno = PyCode_Addr2Line(code_object, code_addr);
+
+        if (lineno <= current_lineno || lineno >= target_lineno || lineno == last_emitted_lineno) {
+            continue;
+        }
+
+        if (Nuitka_Frame_TraceLine(tstate, nuitka_frame, lineno) < 0) {
+            return -1;
+        }
+
+        Nuitka_Frame_SetLineNumber(nuitka_frame, lineno);
+        last_emitted_lineno = lineno;
+    }
+#endif
+
+    return 0;
+}
+
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_Frame_TraceRemainingLinesToLast(PyThreadState *tstate,
+                                                                              struct Nuitka_FrameObject *nuitka_frame) {
+    PyCodeObject *code_object = Nuitka_GetFrameCodeObject(nuitka_frame);
+
+    if (code_object == (PyCodeObject *)Py_None) {
+        return 0;
+    }
+
+    int current_lineno = Nuitka_GetFrameLineNumber(nuitka_frame);
+    int last_emitted_lineno = current_lineno;
+
+#if PYTHON_VERSION >= 0x3b0
+    Py_ssize_t code_unit_count = Py_SIZE(code_object);
+    int first_pending_lineno = 0;
+    int second_pending_lineno = 0;
+
+    for (Py_ssize_t code_unit = 0; code_unit < code_unit_count; code_unit++) {
+        int code_addr = (int)(code_unit * sizeof(_Py_CODEUNIT));
+        int lineno = PyCode_Addr2Line(code_object, code_addr);
+
+        if (lineno <= current_lineno) {
+            continue;
+        }
+
+        if (second_pending_lineno != 0 && lineno < second_pending_lineno) {
+            second_pending_lineno = 0;
+            continue;
+        }
+
+        if (lineno == first_pending_lineno || lineno == second_pending_lineno || lineno == last_emitted_lineno) {
+            continue;
+        }
+
+        if (first_pending_lineno != 0 && second_pending_lineno != 0) {
+            if (Nuitka_Frame_TraceLine(tstate, nuitka_frame, first_pending_lineno) < 0) {
+                return -1;
+            }
+
+            Nuitka_Frame_SetLineNumber(nuitka_frame, first_pending_lineno);
+            last_emitted_lineno = first_pending_lineno;
+            first_pending_lineno = second_pending_lineno;
+        }
+
+        if (first_pending_lineno == 0) {
+            first_pending_lineno = lineno;
+        } else {
+            second_pending_lineno = lineno;
+        }
+    }
+
+    if (first_pending_lineno != 0 && first_pending_lineno != last_emitted_lineno) {
+        if (Nuitka_Frame_TraceLine(tstate, nuitka_frame, first_pending_lineno) < 0) {
+            return -1;
+        }
+
+        Nuitka_Frame_SetLineNumber(nuitka_frame, first_pending_lineno);
+        last_emitted_lineno = first_pending_lineno;
+    }
+
+    if (second_pending_lineno != 0 && second_pending_lineno != last_emitted_lineno) {
+        if (Nuitka_Frame_TraceLine(tstate, nuitka_frame, second_pending_lineno) < 0) {
+            return -1;
+        }
+
+        Nuitka_Frame_SetLineNumber(nuitka_frame, second_pending_lineno);
+    }
+#endif
+
+    return 0;
+}
+
+NUITKA_MAY_BE_UNUSED static void Nuitka_Frame_SetLineNumberToLast(struct Nuitka_FrameObject *nuitka_frame) {
+    PyCodeObject *code_object = Nuitka_GetFrameCodeObject(nuitka_frame);
+
+    if (code_object != (PyCodeObject *)Py_None) {
+        Nuitka_Frame_SetLineNumber(nuitka_frame, Nuitka_Code_GetLastTraceLine(code_object));
+    }
+}
+
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_Frame_TraceCall(PyThreadState *tstate,
+                                                              struct Nuitka_FrameObject *nuitka_frame) {
+    if (tstate->c_tracefunc == NULL || tstate->tracing != 0) {
+        return 0;
+    }
+
+    PyFrameObject *frame = &nuitka_frame->m_frame;
+    assert(frame->f_trace == NULL);
+
+    PyCodeObject *code_object = Nuitka_GetFrameCodeObject(nuitka_frame);
+
+    if (code_object != (PyCodeObject *)Py_None) {
+        Nuitka_Frame_SetLineNumber(nuitka_frame, code_object->co_firstlineno);
+    }
+
+    Py_INCREF(frame);
+    tstate->tracing++;
+    int result = tstate->c_tracefunc(tstate->c_traceobj, frame, PyTrace_CALL, Py_None);
+    tstate->tracing--;
+    Py_DECREF(frame);
+
+    return result;
+}
+
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_Frame_TraceLine(PyThreadState *tstate,
+                                                              struct Nuitka_FrameObject *nuitka_frame, int lineno) {
+    PyFrameObject *frame = &nuitka_frame->m_frame;
+
+    if (tstate->c_tracefunc == NULL || tstate->tracing != 0 || frame->f_trace == NULL || frame->f_trace == Py_None ||
+        !frame->f_trace_lines) {
+        return 0;
+    }
+
+    Nuitka_Frame_SetLineNumber(nuitka_frame, lineno);
+
+    Py_INCREF(frame);
+    tstate->tracing++;
+    int result = tstate->c_tracefunc(tstate->c_traceobj, frame, PyTrace_LINE, Py_None);
+    tstate->tracing--;
+    frame->f_lineno = 0;
+    Py_DECREF(frame);
+
+    return result;
+}
+
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_Frame_TraceLineBeforeReturn(PyThreadState *tstate,
+                                                                          struct Nuitka_FrameObject *nuitka_frame) {
+    PyCodeObject *code_object = Nuitka_GetFrameCodeObject(nuitka_frame);
+
+    if (code_object == (PyCodeObject *)Py_None) {
+        return 0;
+    }
+
+    int lineno = Nuitka_Code_GetLineBeforeLastTraceLine(code_object);
+
+    if (lineno <= Nuitka_GetFrameLineNumber(nuitka_frame)) {
+        return 0;
+    }
+
+    return Nuitka_Frame_TraceLine(tstate, nuitka_frame, lineno);
+}
+
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_Frame_TraceOpcode(PyThreadState *tstate,
+                                                                struct Nuitka_FrameObject *nuitka_frame, int lineno) {
+    PyFrameObject *frame = &nuitka_frame->m_frame;
+
+    if (tstate->c_tracefunc == NULL || tstate->tracing != 0 || frame->f_trace == NULL || frame->f_trace == Py_None ||
+        !frame->f_trace_opcodes) {
+        return 0;
+    }
+
+    Nuitka_Frame_SetLineNumber(nuitka_frame, lineno);
+
+    Py_INCREF(frame);
+    tstate->tracing++;
+    int result = tstate->c_tracefunc(tstate->c_traceobj, frame, PyTrace_OPCODE, Py_None);
+    tstate->tracing--;
+    frame->f_lineno = 0;
+    Py_DECREF(frame);
+
+    return result;
+}
+
+NUITKA_MAY_BE_UNUSED static inline int
+Nuitka_Frame_TraceReturn(PyThreadState *tstate, struct Nuitka_FrameObject *nuitka_frame, PyObject *return_value) {
+    PyFrameObject *frame = &nuitka_frame->m_frame;
+
+    if (tstate->c_tracefunc == NULL || tstate->tracing != 0 || frame->f_trace == NULL || frame->f_trace == Py_None) {
+        return 0;
+    }
+
+    Py_INCREF(frame);
+    tstate->tracing++;
+    int result = tstate->c_tracefunc(tstate->c_traceobj, frame, PyTrace_RETURN, return_value);
+    tstate->tracing--;
+    Py_DECREF(frame);
+
+    return result;
 }
 
 NUITKA_MAY_BE_UNUSED static PyObject **Nuitka_GetCodeVarNames(PyCodeObject *code_object) {

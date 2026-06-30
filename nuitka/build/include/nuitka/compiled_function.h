@@ -91,6 +91,12 @@ struct Nuitka_FunctionObject {
 
 extern PyTypeObject Nuitka_Function_Type;
 
+#if PYTHON_VERSION >= 0x380 && !defined(_NUITKA_EXPERIMENTAL_DISABLE_VECTORCALL_SLOT)
+extern bool Nuitka_Function_UsesDefaultVectorcall(struct Nuitka_FunctionObject const *function);
+#else
+static inline bool Nuitka_Function_UsesDefaultVectorcall(struct Nuitka_FunctionObject const *function) { return true; }
+#endif
+
 // Make a function with context.
 #if PYTHON_VERSION < 0x300
 extern struct Nuitka_FunctionObject *Nuitka_Function_New(function_impl_code c_code, PyObject *name,

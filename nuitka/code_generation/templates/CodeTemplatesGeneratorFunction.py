@@ -44,7 +44,7 @@ static PyObject *%(generator_maker_identifier)s(%(generator_creation_args)s) {
 #if PYTHON_VERSION >= 0x350
         %(generator_qualname_obj)s,
 #endif
-        %(code_identifier)s,
+        generator_code_object,
         %(closure_name)s,
         %(closure_count)d,
 #if %(has_heap_declaration)s

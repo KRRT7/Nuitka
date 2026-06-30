@@ -19,7 +19,8 @@ PyObject *CALL_FUNCTION_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject 
     CHECK_OBJECT(called);
     {{ CHECK_OBJECTS(args, args_count) }}
 
-    if (Nuitka_Function_Check(called)) {
+    if (Nuitka_Function_Check(called) &&
+        Nuitka_Function_UsesDefaultVectorcall((struct Nuitka_FunctionObject *)called)) {
         if (unlikely(Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object"))) {
             return NULL;
         }

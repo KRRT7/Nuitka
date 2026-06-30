@@ -8,7 +8,6 @@ from .CodeHelpers import (
     generateStatementSequenceCode,
     withObjectCodeTemporaryAssignment,
 )
-from .CodeObjectCodes import getCodeObjectAccessCode
 from .Emission import SourceCodeCollector
 from .ErrorCodes import getErrorExitCode
 from .FunctionCodes import (
@@ -36,6 +35,15 @@ def _getCoroutineMakerIdentifier(function_identifier):
     return "MAKE_COROUTINE_" + function_identifier
 
 
+def _getCoroutineCodeObjectIdentifier(coroutine_object_body, context):
+    if context.isForCreatedFunction():
+        return "self->m_code_object"
+
+    return context.getCodeObjectHandle(
+        code_object=coroutine_object_body.getCodeObject()
+    )
+
+
 def getCoroutineObjectDeclCode(function_identifier, closure_variables):
     coroutine_creation_args = getFunctionCreationArgs(
         defaults_name=None,
@@ -44,6 +52,7 @@ def getCoroutineObjectDeclCode(function_identifier, closure_variables):
         closure_variables=closure_variables,
         type_params_name=None,
     )
+    coroutine_creation_args.append("PyCodeObject *coroutine_code_object")
 
     return template_coroutine_object_maker % {
         "coroutine_maker_identifier": _getCoroutineMakerIdentifier(function_identifier),
@@ -125,6 +134,7 @@ struct %(function_identifier)s_locals *coroutine_heap = \
         closure_variables=closure_variables,
         type_params_name=None,
     )
+    coroutine_creation_args.append("PyCodeObject *coroutine_code_object")
 
     return template_coroutine_object_body % {
         "function_identifier": function_identifier,
@@ -143,9 +153,6 @@ struct %(function_identifier)s_locals *coroutine_heap = \
         ),
         "coroutine_qualname_obj": getFunctionQualnameObj(
             coroutine_object_body, context
-        ),
-        "code_identifier": getCodeObjectAccessCode(
-            code_object=coroutine_object_body.getCodeObject(), context=context
         ),
         "closure_name": "closure" if closure_variables else "NULL",
         "closure_count": len(closure_variables),
@@ -166,6 +173,7 @@ def generateMakeCoroutineObjectCode(to_name, expression, emit, context):
     args = ["tstate"]
     if closure_name:
         args.append(closure_name)
+    args.append(_getCoroutineCodeObjectIdentifier(coroutine_object_body, context))
 
     emit(
         template_make_coroutine

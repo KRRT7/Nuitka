@@ -42,7 +42,7 @@ static PyObject *%(asyncgen_maker_identifier)s(%(asyncgen_creation_args)s) {
         %(asyncgen_module)s,
         %(asyncgen_name_obj)s,
         %(asyncgen_qualname_obj)s,
-        %(code_identifier)s,
+        asyncgen_code_object,
         %(closure_name)s,
         %(closure_count)d,
 #if %(has_heap_declaration)s

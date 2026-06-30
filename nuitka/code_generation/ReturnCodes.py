@@ -15,7 +15,10 @@ from nuitka.PythonVersions import python_version
 from .CodeHelpers import generateExpressionCode
 from .ExceptionCodes import getExceptionUnpublishedReleaseCode
 from .LabelCodes import getGotoCode
-from .LineNumberCodes import emitLineNumberUpdateCode
+from .LineNumberCodes import (
+    emitLineNumberUpdateCode,
+    emitLineNumberUpdateCodeForReturn,
+)
 
 
 def generateReturnCode(statement, emit, context):
@@ -48,14 +51,14 @@ def generateReturnedValueCode(statement, emit, context):
     # We don't need the statement, pylint: disable=unused-argument
 
     getExceptionUnpublishedReleaseCode(emit, context)
-    emitLineNumberUpdateCode(statement, emit, context)
+    emitLineNumberUpdateCodeForReturn(statement, emit, context)
 
     getGotoCode(label=context.getReturnTarget(), emit=emit)
 
 
 def generateReturnConstantCode(statement, emit, context):
     getExceptionUnpublishedReleaseCode(emit, context)
-    emitLineNumberUpdateCode(statement, emit, context)
+    emitLineNumberUpdateCodeForReturn(statement, emit, context)
 
     return_value_name = context.getReturnValueName()
 

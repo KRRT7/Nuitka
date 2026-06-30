@@ -114,6 +114,22 @@ def generateStatementsFrameCode(statement_sequence, emit, context):
     # the frame stuff around it.
     local_emit = SourceCodeCollector()
 
+    first_statement = statement_sequence.subnode_statements[0]
+    first_statement_source_ref = first_statement.getSourceReference()
+
+    if first_statement_source_ref.isInternal():
+        initial_trace_lineno = None
+    else:
+        initial_trace_lineno = first_statement_source_ref.getLineNumber()
+
+        if not statement_sequence.isStatementsFrameModule():
+            if initial_trace_lineno <= code_object.getLineNumber():
+                initial_trace_lineno = None
+            else:
+                initial_trace_lineno = min(
+                    initial_trace_lineno, code_object.getLineNumber() + 1
+                )
+
     if (
         hasattr(context, "isForCreatedFunction")
         and context.isForCreatedFunction()
@@ -126,10 +142,9 @@ def generateStatementsFrameCode(statement_sequence, emit, context):
         statement_sequence=statement_sequence, emit=local_emit, context=context
     )
 
-    if statement_sequence.mayRaiseException(BaseException):
-        frame_exception_exit = context.getExceptionEscape()
-    else:
-        frame_exception_exit = None
+    # Frame tracing calls arbitrary Python code, so even frames whose original
+    # body cannot raise need an exception exit once tracing hooks are emitted.
+    frame_exception_exit = context.getExceptionEscape()
 
     if parent_return_exit is not None:
         frame_return_exit = context.getReturnTarget()
@@ -151,6 +166,7 @@ def generateStatementsFrameCode(statement_sequence, emit, context):
             frame_exception_exit=frame_exception_exit,
             parent_return_exit=parent_return_exit,
             frame_return_exit=frame_return_exit,
+            initial_trace_lineno=initial_trace_lineno,
             emit=emit,
             context=context,
         )
@@ -163,6 +179,7 @@ def generateStatementsFrameCode(statement_sequence, emit, context):
             frame_exception_exit=frame_exception_exit,
             frame_return_exit=frame_return_exit,
             codes=local_emit,
+            initial_trace_lineno=initial_trace_lineno,
             needs_preserve=needs_preserve,
             emit=emit,
             context=context,
@@ -224,6 +241,7 @@ def getFrameGuardHeavyCode(
     parent_return_exit,
     frame_exception_exit,
     frame_return_exit,
+    initial_trace_lineno,
     needs_preserve,
     emit,
     context,
@@ -234,6 +252,16 @@ def getFrameGuardHeavyCode(
     no_exception_exit = context.allocateLabel("frame_no_exception")
 
     frame_identifier = context.getFrameHandle()
+
+    if frame_exception_exit is not None:
+        (
+            exception_state_name,
+            exception_lineno,
+        ) = context.variable_storage.getExceptionVariableDescriptions()
+    else:
+        exception_state_name = None
+        exception_lineno = None
+
     if frame_node.getGuardMode() == "full":
         frame_cache_identifier = context.variable_storage.addFrameCacheDeclaration(
             frame_identifier.code_name
@@ -322,6 +350,10 @@ Nuitka_Frame_ClearLocals(%(frame_identifier)s);
             frame_cache_identifier=frame_cache_identifier,
             codes=indented(codes),
             no_exception_exit=no_exception_exit,
+            frame_exception_exit=frame_exception_exit,
+            initial_trace_lineno=initial_trace_lineno,
+            exception_state_name=exception_state_name,
+            exception_lineno=exception_lineno,
             needs_preserve=needs_preserve,
             make_frame_code=make_frame_code,
             frame_init_code=frame_init_code,
@@ -338,17 +370,15 @@ Nuitka_Frame_ClearLocals(%(frame_identifier)s);
                 frame_identifier=frame_identifier,
                 return_exit=parent_return_exit,
                 frame_return_exit=frame_return_exit,
+                frame_exception_exit=frame_exception_exit,
+                exception_state_name=exception_state_name,
+                exception_lineno=exception_lineno,
                 needs_preserve=needs_preserve,
                 frame_exit_code=frame_exit_code,
             )
         )
 
     if frame_exception_exit is not None:
-        (
-            exception_state_name,
-            exception_lineno,
-        ) = context.variable_storage.getExceptionVariableDescriptions()
-
         emit(
             renderTemplateFromString(
                 template_frame_guard_normal_exception_handler,
@@ -378,6 +408,7 @@ def getFrameGuardGeneratorCode(
     parent_return_exit,
     frame_exception_exit,
     frame_return_exit,
+    initial_trace_lineno,
     emit,
     context,
 ):
@@ -420,6 +451,10 @@ def getFrameGuardGeneratorCode(
             context_identifier=context_identifier,
             codes=indented(codes),
             no_exception_exit=no_exception_exit,
+            frame_exception_exit=frame_exception_exit,
+            initial_trace_lineno=initial_trace_lineno,
+            exception_state_name=exception_state_name,
+            exception_lineno=exception_lineno,
             needs_preserve=False,  # TODO: Clears stuff
             make_frame_code=make_frame_code,
             frame_init_code=frame_init_code,

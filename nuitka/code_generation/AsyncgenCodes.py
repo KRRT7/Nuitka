@@ -4,7 +4,6 @@
 """Code to generate and interact with compiled asyncgen objects."""
 
 from .CodeHelpers import generateStatementSequenceCode
-from .CodeObjectCodes import getCodeObjectAccessCode
 from .Emission import SourceCodeCollector
 from .FunctionCodes import (
     finalizeFunctionLocalVariables,
@@ -30,6 +29,16 @@ def _getAsyncgenMakerIdentifier(function_identifier):
     return "MAKE_ASYNCGEN_" + function_identifier
 
 
+def _getAsyncgenCodeObjectIdentifier(asyncgen_object_body, context):
+    if (
+        asyncgen_object_body.getFunctionName() != "<genexpr>"
+        and context.isForCreatedFunction()
+    ):
+        return "self->m_code_object"
+
+    return context.getCodeObjectHandle(code_object=asyncgen_object_body.getCodeObject())
+
+
 def getAsyncgenObjectDeclCode(function_identifier, closure_variables):
     asyncgen_creation_args = getFunctionCreationArgs(
         defaults_name=None,
@@ -38,6 +47,7 @@ def getAsyncgenObjectDeclCode(function_identifier, closure_variables):
         closure_variables=closure_variables,
         type_params_name=None,
     )
+    asyncgen_creation_args.append("PyCodeObject *asyncgen_code_object")
 
     return template_asyncgen_object_maker_template % {
         "asyncgen_maker_identifier": _getAsyncgenMakerIdentifier(function_identifier),
@@ -117,6 +127,7 @@ struct %(function_identifier)s_locals *asyncgen_heap = \
         closure_variables=closure_variables,
         type_params_name=None,
     )
+    asyncgen_creation_args.append("PyCodeObject *asyncgen_code_object")
 
     return template_asyncgen_object_body % {
         "function_identifier": function_identifier,
@@ -134,9 +145,6 @@ struct %(function_identifier)s_locals *asyncgen_heap = \
             constant=asyncgen_object_body.getFunctionName()
         ),
         "asyncgen_qualname_obj": getFunctionQualnameObj(asyncgen_object_body, context),
-        "code_identifier": getCodeObjectAccessCode(
-            code_object=asyncgen_object_body.getCodeObject(), context=context
-        ),
         "closure_name": "closure" if closure_variables else "NULL",
         "closure_count": len(closure_variables),
     }
@@ -154,6 +162,7 @@ def generateMakeAsyncgenObjectCode(to_name, expression, emit, context):
     args = ["tstate"]
     if closure_name:
         args.append(closure_name)
+    args.append(_getAsyncgenCodeObjectIdentifier(asyncgen_object_body, context))
 
     emit(
         template_make_asyncgen

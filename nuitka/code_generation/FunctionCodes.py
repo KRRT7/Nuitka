@@ -793,8 +793,6 @@ def _getFunctionCode(
 
     function_cleanup = finalizeFunctionLocalVariables(context=context)
 
-    function_locals = context.variable_storage.makeCFunctionLevelDeclarations()
-
     function_doc = context.getConstantCode(constant=function_doc)
 
     result = ""
@@ -818,6 +816,8 @@ def _getFunctionCode(
             "function_cleanup": indented(function_cleanup),
             "exception_state_name": exception_state_name,
         }
+
+    function_locals = context.variable_storage.makeCFunctionLevelDeclarations()
 
     if context.hasTempName("return_value"):
         function_exit += template_function_return_exit % {

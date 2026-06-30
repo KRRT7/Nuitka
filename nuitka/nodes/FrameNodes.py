@@ -239,6 +239,12 @@ class StatementsFrameBase(StatementsSequenceMixin, StatementsSequenceBase):
         else:
             new_statements = statements
 
+        if self.isStatementsFrameFunction():
+            if statements != new_statements:
+                self.setChildStatements(tuple(new_statements))
+
+            return self
+
         # Determine statements inside the frame, that need not be in a frame,
         # because they wouldn't raise an exception.
         outside_pre_count = 0

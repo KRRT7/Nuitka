@@ -1125,19 +1125,23 @@ PyTypeObject Nuitka_Function_Type = {
 #else
     offsetof(struct Nuitka_FunctionObject, m_vectorcall), // tp_vectorcall_offset
 #endif
-    0,                                    // tp_getattr
-    0,                                    // tp_setattr
-    0,                                    // tp_compare
-    (reprfunc)Nuitka_Function_tp_repr,    // tp_repr
-    0,                                    // tp_as_number
-    0,                                    // tp_as_sequence
-    0,                                    // tp_as_mapping
-    (hashfunc)Nuitka_Function_tp_hash,    // tp_hash
+    0,                                 // tp_getattr
+    0,                                 // tp_setattr
+    0,                                 // tp_compare
+    (reprfunc)Nuitka_Function_tp_repr, // tp_repr
+    0,                                 // tp_as_number
+    0,                                 // tp_as_sequence
+    0,                                 // tp_as_mapping
+    (hashfunc)Nuitka_Function_tp_hash, // tp_hash
+#if PYTHON_VERSION < 0x380 || defined(_NUITKA_EXPERIMENTAL_DISABLE_VECTORCALL_SLOT)
     (ternaryfunc)Nuitka_Function_tp_call, // tp_call
-    0,                                    // tp_str
-    0,                                    // tp_getattro (PyObject_GenericGetAttr)
-    0,                                    // tp_setattro
-    0,                                    // tp_as_buffer
+#else
+    PyVectorcall_Call, // tp_call
+#endif
+    0, // tp_str
+    0, // tp_getattro (PyObject_GenericGetAttr)
+    0, // tp_setattro
+    0, // tp_as_buffer
     Py_TPFLAGS_DEFAULT |
 #if PYTHON_VERSION < 0x300
         Py_TPFLAGS_HAVE_WEAKREFS |
@@ -1321,6 +1325,79 @@ void _initCompiledFunctionType(void) {
 // Shared implementations for empty functions. When a function body is empty, but
 // still needs to exist, e.g. overloaded functions, this is saving the effort to
 // produce one.
+static int Nuitka_Function_TraceConstantReturn(PyThreadState *tstate, struct Nuitka_FunctionObject const *function,
+                                               PyObject *result) {
+    if (tstate->c_tracefunc == NULL || tstate->tracing != 0) {
+        return 0;
+    }
+
+    struct Nuitka_FrameObject *frame = MAKE_FUNCTION_FRAME(tstate, function->m_code_object, function->m_module, 0);
+
+    pushFrameStackCompiledFrame(tstate, frame);
+    assert(Py_REFCNT(frame) == 2);
+
+    int last_trace_lineno = Nuitka_Code_GetLastTraceLine(function->m_code_object);
+
+    if (Nuitka_Frame_TraceCall(tstate, frame) < 0) {
+        goto trace_error;
+    }
+
+#if PYTHON_VERSION >= 0x3b0
+    int first_lineno = function->m_code_object->co_firstlineno;
+    int last_emitted_lineno = 0;
+    Py_ssize_t code_unit_count = Py_SIZE(function->m_code_object);
+
+    for (Py_ssize_t code_unit = 0; code_unit < code_unit_count; code_unit++) {
+        int code_addr = (int)(code_unit * sizeof(_Py_CODEUNIT));
+        int trace_lineno = PyCode_Addr2Line(function->m_code_object, code_addr);
+
+        if (trace_lineno <= first_lineno || trace_lineno == last_emitted_lineno) {
+            continue;
+        }
+
+        if (Nuitka_Frame_TraceLine(tstate, frame, trace_lineno) < 0) {
+            goto trace_error;
+        }
+        Nuitka_Frame_SetLineNumber(frame, trace_lineno);
+
+        if (Nuitka_Frame_TraceOpcode(tstate, frame, trace_lineno) < 0) {
+            goto trace_error;
+        }
+
+        last_emitted_lineno = trace_lineno;
+    }
+
+    if (last_emitted_lineno == 0) {
+#endif
+        int first_trace_lineno = Nuitka_Code_GetFirstTraceLine(function->m_code_object);
+
+        if (Nuitka_Frame_TraceLine(tstate, frame, first_trace_lineno) < 0) {
+            goto trace_error;
+        }
+        Nuitka_Frame_SetLineNumber(frame, first_trace_lineno);
+#if PYTHON_VERSION >= 0x3b0
+    }
+#endif
+
+    Nuitka_Frame_SetLineNumber(frame, last_trace_lineno);
+    if (Nuitka_Frame_TraceReturn(tstate, frame, result) < 0) {
+        goto trace_error;
+    }
+
+    Nuitka_Frame_ClearTrace(frame);
+    popFrameStack(tstate);
+    Py_DECREF(frame);
+
+    return 0;
+
+trace_error:
+    Nuitka_Frame_ClearTrace(frame);
+    popFrameStack(tstate);
+    Py_DECREF(frame);
+
+    return -1;
+}
+
 static PyObject *_Nuitka_FunctionEmptyCodeNoneImpl(PyThreadState *tstate, struct Nuitka_FunctionObject const *function,
                                                    PyObject **python_pars) {
     CHECK_OBJECT((PyObject *)function);
@@ -1335,7 +1412,12 @@ static PyObject *_Nuitka_FunctionEmptyCodeNoneImpl(PyThreadState *tstate, struct
 
     PyObject *result = Py_None;
 
-    Py_INCREF(result);
+    Py_INCREF_IMMORTAL(result);
+    if (Nuitka_Function_TraceConstantReturn(tstate, function, result) < 0) {
+        Py_DECREF_IMMORTAL(result);
+        return NULL;
+    }
+
     return result;
 }
 
@@ -1354,6 +1436,11 @@ static PyObject *_Nuitka_FunctionEmptyCodeTrueImpl(PyThreadState *tstate, struct
     PyObject *result = Py_True;
 
     Py_INCREF_IMMORTAL(result);
+    if (Nuitka_Function_TraceConstantReturn(tstate, function, result) < 0) {
+        Py_DECREF_IMMORTAL(result);
+        return NULL;
+    }
+
     return result;
 }
 
@@ -1371,6 +1458,11 @@ static PyObject *_Nuitka_FunctionEmptyCodeFalseImpl(PyThreadState *tstate, struc
 
     PyObject *result = Py_False;
     Py_INCREF_IMMORTAL(result);
+    if (Nuitka_Function_TraceConstantReturn(tstate, function, result) < 0) {
+        Py_DECREF_IMMORTAL(result);
+        return NULL;
+    }
+
     return result;
 }
 
@@ -1389,23 +1481,37 @@ static PyObject *_Nuitka_FunctionEmptyCodeGenericImpl(PyThreadState *tstate,
 
     PyObject *result = function->m_constant_return_value;
 
-    Py_INCREF_IMMORTAL(result);
+    Py_INCREF(result);
+    if (Nuitka_Function_TraceConstantReturn(tstate, function, result) < 0) {
+        Py_DECREF(result);
+        return NULL;
+    }
+
     return result;
 }
 
 void Nuitka_Function_EnableConstReturnTrue(struct Nuitka_FunctionObject *function) {
     function->m_constant_return_value = Py_True;
-    function->m_c_code = _Nuitka_FunctionEmptyCodeTrueImpl;
+
+    if (function->m_c_code == _Nuitka_FunctionEmptyCodeNoneImpl) {
+        function->m_c_code = _Nuitka_FunctionEmptyCodeTrueImpl;
+    }
 }
 
 void Nuitka_Function_EnableConstReturnFalse(struct Nuitka_FunctionObject *function) {
     function->m_constant_return_value = Py_False;
-    function->m_c_code = _Nuitka_FunctionEmptyCodeFalseImpl;
+
+    if (function->m_c_code == _Nuitka_FunctionEmptyCodeNoneImpl) {
+        function->m_c_code = _Nuitka_FunctionEmptyCodeFalseImpl;
+    }
 }
 
 void Nuitka_Function_EnableConstReturnGeneric(struct Nuitka_FunctionObject *function, PyObject *value) {
     function->m_constant_return_value = value;
-    function->m_c_code = _Nuitka_FunctionEmptyCodeGenericImpl;
+
+    if (function->m_c_code == _Nuitka_FunctionEmptyCodeNoneImpl) {
+        function->m_c_code = _Nuitka_FunctionEmptyCodeGenericImpl;
+    }
 }
 
 #ifdef _NUITKA_PLUGIN_DILL_ENABLED
@@ -1681,6 +1787,10 @@ PyObject *Nuitka_Function_ExtractCodeObjectDescription(PyThreadState *tstate, st
 #if PYTHON_VERSION >= 0x380 && !defined(_NUITKA_EXPERIMENTAL_DISABLE_VECTORCALL_SLOT)
 static PyObject *Nuitka_Function_tp_vectorcall(struct Nuitka_FunctionObject *function, PyObject *const *stack,
                                                size_t nargsf, PyObject *kw_names);
+
+bool Nuitka_Function_UsesDefaultVectorcall(struct Nuitka_FunctionObject const *function) {
+    return function->m_vectorcall == (vectorcallfunc)Nuitka_Function_tp_vectorcall;
+}
 #endif
 
 // Make a function with closure.
