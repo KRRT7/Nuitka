@@ -373,7 +373,9 @@ if (unlikely(%(bool_res_name)s == false)) {
     getGotoCode(context.getExceptionEscape(), emit)
 
 
-def _emitExplicitRaiseTracebackCode(exception_state_name, explicit_raise, emit, context):
+def _emitExplicitRaiseTracebackCode(
+    exception_state_name, explicit_raise, emit, context
+):
     frame_handle = context.getFrameHandle()
 
     if explicit_raise and frame_handle:

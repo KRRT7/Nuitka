@@ -167,8 +167,7 @@ static void formatErrorUnexpectedKeywordArgument(struct Nuitka_FunctionObject co
     PyObject *suggestion = getKeywordSuggestion(function, kw_name);
 
     if (suggestion != NULL) {
-        PyErr_Format(PyExc_TypeError,
-                     "%s() got an unexpected keyword argument '%s'. Did you mean '%U'?", function_name,
+        PyErr_Format(PyExc_TypeError, "%s() got an unexpected keyword argument '%s'. Did you mean '%U'?", function_name,
                      Nuitka_String_AsString(kw_name), suggestion);
         Py_DECREF(suggestion);
     } else {

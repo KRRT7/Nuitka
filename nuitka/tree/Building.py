@@ -108,7 +108,10 @@ from nuitka.nodes.OperatorNodes import makeBinaryOperationNode
 from nuitka.nodes.OperatorNodesUnary import makeExpressionOperationUnary
 from nuitka.nodes.ReturnNodes import makeStatementReturn
 from nuitka.nodes.SliceNodes import makeExpressionBuiltinSlice
-from nuitka.nodes.StatementNodes import StatementExpressionOnly, StatementFrameLineUpdate
+from nuitka.nodes.StatementNodes import (
+    StatementExpressionOnly,
+    StatementFrameLineUpdate,
+)
 from nuitka.nodes.StringConcatenationNodes import ExpressionStringConcatenation
 from nuitka.nodes.VariableNameNodes import (
     ExpressionVariableNameRef,

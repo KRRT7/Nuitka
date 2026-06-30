@@ -1530,7 +1530,7 @@ static PyObject *computeCoroutineOrigin(PyThreadState *tstate, int origin_depth)
         PyObject *co_name = frame->f_code->co_name;
         CHECK_OBJECT(co_name);
 
-        PyObject *frame_info = Py_BuildValue("OiO", filename, PyFrame_GetLineNumber(frame) + 1, co_name);
+        PyObject *frame_info = Py_BuildValue("OiO", filename, PyFrame_GetLineNumber(frame), co_name);
 
         assert(frame_info);
 

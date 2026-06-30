@@ -512,7 +512,9 @@ class ExpressionConstantDictRef(
     def getIterationValueRange(self, start, stop):
         return [
             makeConstantRefNode(
-                constant=value, user_provided=self.user_provided, source_ref=self.source_ref
+                constant=value,
+                user_provided=self.user_provided,
+                source_ref=self.source_ref,
             )
             for value in tuple(self.constant)[start:stop]
         ]
@@ -821,9 +823,7 @@ class ExpressionConstantSetRef(ExpressionSetShapeExactMixin, ExpressionConstantR
                     first_constant = first_constant[0]
 
                 if first_constant is not None:
-                    parent_function.getCodeObject().addPreservedConstant(
-                        first_constant
-                    )
+                    parent_function.getCodeObject().addPreservedConstant(first_constant)
 
                 parent_function.getCodeObject().addPreservedConstant(frozen_constant)
 

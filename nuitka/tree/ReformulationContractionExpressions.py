@@ -60,8 +60,8 @@ from nuitka.nodes.YieldNodes import (
 )
 from nuitka.PythonVersions import python_version
 
-from .ReformulationAssignmentStatements import buildAssignmentStatements
 from .CodeObjectTemplates import attachCodeObjectTemplate
+from .ReformulationAssignmentStatements import buildAssignmentStatements
 from .ReformulationBooleanExpressions import makeAndNode
 from .ReformulationTryExceptStatements import makeTryExceptSingleHandlerNode
 from .ReformulationTryFinallyStatements import makeTryFinallyReleaseStatement
@@ -476,11 +476,7 @@ def _buildContractionBodyNode(
         if qual is node.generators[0]:
             iterator_ref = makeVariableRefNode(variable=iter_tmp, source_ref=source_ref)
 
-            if (
-                for_asyncgen
-                and python_version < 0x370
-                and getattr(qual, "is_async", 0)
-            ):
+            if for_asyncgen and python_version < 0x370 and getattr(qual, "is_async", 0):
                 iterator_ref = ExpressionYieldFromAwaitable(
                     expression=iterator_ref, source_ref=source_ref
                 )

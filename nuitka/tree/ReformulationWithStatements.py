@@ -9,8 +9,10 @@ source code comments with Developer Manual sections.
 """
 
 from nuitka.nodes.AttributeLookupNodes import ExpressionAttributeLookupSpecial
-from nuitka.nodes.AttributeNodes import StatementAssignmentAttribute
-from nuitka.nodes.AttributeNodes import makeExpressionAttributeLookup
+from nuitka.nodes.AttributeNodes import (
+    StatementAssignmentAttribute,
+    makeExpressionAttributeLookup,
+)
 from nuitka.nodes.CallNodes import (
     ExpressionCallEmpty,
     ExpressionCallNoKeywords,

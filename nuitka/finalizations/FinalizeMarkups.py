@@ -21,7 +21,6 @@ from nuitka import Tracing
 from nuitka.PythonVersions import python_version
 from nuitka.tree.Operations import VisitorNoopMixin
 
-
 return_statement_kinds = frozenset(
     (
         "STATEMENT_RETURN",

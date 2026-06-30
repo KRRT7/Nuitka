@@ -51,14 +51,14 @@ extern void Nuitka_Frame_ClearLocals(struct Nuitka_FrameObject *frame_object);
 #if PYTHON_VERSION < 0x300
 #define MAKE_CODE_OBJECT(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,     \
                          kw_only_count, pos_only_count)                                                                \
-    MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, NULL, free_vars, arg_count, \
-                        kw_only_count, pos_only_count)
-#define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts, free_vars, \
-                            arg_count, kw_only_count, pos_only_count)                                                   \
-    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,        \
+    MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, NULL, free_vars,           \
+                        arg_count, kw_only_count, pos_only_count)
+#define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts,           \
+                            free_vars, arg_count, kw_only_count, pos_only_count)                                       \
+    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,      \
                                  free_vars, arg_count, kw_only_count, pos_only_count, NULL)
-#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,    \
-                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)                 \
+#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,  \
+                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)               \
     makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, code_template)
 extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *function_name,
                                     PyObject *arg_names, PyObject *code_consts, PyObject *free_vars, int arg_count,
@@ -66,15 +66,15 @@ extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyO
 #elif PYTHON_VERSION < 0x380
 #define MAKE_CODE_OBJECT(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,     \
                          kw_only_count, pos_only_count)                                                                \
-    MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, NULL, free_vars, arg_count, \
-                        kw_only_count, pos_only_count)
-#define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts, free_vars, \
-                            arg_count, kw_only_count, pos_only_count)                                                   \
-    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,        \
+    MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, NULL, free_vars,           \
+                        arg_count, kw_only_count, pos_only_count)
+#define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts,           \
+                            free_vars, arg_count, kw_only_count, pos_only_count)                                       \
+    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,      \
                                  free_vars, arg_count, kw_only_count, pos_only_count, NULL)
-#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,    \
-                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)                 \
-    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, kw_only_count,    \
+#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,  \
+                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)               \
+    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, kw_only_count,  \
                    code_template)
 extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *function_name,
                                     PyObject *arg_names, PyObject *code_consts, PyObject *free_vars, int arg_count,
@@ -82,15 +82,15 @@ extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyO
 #elif PYTHON_VERSION < 0x3b0
 #define MAKE_CODE_OBJECT(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,     \
                          kw_only_count, pos_only_count)                                                                \
-    MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, NULL, free_vars, arg_count, \
-                        kw_only_count, pos_only_count)
-#define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts, free_vars, \
-                            arg_count, kw_only_count, pos_only_count)                                                   \
-    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,        \
+    MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, NULL, free_vars,           \
+                        arg_count, kw_only_count, pos_only_count)
+#define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts,           \
+                            free_vars, arg_count, kw_only_count, pos_only_count)                                       \
+    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,      \
                                  free_vars, arg_count, kw_only_count, pos_only_count, NULL)
-#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,    \
-                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)                 \
-    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, kw_only_count,    \
+#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,  \
+                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)               \
+    makeCodeObject(filename, line, flags, function_name, arg_names, code_consts, free_vars, arg_count, kw_only_count,  \
                    pos_only_count, code_template)
 extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *function_name,
                                     PyObject *arg_names, PyObject *code_consts, PyObject *free_vars, int arg_count,
@@ -98,15 +98,15 @@ extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyO
 #else
 #define MAKE_CODE_OBJECT(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,     \
                          kw_only_count, pos_only_count)                                                                \
-    MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, NULL, free_vars, arg_count, \
-                        kw_only_count, pos_only_count)
-#define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts, free_vars, \
-                            arg_count, kw_only_count, pos_only_count)                                                   \
-    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,        \
+    MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, NULL, free_vars,           \
+                        arg_count, kw_only_count, pos_only_count)
+#define MAKE_CODE_OBJECT_EX(filename, line, flags, function_name, function_qualname, arg_names, code_consts,           \
+                            free_vars, arg_count, kw_only_count, pos_only_count)                                       \
+    MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,      \
                                  free_vars, arg_count, kw_only_count, pos_only_count, NULL)
-#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,    \
-                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)                 \
-    makeCodeObject(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,            \
+#define MAKE_CODE_OBJECT_EX_METADATA(filename, line, flags, function_name, function_qualname, arg_names, code_consts,  \
+                                     free_vars, arg_count, kw_only_count, pos_only_count, code_template)               \
+    makeCodeObject(filename, line, flags, function_name, function_qualname, arg_names, free_vars, arg_count,           \
                    kw_only_count, pos_only_count, code_consts, code_template)
 extern PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *function_name,
                                     PyObject *function_qualname, PyObject *arg_names, PyObject *free_vars,

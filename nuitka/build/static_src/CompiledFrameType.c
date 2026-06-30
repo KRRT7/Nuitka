@@ -708,7 +708,7 @@ static PyObject *Nuitka_Frame_clear(struct Nuitka_FrameObject *frame, PyObject *
                 PyErr_FormatUnraisable("Exception ignored while finalizing coroutine %R", f_gen);
             } else
 #endif
-            PyErr_WriteUnraisable(f_gen);
+                PyErr_WriteUnraisable(f_gen);
         }
 
         Py_DECREF(frame);
@@ -1006,8 +1006,7 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
                              PyObject *code_consts
 #endif
                              ,
-                             PyObject *code_template
-) {
+                             PyObject *code_template) {
 
     if (filename == Py_None) {
         filename = const_str_empty;
@@ -1214,17 +1213,17 @@ PyCodeObject *makeCodeObject(PyObject *filename, int line, int flags, PyObject *
 #endif
                                                      kw_only_count, // kw-only count
 #endif
-                                                     nlocals,           // nlocals
-                                                     stacksize,         // stacksize
-                                                     flags,             // flags
-                                                     code,              // code (bytecode)
-                                                     consts,            // consts (we are not going to be compatible)
-                                                     names,             // names
-                                                     arg_names,         // var_names (we are not going to be compatible)
-                                                     free_vars,         // free_vars
-                                                     cell_vars,         // cell_vars
-                                                     filename,          // filename
-                                                     function_name,     // name
+                                                     nlocals,       // nlocals
+                                                     stacksize,     // stacksize
+                                                     flags,         // flags
+                                                     code,          // code (bytecode)
+                                                     consts,        // consts (we are not going to be compatible)
+                                                     names,         // names
+                                                     arg_names,     // var_names (we are not going to be compatible)
+                                                     free_vars,     // free_vars
+                                                     cell_vars,     // cell_vars
+                                                     filename,      // filename
+                                                     function_name, // name
 #if PYTHON_VERSION >= 0x3b0
                                                      function_qualname, // qualname
 #endif

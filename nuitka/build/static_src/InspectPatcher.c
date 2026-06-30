@@ -151,7 +151,8 @@ static PyObject *_interpreters_run_func_replacement(PyObject *self, PyObject *ar
 
     PyObject *code_object = (PyObject *)((struct Nuitka_FunctionObject *)func)->m_code_object;
 
-    PyObject *replacement_args = shared == NULL ? PyTuple_Pack(2, id, code_object) : PyTuple_Pack(3, id, code_object, shared);
+    PyObject *replacement_args =
+        shared == NULL ? PyTuple_Pack(2, id, code_object) : PyTuple_Pack(3, id, code_object, shared);
     if (unlikely(replacement_args == NULL)) {
         return NULL;
     }
@@ -417,7 +418,8 @@ inspect._get_code_position=_get_code_position\n\
             PyCFunction_New(&_method_def_interpreters_run_func_replacement, NULL);
         CHECK_OBJECT(interpreters_run_func_replacement);
 
-        int set_attr_result = PyObject_SetAttrString(module_interpreters, "run_func", interpreters_run_func_replacement);
+        int set_attr_result =
+            PyObject_SetAttrString(module_interpreters, "run_func", interpreters_run_func_replacement);
         Py_DECREF(interpreters_run_func_replacement);
 
         if (unlikely(set_attr_result < 0)) {

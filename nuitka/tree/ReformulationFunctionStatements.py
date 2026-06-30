@@ -72,6 +72,7 @@ from nuitka.plugins.Hooks import (
 from nuitka.PythonVersions import python_version
 from nuitka.specs.ParameterSpecs import ParameterSpec
 
+from .CodeObjectTemplates import attachCodeObjectTemplate
 from .FutureSpecState import getFutureSpec
 from .ReformulationExecStatements import wrapEvalGlobalsAndLocals
 from .ReformulationTryFinallyStatements import (
@@ -95,7 +96,6 @@ from .TreeHelpers import (
     makeStatementsSequenceFromStatements,
     mangleName,
 )
-from .CodeObjectTemplates import attachCodeObjectTemplate
 
 
 def _insertFinalReturnStatement(function_statements_body, return_statement):

@@ -1277,10 +1277,9 @@ static unsigned char const *_unpackBlobConstantObjectCodeObject(PyThreadState *t
     }
 
     _finalizeUnpackedConstantObject(
-        output,
-        (PyObject *)MAKE_CODE_OBJECT_EX_METADATA(Py_None, line_number, co_flags, function_name, function_qualname,
-                                                 arg_names, code_consts, free_vars, arg_count, kw_only_count,
-                                                 pos_only_count, code_template));
+        output, (PyObject *)MAKE_CODE_OBJECT_EX_METADATA(Py_None, line_number, co_flags, function_name,
+                                                         function_qualname, arg_names, code_consts, free_vars,
+                                                         arg_count, kw_only_count, pos_only_count, code_template));
 
     return data;
 }

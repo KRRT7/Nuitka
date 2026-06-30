@@ -8,13 +8,13 @@ objects, as well as tracebacks. They might be shared.
 
 """
 
+from nuitka.Constants import compareConstants
 from nuitka.utils.Hashing import getStringHash
 from nuitka.utils.InstanceCounters import (
     counted_del,
     counted_init,
     isCountingInstances,
 )
-from nuitka.Constants import compareConstants
 
 try:
     from types import CodeType
@@ -233,7 +233,9 @@ class CodeObjectSpec(object):
             code_object.co_code,
             code_object.co_names,
             code_object.co_stacksize,
-            getattr(code_object, "co_linetable", getattr(code_object, "co_lnotab", b"")),
+            getattr(
+                code_object, "co_linetable", getattr(code_object, "co_lnotab", b"")
+            ),
             getattr(code_object, "co_exceptiontable", b""),
             code_object.co_cellvars,
         )

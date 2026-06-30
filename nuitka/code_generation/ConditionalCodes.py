@@ -66,7 +66,10 @@ def generateConditionalAndOrCode(to_name, expression, emit, context):
 
     left_value = expression.subnode_left
 
-    if expression.isExpressionConditionalOr() and left_value.isExpressionConditionalAnd():
+    if (
+        expression.isExpressionConditionalOr()
+        and left_value.isExpressionConditionalAnd()
+    ):
         left_inner_value = left_value.subnode_left
         inner_right_target = context.allocateLabel("or_left_and_right")
 
@@ -111,7 +114,10 @@ def generateConditionalAndOrCode(to_name, expression, emit, context):
         )
 
         needs_ref1 = context.needsCleanup(left_name)
-    elif expression.isExpressionConditionalAnd() and left_value.isExpressionConditionalOr():
+    elif (
+        expression.isExpressionConditionalAnd()
+        and left_value.isExpressionConditionalOr()
+    ):
         left_inner_value = left_value.subnode_left
         inner_right_target = context.allocateLabel("and_left_or_right")
 

@@ -1300,7 +1300,7 @@ struct Nuitka_QuickIterator {
 struct Nuitka_EnumerateObject {
     PyObject_HEAD
 
-    Py_ssize_t enumerate_index;
+        Py_ssize_t enumerate_index;
 
     PyObject *enumerate_iterator;
     PyObject *enumerate_result;
@@ -1506,7 +1506,7 @@ static PyTypeObject Nuitka_Enumerate_Type = {
     0,                                          // tp_weaklistoffset
     0,                                          // tp_iter
     (iternextfunc)Nuitka_Enumerate_tp_iternext, // tp_iternext
-    Nuitka_Enumerate_methods,                  // tp_methods
+    Nuitka_Enumerate_methods,                   // tp_methods
     0,                                          // tp_members
     0,                                          // tp_getset
 };
