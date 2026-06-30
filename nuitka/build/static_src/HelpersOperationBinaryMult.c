@@ -508,7 +508,7 @@ exit_result_object:
     if (unlikely(obj_result == NULL)) {
         goto exit_result_exception;
     }
-    result = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+    result = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
     Py_DECREF(obj_result);
     goto exit_result_ok;
 
@@ -672,7 +672,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }
@@ -862,7 +862,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }
@@ -1316,7 +1316,7 @@ exit_result_object:
     if (unlikely(obj_result == NULL)) {
         goto exit_result_exception;
     }
-    result = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+    result = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
     Py_DECREF(obj_result);
     goto exit_result_ok;
 
@@ -1482,7 +1482,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }
@@ -1674,7 +1674,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }
@@ -2284,7 +2284,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }
@@ -2472,7 +2472,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }
@@ -2605,7 +2605,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }
@@ -2720,7 +2720,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }
@@ -2836,7 +2836,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }
@@ -2997,7 +2997,7 @@ exit_result_object:
     if (unlikely(obj_result == NULL)) {
         goto exit_result_exception;
     }
-    result = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+    result = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
     Py_DECREF(obj_result);
     goto exit_result_ok;
 
@@ -3729,141 +3729,6 @@ exit_binary_exception:
 PyObject *BINARY_OPERATION_MULT_OBJECT_LONG_UNICODE(PyObject *operand1, PyObject *operand2) {
     return _BINARY_OPERATION_MULT_OBJECT_LONG_UNICODE(operand1, operand2);
 }
-
-#if PYTHON_VERSION >= 0x300
-/* Code referring to "BYTES" corresponds to Python3 'bytes' and "LONG" to Python2 'long', Python3 'int'. */
-static PyObject *_BINARY_OPERATION_MULT_OBJECT_BYTES_LONG(PyObject *operand1, PyObject *operand2) {
-    CHECK_OBJECT(operand1);
-    assert(PyBytes_CheckExact(operand1));
-    CHECK_OBJECT(operand2);
-    assert(PyLong_CheckExact(operand2));
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-    NUITKA_MAY_BE_UNUSED bool cbool_result;
-    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-    // Slot2 ignored on purpose, type1 takes precedence.
-
-    // Statically recognized that coercion is not possible with these types
-
-    if (unlikely(!1)) {
-        SET_CURRENT_EXCEPTION_TYPE_COMPLAINT("can't multiply sequence by non-int of type '%s'", operand2);
-
-        goto exit_binary_exception;
-    }
-
-    {
-        PyObject *index_value = operand2;
-
-        {
-            Py_ssize_t count = CONVERT_LONG_TO_REPEAT_FACTOR(index_value);
-
-            /* Above conversion indicates an error as -1 */
-            if (unlikely(count == -1)) {
-                PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
-                goto exit_binary_exception;
-            }
-            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand1, count))) {
-                goto exit_binary_exception;
-            }
-            {
-                ssizeargfunc repeatfunc = PyBytes_Type.tp_as_sequence->sq_repeat;
-                PyObject *r = (*repeatfunc)(operand1, count);
-
-                obj_result = r;
-                goto exit_binary_result_object;
-            }
-        }
-    }
-
-    NUITKA_CANNOT_GET_HERE("missing error exit annotation");
-
-exit_binary_result_object:
-    return obj_result;
-
-exit_binary_exception:
-    return NULL;
-}
-
-PyObject *BINARY_OPERATION_MULT_OBJECT_BYTES_LONG(PyObject *operand1, PyObject *operand2) {
-    return _BINARY_OPERATION_MULT_OBJECT_BYTES_LONG(operand1, operand2);
-}
-#endif
-
-#if PYTHON_VERSION >= 0x300
-/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "BYTES" to Python3 'bytes'. */
-static PyObject *_BINARY_OPERATION_MULT_OBJECT_LONG_BYTES(PyObject *operand1, PyObject *operand2) {
-    CHECK_OBJECT(operand1);
-    assert(PyLong_CheckExact(operand1));
-    CHECK_OBJECT(operand2);
-    assert(PyBytes_CheckExact(operand2));
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-    NUITKA_MAY_BE_UNUSED bool cbool_result;
-    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-    // Slot1 ignored on purpose, type2 takes precedence.
-
-    // Statically recognized that coercion is not possible with these types
-
-    {
-        // No sequence repeat slot sq_repeat available for this type.
-    }
-    if (unlikely(!1)) {
-        SET_CURRENT_EXCEPTION_TYPE_COMPLAINT("can't multiply sequence by non-int of type '%s'", operand1);
-
-        goto exit_binary_exception;
-    }
-
-    {
-        PyObject *index_value = operand1;
-
-        {
-            Py_ssize_t count = CONVERT_LONG_TO_REPEAT_FACTOR(index_value);
-
-            /* Above conversion indicates an error as -1 */
-            if (unlikely(count == -1)) {
-                PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
-                goto exit_binary_exception;
-            }
-            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
-                goto exit_binary_exception;
-            }
-            {
-                ssizeargfunc repeatfunc = PyBytes_Type.tp_as_sequence->sq_repeat;
-                PyObject *r = (*repeatfunc)(operand2, count);
-
-                obj_result = r;
-                goto exit_binary_result_object;
-            }
-        }
-    }
-
-    NUITKA_CANNOT_GET_HERE("missing error exit annotation");
-
-exit_binary_result_object:
-    return obj_result;
-
-exit_binary_exception:
-    return NULL;
-}
-
-PyObject *BINARY_OPERATION_MULT_OBJECT_LONG_BYTES(PyObject *operand1, PyObject *operand2) {
-    return _BINARY_OPERATION_MULT_OBJECT_LONG_BYTES(operand1, operand2);
-}
-#endif
 
 /* Code referring to "TUPLE" corresponds to Python 'tuple' and "LONG" to Python2 'long', Python3 'int'. */
 static PyObject *_BINARY_OPERATION_MULT_OBJECT_TUPLE_LONG(PyObject *operand1, PyObject *operand2) {
@@ -5761,7 +5626,7 @@ static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_OBJECT_OBJECT(PyObject *operand1
         if (unlikely(obj_result == NULL)) {
             goto exit_result_exception;
         }
-        result = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        result = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         goto exit_result_ok;
 
@@ -5943,7 +5808,7 @@ exit_binary_result_object:
     }
 
     {
-        nuitka_bool r = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+        nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(obj_result));
         Py_DECREF(obj_result);
         return r;
     }

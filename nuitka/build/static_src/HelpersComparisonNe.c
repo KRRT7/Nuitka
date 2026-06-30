@@ -396,7 +396,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_OBJECT(PyObject *operand1, PyObject *op
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -465,7 +465,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_OBJECT(PyObject *operand1, PyObject *op
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -487,7 +487,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_OBJECT(PyObject *operand1, PyObject *op
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -508,7 +508,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_OBJECT(PyObject *operand1, PyObject *op
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -624,7 +624,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_OBJECT(PyObject *operand1, PyObject *op
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -647,7 +647,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_OBJECT(PyObject *operand1, PyObject *op
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -670,7 +670,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_OBJECT(PyObject *operand1, PyObject *op
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -1432,7 +1432,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_STR(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -1501,7 +1501,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_STR(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -1523,7 +1523,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_STR(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -1544,7 +1544,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_STR(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -1660,7 +1660,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_STR(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -1683,7 +1683,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_STR(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -1706,7 +1706,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_STR(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -1782,7 +1782,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_STR_OBJECT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -1851,7 +1851,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_STR_OBJECT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -1873,7 +1873,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_STR_OBJECT(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -1894,7 +1894,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_STR_OBJECT(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -2010,7 +2010,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_STR_OBJECT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -2033,7 +2033,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_STR_OBJECT(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -2056,7 +2056,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_STR_OBJECT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -2877,7 +2877,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_UNICODE(PyObject *operand1, PyObject *o
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -2946,7 +2946,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_UNICODE(PyObject *operand1, PyObject *o
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -2968,7 +2968,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_UNICODE(PyObject *operand1, PyObject *o
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -2989,7 +2989,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_UNICODE(PyObject *operand1, PyObject *o
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -3105,7 +3105,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_UNICODE(PyObject *operand1, PyObject *o
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -3128,7 +3128,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_UNICODE(PyObject *operand1, PyObject *o
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -3151,7 +3151,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_UNICODE(PyObject *operand1, PyObject *o
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -3227,7 +3227,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_UNICODE_OBJECT(PyObject *operand1, PyObject *o
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -3296,7 +3296,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_UNICODE_OBJECT(PyObject *operand1, PyObject *o
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -3318,7 +3318,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_UNICODE_OBJECT(PyObject *operand1, PyObject *o
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -3339,7 +3339,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_UNICODE_OBJECT(PyObject *operand1, PyObject *o
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -3455,7 +3455,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_UNICODE_OBJECT(PyObject *operand1, PyObject *o
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -3478,7 +3478,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_UNICODE_OBJECT(PyObject *operand1, PyObject *o
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -3501,7 +3501,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_UNICODE_OBJECT(PyObject *operand1, PyObject *o
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -4264,7 +4264,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_BYTES(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -4333,7 +4333,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_BYTES(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -4355,7 +4355,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_BYTES(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -4376,7 +4376,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_BYTES(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -4492,7 +4492,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_BYTES(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -4515,7 +4515,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_BYTES(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -4538,7 +4538,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_BYTES(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -4614,7 +4614,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_BYTES_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -4683,7 +4683,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_BYTES_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -4705,7 +4705,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_BYTES_OBJECT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -4726,7 +4726,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_BYTES_OBJECT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -4842,7 +4842,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_BYTES_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -4865,7 +4865,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_BYTES_OBJECT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -4888,7 +4888,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_BYTES_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -5552,7 +5552,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_INT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -5621,7 +5621,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_INT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -5643,7 +5643,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_INT(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -5664,7 +5664,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_INT(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -5780,7 +5780,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_INT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -5803,7 +5803,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_INT(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -5826,7 +5826,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_INT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -5902,7 +5902,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_INT_OBJECT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -5971,7 +5971,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_INT_OBJECT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -5993,7 +5993,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_INT_OBJECT(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -6014,7 +6014,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_INT_OBJECT(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -6130,7 +6130,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_INT_OBJECT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -6153,7 +6153,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_INT_OBJECT(PyObject *operand1, PyObject *opera
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -6176,7 +6176,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_INT_OBJECT(PyObject *operand1, PyObject *opera
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -6907,7 +6907,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LONG(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -6976,7 +6976,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LONG(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -6998,7 +6998,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LONG(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -7019,7 +7019,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LONG(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -7135,7 +7135,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LONG(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -7158,7 +7158,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LONG(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -7181,7 +7181,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LONG(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -7257,7 +7257,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LONG_OBJECT(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -7326,7 +7326,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LONG_OBJECT(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -7348,7 +7348,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LONG_OBJECT(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -7369,7 +7369,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LONG_OBJECT(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -7485,7 +7485,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LONG_OBJECT(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -7508,7 +7508,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LONG_OBJECT(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -7531,7 +7531,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LONG_OBJECT(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -8223,7 +8223,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_FLOAT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -8292,7 +8292,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_FLOAT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -8314,7 +8314,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_FLOAT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -8335,7 +8335,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_FLOAT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -8451,7 +8451,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_FLOAT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -8474,7 +8474,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_FLOAT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -8497,7 +8497,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_FLOAT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -8571,7 +8571,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_FLOAT_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -8640,7 +8640,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_FLOAT_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -8662,7 +8662,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_FLOAT_OBJECT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -8683,7 +8683,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_FLOAT_OBJECT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -8799,7 +8799,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_FLOAT_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -8822,7 +8822,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_FLOAT_OBJECT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -8845,7 +8845,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_FLOAT_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -9609,7 +9609,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_TUPLE(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -9678,7 +9678,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_TUPLE(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -9700,7 +9700,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_TUPLE(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -9721,7 +9721,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_TUPLE(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -9837,7 +9837,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_TUPLE(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -9860,7 +9860,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_TUPLE(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -9883,7 +9883,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_TUPLE(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -9957,7 +9957,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_TUPLE_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -10026,7 +10026,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_TUPLE_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -10048,7 +10048,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_TUPLE_OBJECT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -10069,7 +10069,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_TUPLE_OBJECT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -10185,7 +10185,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_TUPLE_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -10208,7 +10208,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_TUPLE_OBJECT(PyObject *operand1, PyObject *ope
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -10231,7 +10231,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_TUPLE_OBJECT(PyObject *operand1, PyObject *ope
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -11015,7 +11015,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LIST(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -11084,7 +11084,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LIST(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -11106,7 +11106,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LIST(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -11127,7 +11127,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LIST(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -11243,7 +11243,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LIST(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -11266,7 +11266,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LIST(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -11289,7 +11289,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_OBJECT_LIST(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -11363,7 +11363,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LIST_OBJECT(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -11432,7 +11432,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LIST_OBJECT(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -11454,7 +11454,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LIST_OBJECT(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -11475,7 +11475,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LIST_OBJECT(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -11591,7 +11591,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LIST_OBJECT(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
@@ -11614,7 +11614,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LIST_OBJECT(PyObject *operand1, PyObject *oper
             }
 
             {
-                nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                 Py_DECREF(result);
                 return r;
             }
@@ -11637,7 +11637,7 @@ nuitka_bool RICH_COMPARE_NE_NBOOL_LIST_OBJECT(PyObject *operand1, PyObject *oper
                 }
 
                 {
-                    nuitka_bool r = CHECK_IF_TRUE(result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+                    nuitka_bool r = NBOOL_FROM_INT(CHECK_IF_TRUE(result));
                     Py_DECREF(result);
                     return r;
                 }
