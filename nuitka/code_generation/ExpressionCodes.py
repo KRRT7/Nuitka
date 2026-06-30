@@ -108,7 +108,7 @@ def _generateTailSelfCallCode(value, emit, context):
     emit("if (%s == (PyObject *)self) {" % called_name)
 
     getErrorExitBoolCode(
-        condition='Nuitka_EnterRecursivePythonCall(tstate, " while calling a Python object")',
+        condition="Nuitka_EnterTailRecursivePythonCall(tstate)",
         emit=emit,
         context=context,
     )

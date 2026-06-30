@@ -820,6 +820,74 @@ NUITKA_MAY_BE_UNUSED static inline void Nuitka_LeaveRecursivePythonCall(PyThread
 #endif
 }
 
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_EnterTailRecursivePythonCall(PyThreadState *tstate) {
+#if PYTHON_VERSION >= 0x3c0
+    tstate->py_recursion_remaining--;
+
+    if (unlikely(tstate->py_recursion_remaining < 0)) {
+        tstate->recursion_headroom++;
+        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded while calling a Python object");
+        tstate->recursion_headroom--;
+
+        tstate->py_recursion_remaining++;
+
+        return -1;
+    }
+
+    return 0;
+#elif PYTHON_VERSION >= 0x3b0
+    tstate->recursion_remaining--;
+
+    if (unlikely(tstate->recursion_remaining < 0)) {
+        tstate->recursion_headroom++;
+        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded while calling a Python object");
+        tstate->recursion_headroom--;
+
+        tstate->recursion_remaining++;
+
+        return -1;
+    }
+
+    return 0;
+#elif PYTHON_VERSION >= 0x3a0
+    tstate->recursion_depth++;
+
+    if (unlikely(tstate->recursion_depth > Py_GetRecursionLimit())) {
+        tstate->recursion_headroom++;
+        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded while calling a Python object");
+        tstate->recursion_headroom--;
+
+        tstate->recursion_depth--;
+
+        return -1;
+    }
+
+    return 0;
+#else
+    tstate->recursion_depth++;
+
+    if (unlikely(tstate->recursion_depth > Py_GetRecursionLimit())) {
+        tstate->overflowed = 1;
+        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded while calling a Python object");
+        tstate->recursion_depth--;
+
+        return -1;
+    }
+
+    return 0;
+#endif
+}
+
+NUITKA_MAY_BE_UNUSED static inline void Nuitka_LeaveTailRecursivePythonCall(PyThreadState *tstate) {
+#if PYTHON_VERSION >= 0x3c0
+    tstate->py_recursion_remaining++;
+#elif PYTHON_VERSION >= 0x3b0
+    tstate->recursion_remaining++;
+#else
+    tstate->recursion_depth--;
+#endif
+}
+
 #if PYTHON_VERSION < 0x300
 #define TP_RICHCOMPARE(t) (PyType_HasFeature((t), Py_TPFLAGS_HAVE_RICHCOMPARE) ? (t)->tp_richcompare : NULL)
 #else

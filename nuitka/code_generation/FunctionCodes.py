@@ -706,7 +706,7 @@ def finalizeFunctionLocalVariables(context):
         function_cleanup = [
             "while (nuitka_tail_recursion_depth > 0) {",
             "    nuitka_tail_recursion_depth -= 1;",
-            "    Nuitka_LeaveRecursivePythonCall(tstate);",
+            "    Nuitka_LeaveTailRecursivePythonCall(tstate);",
             "}",
         ]
     else:
