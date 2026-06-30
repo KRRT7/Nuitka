@@ -133,12 +133,6 @@ template_frame_guard_normal_return_handler = """\
 RESTORE_FRAME_EXCEPTION(tstate, {{frame_identifier}});
 {% endif %}
 
-if (Nuitka_Frame_TraceRemainingLinesToLast(tstate, {{frame_identifier}}) < 0) {
-    FETCH_ERROR_OCCURRED_STATE(tstate, &{{exception_state_name}});
-
-{{exception_lineno}} = Nuitka_GetFrameLineNumber({{frame_identifier}});
-    goto {{frame_exception_exit}};
-}
 if (Nuitka_Frame_TraceReturn(tstate, {{frame_identifier}}, tmp_return_value) < 0) {
     FETCH_ERROR_OCCURRED_STATE(tstate, &{{exception_state_name}});
 
