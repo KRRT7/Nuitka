@@ -12,6 +12,9 @@ def getCurrentLineNumberCode(context):
     else:
         source_ref = context.getCurrentSourceCodeReference()
 
+        if source_ref is None:
+            return ""
+
         if source_ref.isInternal():
             return ""
         else:

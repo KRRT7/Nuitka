@@ -339,18 +339,19 @@ else:
 
 
 class _CurrentSourceCodeReferenceContext(object):
-    __slots__ = ("context", "value")
+    __slots__ = ("context", "old_value", "value")
 
     def __init__(self, context, value):
         self.context = context
+        self.old_value = None
         self.value = value
 
     def __enter__(self):
-        return self.context.setCurrentSourceCodeReference(self.value)
+        self.old_value = self.context.setCurrentSourceCodeReference(self.value)
+        return self.old_value
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is None:
-            self.context.setCurrentSourceCodeReference(self.value)
+        self.context.setCurrentSourceCodeReference(self.old_value)
 
         return False
 
