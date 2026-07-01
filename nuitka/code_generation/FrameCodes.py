@@ -83,7 +83,9 @@ def generateStatementsFrameCode(statement_sequence, emit, context):
 
     # Allow stacking of frame handles.
     context.pushFrameHandle(
-        statement_sequence.getFrameCodeName(), statement_sequence.hasStructureMember()
+        statement_sequence.getFrameCodeName(),
+        statement_sequence.hasStructureMember(),
+        code_object,
     )
 
     context.setExceptionEscape(context.allocateLabel("frame_exception_exit"))

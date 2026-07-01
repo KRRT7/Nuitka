@@ -25,14 +25,14 @@ def _emitImplicitReturnLineTraceCode(statement, emit, context):
     if statement.getConstant() is not None:
         return
 
-    owner = context.getOwner()
+    frame_code_object = context.getFrameCodeObject()
 
-    if not owner.isExpressionFunctionBodyBase():
+    if frame_code_object is None:
         return
 
     source_ref = statement.getCompatibleSourceReference()
 
-    if source_ref.getLineNumber() != owner.getCodeObject().getLineNumber():
+    if source_ref.getLineNumber() != frame_code_object.getLineNumber():
         return
 
     frame_handle = context.getFrameHandle()

@@ -623,13 +623,17 @@ class FrameDeclarationsMixin(object):
 
         # Currently active frame stack inside the context.
         self.frame_stack = [None]
+        self.frame_code_object_stack = [None]
 
         self.locals_dict_names = None
 
     def getFrameHandle(self):
         return self.frame_stack[-1]
 
-    def pushFrameHandle(self, frame_code_name, is_light):
+    def getFrameCodeObject(self):
+        return self.frame_code_object_stack[-1]
+
+    def pushFrameHandle(self, frame_code_name, is_light, code_object):
         self.frames_used += 1
 
         if is_light:
@@ -657,11 +661,13 @@ class FrameDeclarationsMixin(object):
         )
 
         self.frame_stack.append(frame_identifier)
+        self.frame_code_object_stack.append(code_object)
         return frame_identifier
 
     def popFrameHandle(self):
         result = self.frame_stack[-1]
         del self.frame_stack[-1]
+        del self.frame_code_object_stack[-1]
 
         return result
 
@@ -815,6 +821,7 @@ class PythonModuleContext(
         "frame_variable_types",
         "frames_used",
         "frame_stack",
+        "frame_code_object_stack",
         "locals_dict_names",
         # TempMixin:
         "tmp_names",
@@ -998,6 +1005,7 @@ class PythonFunctionContext(
         "frame_variable_types",
         "frames_used",
         "frame_stack",
+        "frame_code_object_stack",
         "locals_dict_names",
         # TempMixin:
         "tmp_names",
@@ -1237,8 +1245,13 @@ class PythonFunctionOutlineContext(
     def getFrameHandle(self):
         return self.parent.getFrameHandle()
 
-    def pushFrameHandle(self, code_object_access_code, is_light):
-        return self.parent.pushFrameHandle(code_object_access_code, is_light)
+    def getFrameCodeObject(self):
+        return self.parent.getFrameCodeObject()
+
+    def pushFrameHandle(self, code_object_access_code, is_light, code_object):
+        return self.parent.pushFrameHandle(
+            code_object_access_code, is_light, code_object
+        )
 
     def popFrameHandle(self):
         return self.parent.popFrameHandle()
