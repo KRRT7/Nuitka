@@ -215,6 +215,18 @@ NUITKA_MAY_BE_UNUSED static inline bool isFrameUnusable(struct Nuitka_FrameObjec
     return result;
 }
 
+NUITKA_MAY_BE_UNUSED static inline void Nuitka_Frame_TrackIfUntracked(struct Nuitka_FrameObject *frame_object) {
+    if (!_PyObject_GC_IS_TRACKED((PyObject *)frame_object)) {
+        Nuitka_GC_Track(frame_object);
+    }
+}
+
+NUITKA_MAY_BE_UNUSED static inline void Nuitka_Frame_UnTrackIfCacheOnly(struct Nuitka_FrameObject *frame_object) {
+    if (Py_REFCNT(frame_object) == 1 && _PyObject_GC_IS_TRACKED((PyObject *)frame_object)) {
+        Nuitka_GC_UnTrack(frame_object);
+    }
+}
+
 #if _DEBUG_REFCOUNTS
 extern int count_active_frame_cache_instances;
 extern int count_allocated_frame_cache_instances;
@@ -409,6 +421,8 @@ NUITKA_MAY_BE_UNUSED inline static void pushFrameStackPythonFrame(PyThreadState 
 
 NUITKA_MAY_BE_UNUSED inline static void pushFrameStackCompiledFrame(PyThreadState *tstate,
                                                                     struct Nuitka_FrameObject *frame_object) {
+    Nuitka_Frame_TrackIfUntracked(frame_object);
+
 #if PYTHON_VERSION < 0x3b0
     pushFrameStackPythonFrame(tstate, &frame_object->m_frame);
 #else

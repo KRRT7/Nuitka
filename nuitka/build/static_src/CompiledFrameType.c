@@ -556,7 +556,9 @@ static void Nuitka_Frame_tp_dealloc(struct Nuitka_FrameObject *nuitka_frame) {
     RESTORE_ERROR_OCCURRED_STATE(tstate, &saved_exception_state1);
 #endif
 
-    Nuitka_GC_UnTrack(nuitka_frame);
+    if (_PyObject_GC_IS_TRACKED((PyObject *)nuitka_frame)) {
+        Nuitka_GC_UnTrack(nuitka_frame);
+    }
 
     PyFrameObject *frame = &nuitka_frame->m_frame;
 #if PYTHON_VERSION < 0x3b0

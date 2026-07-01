@@ -378,6 +378,7 @@ Nuitka_Frame_ClearLocals(%(frame_identifier)s);
                 return_exit=parent_return_exit,
                 frame_return_exit=frame_return_exit,
                 frame_exception_exit=frame_exception_exit,
+                frame_cache_identifier=frame_cache_identifier,
                 exception_state_name=exception_state_name,
                 exception_lineno=exception_lineno,
                 needs_preserve=needs_preserve,

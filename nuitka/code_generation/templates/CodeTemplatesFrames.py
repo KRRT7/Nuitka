@@ -123,6 +123,9 @@ popFrameStack(tstate);
 {% if frame_exit_code %}
 {{frame_exit_code}}
 {% endif %}
+{% if frame_cache_identifier %}
+Nuitka_Frame_UnTrackIfCacheOnly({{frame_identifier}});
+{% endif %}
 
 goto {{no_exception_exit}};
 """
@@ -145,6 +148,9 @@ Nuitka_Frame_ClearTrace({{frame_identifier}});
 popFrameStack(tstate);
 {% if frame_exit_code %}
 {{frame_exit_code}}s
+{% endif %}
+{% if frame_cache_identifier %}
+Nuitka_Frame_UnTrackIfCacheOnly({{frame_identifier}});
 {% endif %}
 
 goto {{return_exit}};
