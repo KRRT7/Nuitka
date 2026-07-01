@@ -187,18 +187,27 @@ def generateYieldFromAwaitableCode(to_name, expression, emit, context):
         expression=expression, emit=emit, context=context
     )
 
+    context_object_name = context.getContextObjectName()
+
     yield_code = """\
 %(object_name)s->m_yield_from = %(yield_from)s;
-%(object_name)s->m_awaiting = true;
-return NULL;
 """ % {
-        "object_name": context.getContextObjectName(),
+        "object_name": context_object_name,
         "yield_from": awaited_name,
     }
 
-    resume_code = """\
+    if context.hasAwaitingState():
+        yield_code += """\
+%(object_name)s->m_awaiting = true;
+""" % {"object_name": context_object_name}
+
+        resume_code = """\
 %(object_name)s->m_awaiting = false;
-""" % {"object_name": context.getContextObjectName()}
+""" % {"object_name": context_object_name}
+    else:
+        resume_code = None
+
+    yield_code += "return NULL;\n"
 
     getReferenceExportCode(awaited_name, emit, context)
     if context.needsCleanup(awaited_name):

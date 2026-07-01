@@ -384,6 +384,9 @@ class PythonContextBase(getMetaClassBase("Context", require_slots=True)):
     def getInplaceLeftName(self):
         return self.allocateTempName("inplace_orig", "PyObject *", True)
 
+    def hasAwaitingState(self):
+        return False
+
     @abstractmethod
     def getConstantCode(self, constant, deep_check=False):
         pass
@@ -572,6 +575,9 @@ class PythonChildContextBase(PythonContextBase):
 
     def hasHelperCode(self, key):
         return self.parent.hasHelperCode(key)
+
+    def hasAwaitingState(self):
+        return self.parent.hasAwaitingState()
 
     def addDeclaration(self, key, code):
         self.parent.addDeclaration(key, code)
@@ -1106,6 +1112,10 @@ class PythonGeneratorObjectContext(PythonFunctionContext):
     def getContextObjectName():
         return "generator"
 
+    @staticmethod
+    def hasAwaitingState():
+        return False
+
     def getGeneratorReturnValueName(self):
         if python_version >= 0x300:
             return self.allocateTempName("return_value", "PyObject *", unique=True)
@@ -1120,6 +1130,10 @@ class PythonCoroutineObjectContext(PythonGeneratorObjectContext):
     def getContextObjectName():
         return "coroutine"
 
+    @staticmethod
+    def hasAwaitingState():
+        return True
+
 
 class PythonAsyncgenObjectContext(PythonGeneratorObjectContext):
     __slots__ = ()
@@ -1127,6 +1141,10 @@ class PythonAsyncgenObjectContext(PythonGeneratorObjectContext):
     @staticmethod
     def getContextObjectName():
         return "asyncgen"
+
+    @staticmethod
+    def hasAwaitingState():
+        return True
 
 
 class PythonFunctionCreatedContext(PythonFunctionContext):
