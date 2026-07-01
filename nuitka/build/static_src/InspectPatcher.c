@@ -56,6 +56,7 @@ static PyObject *_inspect_getgeneratorstate_replacement(PyObject *self, PyObject
 
 #if PYTHON_VERSION >= 0x350
 static PyObject *old_getcoroutinestate = NULL;
+static PyObject *old_isawaitable = NULL;
 
 static PyObject *_inspect_getcoroutinestate_replacement(PyObject *self, PyObject *args, PyObject *kwds) {
     PyObject *object;
@@ -79,6 +80,30 @@ static PyObject *_inspect_getcoroutinestate_replacement(PyObject *self, PyObject
     } else {
         return old_getcoroutinestate->ob_type->tp_call(old_getcoroutinestate, args, kwds);
     }
+}
+
+static PyObject *_inspect_isawaitable_replacement(PyObject *self, PyObject *args, PyObject *kwds) {
+    PyObject *object;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O:isawaitable", kw_list_object, &object, NULL)) {
+        return NULL;
+    }
+
+    if (Nuitka_Coroutine_Check(object)) {
+        Py_RETURN_TRUE;
+    }
+
+    if (Nuitka_Generator_Check(object)) {
+        struct Nuitka_GeneratorObject *generator = (struct Nuitka_GeneratorObject *)object;
+
+        if ((generator->m_code_object->co_flags & CO_ITERABLE_COROUTINE) != 0) {
+            Py_RETURN_TRUE;
+        } else {
+            Py_RETURN_FALSE;
+        }
+    }
+
+    return old_isawaitable->ob_type->tp_call(old_isawaitable, args, kwds);
 }
 
 static PyObject *old_types_coroutine = NULL;
@@ -218,6 +243,9 @@ static PyMethodDef _method_def_inspect_getgeneratorstate_replacement = {
 static PyMethodDef _method_def_inspect_getcoroutinestate_replacement = {
     "getcoroutinestate", CAST_METHOD_KW(_inspect_getcoroutinestate_replacement), METH_VARARGS | METH_KEYWORDS, NULL};
 
+static PyMethodDef _method_def_inspect_isawaitable_replacement = {
+    "isawaitable", CAST_METHOD_KW(_inspect_isawaitable_replacement), METH_VARARGS | METH_KEYWORDS, NULL};
+
 static PyMethodDef _method_def_types_coroutine_replacement = {"coroutine", CAST_METHOD_KW(_types_coroutine_replacement),
                                                               METH_VARARGS | METH_KEYWORDS, NULL};
 
@@ -345,6 +373,17 @@ void patchInspectModule(PyThreadState *tstate) {
         CHECK_OBJECT(inspect_getcoroutinestate_replacement);
 
         PyObject_SetAttrString(module_inspect, "getcoroutinestate", inspect_getcoroutinestate_replacement);
+    }
+
+    // Patch "inspect.isawaitable" unless it is already patched.
+    old_isawaitable = PyObject_GetAttrString(module_inspect, "isawaitable");
+    CHECK_OBJECT(old_isawaitable);
+
+    if (PyFunction_Check(old_isawaitable)) {
+        PyObject *inspect_isawaitable_replacement = PyCFunction_New(&_method_def_inspect_isawaitable_replacement, NULL);
+        CHECK_OBJECT(inspect_isawaitable_replacement);
+
+        PyObject_SetAttrString(module_inspect, "isawaitable", inspect_isawaitable_replacement);
     }
 
     module_types = IMPORT_MODULE5(tstate, const_str_plain_types, Py_None, Py_None, const_tuple_empty, const_int_0);
