@@ -913,6 +913,17 @@ static PyObject *Nuitka_Asyncgen_athrow(PyObject *asyncgen_obj, PyObject *args) 
 
     PyThreadState *tstate = PyThreadState_GET();
 
+#if PYTHON_VERSION >= 0x3d0
+    if (PyTuple_GET_SIZE(args) > 1) {
+        if (PyErr_WarnEx(PyExc_DeprecationWarning,
+                         "the (type, exc, tb) signature of athrow() is deprecated, "
+                         "use the single-arg signature instead.",
+                         1) < 0) {
+            return NULL;
+        }
+    }
+#endif
+
     if (_Nuitka_Asyncgen_init_hooks(tstate, asyncgen)) {
         return NULL;
     }
@@ -1446,11 +1457,37 @@ static PyObject *_Nuitka_Asyncgen_unwrap_value(PyThreadState *tstate, struct Nui
 static struct Nuitka_AsyncgenAsendObject *free_list_asyncgen_asends = NULL;
 static int free_list_asyncgen_asends_count = 0;
 
+static int _Nuitka_Asyncgen_warn_unawaited_method(struct Nuitka_AsyncgenObject *asyncgen, char const *method_name) {
+    return PyErr_WarnFormat(PyExc_RuntimeWarning, 1, "coroutine method '%s' of '%S' was never awaited", method_name,
+                            asyncgen->m_qualname);
+}
+
+static void Nuitka_AsyncgenAsend_tp_finalize(struct Nuitka_AsyncgenAsendObject *asyncgen_asend) {
+    if (asyncgen_asend->m_state != AWAITABLE_STATE_INIT) {
+        return;
+    }
+
+    PyThreadState *tstate = PyThreadState_GET();
+
+    struct Nuitka_ExceptionPreservationItem saved_exception_state;
+    FETCH_ERROR_OCCURRED_STATE(tstate, &saved_exception_state);
+
+    if (_Nuitka_Asyncgen_warn_unawaited_method(asyncgen_asend->m_gen, "asend") < 0) {
+        PyErr_WriteUnraisable((PyObject *)asyncgen_asend);
+    }
+
+    RESTORE_ERROR_OCCURRED_STATE(tstate, &saved_exception_state);
+}
+
 static void Nuitka_AsyncgenAsend_tp_dealloc(struct Nuitka_AsyncgenAsendObject *asyncgen_asend) {
 #if _DEBUG_REFCOUNTS
     count_active_Nuitka_AsyncgenAsend_Type -= 1;
     count_released_Nuitka_AsyncgenAsend_Type += 1;
 #endif
+
+    if (Nuitka_CallFinalizerFromDealloc((PyObject *)asyncgen_asend) == false) {
+        return;
+    }
 
     Nuitka_GC_UnTrack(asyncgen_asend);
 
@@ -1503,6 +1540,7 @@ static PyObject *_Nuitka_AsyncgenAsend_send(struct Nuitka_AsyncgenAsendObject *a
     } else if (asyncgen_asend->m_state == AWAITABLE_STATE_INIT) {
 #if PYTHON_VERSION >= 0x380
         if (asyncgen_asend->m_gen->m_running_async) {
+            asyncgen_asend->m_state = AWAITABLE_STATE_CLOSED;
             SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_RuntimeError,
                                             "anext(): asynchronous generator is already running");
             return NULL;
@@ -1604,8 +1642,28 @@ static PyObject *_Nuitka_AsyncgenAsend_throw(struct Nuitka_AsyncgenAsendObject *
     PyThreadState *tstate = PyThreadState_GET();
 
     if (asyncgen_asend->m_state == AWAITABLE_STATE_CLOSED) {
+#if PYTHON_VERSION < 0x390
         SET_CURRENT_EXCEPTION_STOP_ITERATION_EMPTY(tstate);
+#else
+        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_RuntimeError, "cannot reuse already awaited __anext__()/asend()");
+#endif
         return NULL;
+    }
+
+    if (asyncgen_asend->m_state == AWAITABLE_STATE_INIT) {
+#if PYTHON_VERSION >= 0x380
+        if (asyncgen_asend->m_gen->m_running_async) {
+            asyncgen_asend->m_state = AWAITABLE_STATE_CLOSED;
+            SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_RuntimeError,
+                                            "anext(): asynchronous generator is already running");
+            return NULL;
+        }
+#endif
+
+        asyncgen_asend->m_state = AWAITABLE_STATE_ITER;
+#if PYTHON_VERSION >= 0x380
+        asyncgen_asend->m_gen->m_running_async = true;
+#endif
     }
 
     PyObject *result = Nuitka_Asyncgen_throw(tstate, asyncgen_asend->m_gen, args);
@@ -1620,6 +1678,9 @@ static PyObject *_Nuitka_AsyncgenAsend_throw(struct Nuitka_AsyncgenAsendObject *
     result = _Nuitka_Asyncgen_unwrap_value(tstate, asyncgen_asend->m_gen, result);
 
     if (result == NULL) {
+#if PYTHON_VERSION >= 0x380
+        asyncgen_asend->m_gen->m_running_async = false;
+#endif
         asyncgen_asend->m_state = AWAITABLE_STATE_CLOSED;
     }
 
@@ -1693,10 +1754,36 @@ static PyObject *_Nuitka_AsyncgenAsend_throw2(PyThreadState *tstate, struct Nuit
 }
 
 static PyObject *_Nuitka_AsyncgenAsend_close(struct Nuitka_AsyncgenAsendObject *asyncgen_asend, PyObject *args) {
+    if (asyncgen_asend->m_state == AWAITABLE_STATE_CLOSED) {
+        Py_INCREF_IMMORTAL(Py_None);
+        return Py_None;
+    }
+
+    PyObject *throw_args = PyTuple_Pack(1, PyExc_GeneratorExit);
+
+    if (unlikely(throw_args == NULL)) {
+        return NULL;
+    }
+
+    PyObject *result = _Nuitka_AsyncgenAsend_throw(asyncgen_asend, throw_args);
+    Py_DECREF(throw_args);
+
+    if (result == NULL) {
+        if (PyErr_ExceptionMatches(PyExc_StopIteration) || PyErr_ExceptionMatches(PyExc_StopAsyncIteration) ||
+            PyErr_ExceptionMatches(PyExc_GeneratorExit)) {
+            CLEAR_ERROR_OCCURRED(PyThreadState_GET());
+            Py_INCREF_IMMORTAL(Py_None);
+            return Py_None;
+        }
+
+        return NULL;
+    }
+
+    Py_DECREF(result);
     asyncgen_asend->m_state = AWAITABLE_STATE_CLOSED;
 
-    Py_INCREF_IMMORTAL(Py_None);
-    return Py_None;
+    SET_CURRENT_EXCEPTION_TYPE0_STR(PyThreadState_GET(), PyExc_RuntimeError, "coroutine ignored GeneratorExit");
+    return NULL;
 }
 
 static PyObject *Nuitka_AsyncgenAsend_close(PyObject *asyncgen_asend_obj, PyObject *args) {
@@ -1758,6 +1845,16 @@ static PyTypeObject Nuitka_AsyncgenAsend_Type = {
     0,                                                               // tp_init
     0,                                                               // tp_alloc
     0,                                                               // tp_new
+    0,                                                               // tp_free
+    0,                                                               // tp_is_gc
+    0,                                                               // tp_bases
+    0,                                                               // tp_mro
+    0,                                                               // tp_cache
+    0,                                                               // tp_subclasses
+    0,                                                               // tp_weaklist
+    0,                                                               // tp_del
+    0,                                                               // tp_version_tag
+    (destructor)Nuitka_AsyncgenAsend_tp_finalize,                    // tp_finalize
 };
 
 static bool Nuitka_AsyncgenAsend_Check(PyObject *object) { return Py_TYPE(object) == &Nuitka_AsyncgenAsend_Type; }
@@ -1774,6 +1871,7 @@ static PyObject *Nuitka_AsyncgenAsend_New(struct Nuitka_AsyncgenObject *asyncgen
     struct Nuitka_AsyncgenAsendObject *result;
 
     allocateFromFreeListFixed(free_list_asyncgen_asends, struct Nuitka_AsyncgenAsendObject, Nuitka_AsyncgenAsend_Type);
+    _PyGC_CLEAR_FINALIZED((PyObject *)result);
 
     Py_INCREF(asyncgen);
     result->m_gen = asyncgen;
@@ -1838,11 +1936,34 @@ NUITKA_MAY_BE_UNUSED static void _PRINT_ASYNCGEN_ATHROW_STATUS(char const *descr
 static struct Nuitka_AsyncgenAthrowObject *free_list_asyncgen_athrows = NULL;
 static int free_list_asyncgen_athrows_count = 0;
 
+static void Nuitka_AsyncgenAthrow_finalize(struct Nuitka_AsyncgenAthrowObject *asyncgen_athrow) {
+    if (asyncgen_athrow->m_state != AWAITABLE_STATE_INIT) {
+        return;
+    }
+
+    PyThreadState *tstate = PyThreadState_GET();
+
+    struct Nuitka_ExceptionPreservationItem saved_exception_state;
+    FETCH_ERROR_OCCURRED_STATE(tstate, &saved_exception_state);
+
+    char const *method_name = asyncgen_athrow->m_args == NULL ? "aclose" : "athrow";
+
+    if (_Nuitka_Asyncgen_warn_unawaited_method(asyncgen_athrow->m_gen, method_name) < 0) {
+        PyErr_WriteUnraisable((PyObject *)asyncgen_athrow);
+    }
+
+    RESTORE_ERROR_OCCURRED_STATE(tstate, &saved_exception_state);
+}
+
 static void Nuitka_AsyncgenAthrow_dealloc(struct Nuitka_AsyncgenAthrowObject *asyncgen_athrow) {
 #if _DEBUG_REFCOUNTS
     count_active_Nuitka_AsyncgenAthrow_Type -= 1;
     count_released_Nuitka_AsyncgenAthrow_Type += 1;
 #endif
+
+    if (Nuitka_CallFinalizerFromDealloc((PyObject *)asyncgen_athrow) == false) {
+        return;
+    }
 
     Nuitka_GC_UnTrack(asyncgen_athrow);
 
@@ -1887,6 +2008,7 @@ static PyObject *_Nuitka_AsyncgenAthrow_send(struct Nuitka_AsyncgenAthrowObject 
 
     // If finished, just report StopIteration.
     if (asyncgen->m_status == status_Finished) {
+        asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
         SET_CURRENT_EXCEPTION_STOP_ITERATION_EMPTY(tstate);
         return NULL;
     }
@@ -1896,6 +2018,7 @@ static PyObject *_Nuitka_AsyncgenAthrow_send(struct Nuitka_AsyncgenAthrowObject 
     if (asyncgen_athrow->m_state == AWAITABLE_STATE_INIT) {
 #if PYTHON_VERSION >= 0x380
         if (asyncgen_athrow->m_gen->m_running_async) {
+            asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
             if (asyncgen_athrow->m_args == NULL) {
                 SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_RuntimeError,
                                                 "aclose(): asynchronous generator is already running");
@@ -2018,17 +2141,14 @@ check_error:
 #if PYTHON_VERSION >= 0x380
     asyncgen_athrow->m_gen->m_running_async = false;
 #endif
+    asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
 
     if (PyErr_ExceptionMatches(PyExc_StopAsyncIteration)) {
-        asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
-
         if (asyncgen_athrow->m_args == NULL) {
             CLEAR_ERROR_OCCURRED(tstate);
             SET_CURRENT_EXCEPTION_STOP_ITERATION_EMPTY(tstate);
         }
     } else if (PyErr_ExceptionMatches(PyExc_GeneratorExit)) {
-        asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
-
 #if PYTHON_VERSION >= 0x380
         if (asyncgen_athrow->m_args == NULL) {
 #endif
@@ -2075,16 +2195,47 @@ static PyObject *_Nuitka_AsyncgenAthrow_throw(struct Nuitka_AsyncgenAthrowObject
         return NULL;
     }
 
+    if (asyncgen_athrow->m_state == AWAITABLE_STATE_INIT) {
+#if PYTHON_VERSION >= 0x380
+        if (asyncgen_athrow->m_gen->m_running_async) {
+            asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
+            if (asyncgen_athrow->m_args == NULL) {
+                SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_RuntimeError,
+                                                "aclose(): asynchronous generator is already running");
+            } else {
+                SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_RuntimeError,
+                                                "athrow(): asynchronous generator is already running");
+            }
+            return NULL;
+        }
+#endif
+
+        asyncgen_athrow->m_state = AWAITABLE_STATE_ITER;
+#if PYTHON_VERSION >= 0x380
+        asyncgen_athrow->m_gen->m_running_async = true;
+#endif
+    }
+
     retval = Nuitka_Asyncgen_throw(tstate, asyncgen_athrow->m_gen, args);
 
     if (asyncgen_athrow->m_args) {
-        return _Nuitka_Asyncgen_unwrap_value(tstate, asyncgen_athrow->m_gen, retval);
+        retval = _Nuitka_Asyncgen_unwrap_value(tstate, asyncgen_athrow->m_gen, retval);
+
+        if (retval == NULL) {
+#if PYTHON_VERSION >= 0x380
+            asyncgen_athrow->m_gen->m_running_async = false;
+#endif
+            asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
+        }
+
+        return retval;
     } else {
         if (retval != NULL) {
             if (_PyAsyncGenWrappedValue_CheckExact(retval) || Nuitka_AsyncgenWrappedValue_CheckExact(retval)) {
 #if PYTHON_VERSION >= 0x380
                 asyncgen_athrow->m_gen->m_running_async = false;
 #endif
+                asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
                 Py_DECREF(retval);
 
                 SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_RuntimeError, "async generator ignored GeneratorExit");
@@ -2093,8 +2244,16 @@ static PyObject *_Nuitka_AsyncgenAthrow_throw(struct Nuitka_AsyncgenAthrowObject
             }
         }
 
+        if (retval == NULL) {
+#if PYTHON_VERSION >= 0x380
+            asyncgen_athrow->m_gen->m_running_async = false;
+#endif
+            asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
+        }
+
 #if PYTHON_VERSION >= 0x390
         if (PyErr_ExceptionMatches(PyExc_StopAsyncIteration) || PyErr_ExceptionMatches(PyExc_GeneratorExit)) {
+            CLEAR_ERROR_OCCURRED(tstate);
             SET_CURRENT_EXCEPTION_STOP_ITERATION_EMPTY(tstate);
         }
 #endif
@@ -2112,10 +2271,36 @@ static PyObject *Nuitka_AsyncgenAthrow_tp_iternext(struct Nuitka_AsyncgenAthrowO
 }
 
 static PyObject *_Nuitka_AsyncgenAthrow_close(struct Nuitka_AsyncgenAthrowObject *asyncgen_athrow, PyObject *args) {
+    if (asyncgen_athrow->m_state == AWAITABLE_STATE_CLOSED) {
+        Py_INCREF_IMMORTAL(Py_None);
+        return Py_None;
+    }
+
+    PyObject *throw_args = PyTuple_Pack(1, PyExc_GeneratorExit);
+
+    if (unlikely(throw_args == NULL)) {
+        return NULL;
+    }
+
+    PyObject *result = _Nuitka_AsyncgenAthrow_throw(asyncgen_athrow, throw_args);
+    Py_DECREF(throw_args);
+
+    if (result == NULL) {
+        if (PyErr_ExceptionMatches(PyExc_StopIteration) || PyErr_ExceptionMatches(PyExc_StopAsyncIteration) ||
+            PyErr_ExceptionMatches(PyExc_GeneratorExit)) {
+            CLEAR_ERROR_OCCURRED(PyThreadState_GET());
+            Py_INCREF_IMMORTAL(Py_None);
+            return Py_None;
+        }
+
+        return NULL;
+    }
+
+    Py_DECREF(result);
     asyncgen_athrow->m_state = AWAITABLE_STATE_CLOSED;
 
-    Py_INCREF_IMMORTAL(Py_None);
-    return Py_None;
+    SET_CURRENT_EXCEPTION_TYPE0_STR(PyThreadState_GET(), PyExc_RuntimeError, "coroutine ignored GeneratorExit");
+    return NULL;
 }
 
 static PyObject *Nuitka_AsyncgenAthrow_close(PyObject *asyncgen_athrow_obj, PyObject *args) {
@@ -2181,7 +2366,7 @@ static PyTypeObject Nuitka_AsyncgenAthrow_Type = {
     0,                                                                // tp_weaklist
     0,                                                                // tp_del
     0,                                                                // tp_version_tag
-    0,                                                                // tp_finalize
+    (destructor)Nuitka_AsyncgenAthrow_finalize,                       // tp_finalize
 };
 
 static PyObject *Nuitka_AsyncgenAthrow_New(struct Nuitka_AsyncgenObject *asyncgen, PyObject *args) {
@@ -2197,6 +2382,7 @@ static PyObject *Nuitka_AsyncgenAthrow_New(struct Nuitka_AsyncgenObject *asyncge
 
     allocateFromFreeListFixed(free_list_asyncgen_athrows, struct Nuitka_AsyncgenAthrowObject,
                               Nuitka_AsyncgenAthrow_Type);
+    _PyGC_CLEAR_FINALIZED((PyObject *)result);
 
     Py_INCREF(asyncgen);
     result->m_gen = asyncgen;
