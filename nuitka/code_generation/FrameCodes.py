@@ -138,9 +138,14 @@ def generateStatementsFrameCode(statement_sequence, emit, context):
         context.tail_recursion_label_emitted = True
         local_emit("function_tail_reentry:;")
 
+    old_initial_trace_lineno = getattr(context, "initial_trace_lineno", None)
+    context.initial_trace_lineno = initial_trace_lineno
+
     _generateStatementSequenceCode(
         statement_sequence=statement_sequence, emit=local_emit, context=context
     )
+
+    context.initial_trace_lineno = old_initial_trace_lineno
 
     # Frame tracing calls arbitrary Python code, so even frames whose original
     # body cannot raise need an exception exit once tracing hooks are emitted.

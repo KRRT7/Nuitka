@@ -356,13 +356,14 @@ class _CurrentSourceCodeReferenceContext(object):
 
 
 class PythonContextBase(getMetaClassBase("Context", require_slots=True)):
-    __slots__ = ("source_ref", "current_source_ref")
+    __slots__ = ("source_ref", "current_source_ref", "initial_trace_lineno")
 
     @counted_init
     def __init__(self):
         self.source_ref = None
 
         self.current_source_ref = None
+        self.initial_trace_lineno = None
 
     if isCountingInstances():
         __del__ = counted_del()

@@ -110,6 +110,12 @@ def emitLineNumberUpdateCode(expression, emit, context):
     if expression is not None:
         context.setCurrentSourceCodeReference(expression.getCompatibleSourceReference())
 
+        if getattr(context, "initial_trace_lineno", None) == int(
+            getCurrentLineNumberCode(context) or 0
+        ):
+            context.initial_trace_lineno = None
+            return
+
     code = getLineNumberUpdateCode(context)
 
     if code:
