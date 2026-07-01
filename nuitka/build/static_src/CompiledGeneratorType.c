@@ -1878,6 +1878,16 @@ void _initCompiledGeneratorType(void) {
     assert(Nuitka_Generator_Type.tp_iternext != PyGen_Type.tp_iternext || PyGen_Type.tp_iternext == NULL);
 #if PYTHON_VERSION >= 0x350
     assert(Nuitka_Generator_Type.tp_as_async != PyGen_Type.tp_as_async || PyGen_Type.tp_as_async == NULL);
+
+    // The C async slot is needed for CPython compatibility when awaiting
+    // compiled iterable-coroutine generators from uncompiled code. CPython
+    // generators do not expose "__await__" through normal attribute lookup
+    // though, and "collections.abc" relies on that visible type dictionary.
+    if (PyDict_DelItemString(Nuitka_Generator_Type.tp_dict, "__await__") == 0) {
+        PyType_Modified(&Nuitka_Generator_Type);
+    } else {
+        CLEAR_ERROR_OCCURRED(PyThreadState_GET());
+    }
 #endif
     assert(Nuitka_Generator_Type.tp_methods != PyGen_Type.tp_methods);
     assert(Nuitka_Generator_Type.tp_members != PyGen_Type.tp_members);

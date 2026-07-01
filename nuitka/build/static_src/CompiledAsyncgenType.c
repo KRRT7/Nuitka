@@ -913,7 +913,7 @@ static PyObject *Nuitka_Asyncgen_athrow(PyObject *asyncgen_obj, PyObject *args) 
 
     PyThreadState *tstate = PyThreadState_GET();
 
-#if PYTHON_VERSION >= 0x3d0
+#if PYTHON_VERSION >= 0x3c0
     if (PyTuple_GET_SIZE(args) > 1) {
         if (PyErr_WarnEx(PyExc_DeprecationWarning,
                          "the (type, exc, tb) signature of athrow() is deprecated, "
