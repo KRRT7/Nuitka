@@ -1289,7 +1289,9 @@ static PyMethodDef Nuitka_Function_methods[] = {{"__reduce__", (PyCFunction)Nuit
                                                 {"clone", (PyCFunction)Nuitka_Function_clone, METH_NOARGS, NULL},
                                                 {NULL}};
 
+#if PYTHON_VERSION < 0x380 || defined(_NUITKA_EXPERIMENTAL_DISABLE_VECTORCALL_SLOT)
 static PyObject *Nuitka_Function_tp_call(struct Nuitka_FunctionObject *function, PyObject *tuple_args, PyObject *kw);
+#endif
 
 PyTypeObject Nuitka_Function_Type = {
     PyVarObject_HEAD_INIT(NULL, 0) "compiled_function", // tp_name
@@ -4074,6 +4076,7 @@ PyObject *Nuitka_CallFunctionVectorcall(PyThreadState *tstate, struct Nuitka_Fun
     return function->m_c_code(tstate, function, python_pars);
 }
 
+#if PYTHON_VERSION < 0x380 || defined(_NUITKA_EXPERIMENTAL_DISABLE_VECTORCALL_SLOT)
 static PyObject *Nuitka_Function_tp_call(struct Nuitka_FunctionObject *function, PyObject *tuple_args, PyObject *kw) {
     CHECK_OBJECT(tuple_args);
     assert(PyTuple_CheckExact(tuple_args));
@@ -4123,6 +4126,7 @@ static PyObject *Nuitka_Function_tp_call(struct Nuitka_FunctionObject *function,
                                                 PyTuple_GET_SIZE(tuple_args), kw);
     }
 }
+#endif
 
 #if PYTHON_VERSION >= 0x380 && !defined(_NUITKA_EXPERIMENTAL_DISABLE_VECTORCALL_SLOT)
 static PyObject *Nuitka_Function_tp_vectorcall(struct Nuitka_FunctionObject *function, PyObject *const *stack,

@@ -1450,8 +1450,11 @@ static PyObject *Nuitka_Enumerate_reduce(struct Nuitka_EnumerateObject *enumerat
         return NULL;
     }
 
-    Py_INCREF((PyObject *)&Nuitka_Enumerate_Type);
-    PyTuple_SET_ITEM0(result, 0, (PyObject *)&Nuitka_Enumerate_Type);
+    PyObject *builtin_enumerate = LOOKUP_BUILTIN_STR("enumerate");
+    CHECK_OBJECT(builtin_enumerate);
+
+    Py_INCREF(builtin_enumerate);
+    PyTuple_SET_ITEM0(result, 0, builtin_enumerate);
     PyTuple_SET_ITEM0(result, 1, args);
 
     return result;
@@ -1514,9 +1517,6 @@ static PyTypeObject Nuitka_Enumerate_Type = {
 static void _initNuitkaEnumerateType(void) {
     Nuitka_Enumerate_Type.tp_new = Nuitka_Enumerate_tp_new;
     Nuitka_PyType_Ready(&Nuitka_Enumerate_Type, NULL, false, false, true, false, false);
-
-    int res = PyDict_SetItemString(PyEval_GetBuiltins(), "compiled_enumerate", (PyObject *)&Nuitka_Enumerate_Type);
-    assert(res == 0);
 }
 
 static PyObject *MAKE_ENUMERATE(PyThreadState *tstate, PyObject *sequence, PyObject *start) {

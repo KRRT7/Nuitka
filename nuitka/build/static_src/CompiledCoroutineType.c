@@ -1776,7 +1776,7 @@ PyObject *ASYNC_AWAIT(PyThreadState *tstate, PyObject *awaitable, int await_kind
     return awaitable_iter;
 }
 
-#if PYTHON_VERSION >= 0x352
+#if PYTHON_VERSION >= 0x352 && PYTHON_VERSION < 0x370
 
 /* Our "aiter" wrapper clone */
 struct Nuitka_AIterWrapper {
@@ -2071,7 +2071,7 @@ static void _initCompiledCoroutineTypes(void) {
 
     Nuitka_PyType_Ready(&Nuitka_CoroutineWrapper_Type, NULL, true, false, true, false, false);
 
-#if PYTHON_VERSION >= 0x352
+#if PYTHON_VERSION >= 0x352 && PYTHON_VERSION < 0x370
     Nuitka_PyType_Ready(&Nuitka_AIterWrapper_Type, NULL, true, false, true, true, false);
 #endif
 }
