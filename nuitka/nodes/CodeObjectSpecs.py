@@ -8,12 +8,18 @@ objects, as well as tracebacks. They might be shared.
 
 """
 
+from nuitka.Constants import compareConstants
 from nuitka.utils.Hashing import getStringHash
 from nuitka.utils.InstanceCounters import (
     counted_del,
     counted_init,
     isCountingInstances,
 )
+
+try:
+    from types import CodeType
+except ImportError:
+    CodeType = None
 
 
 class CodeObjectSpec(object):
@@ -25,6 +31,9 @@ class CodeObjectSpec(object):
         "co_kind",
         "co_varnames",
         "co_argcount",
+        "co_consts",
+        "preserved_consts",
+        "code_template_data",
         "co_freevars",
         "co_posonlyargcount",
         "co_kwonlyargcount",
@@ -55,6 +64,7 @@ class CodeObjectSpec(object):
         future_spec,
         co_new_locals=None,
         co_is_optimized=None,
+        co_consts=(),
     ):
         # pylint: disable=I0021,too-many-locals
 
@@ -87,6 +97,9 @@ class CodeObjectSpec(object):
         self.co_freevars = tuple(co_freevars)
 
         self.co_argcount = int(co_argcount)
+        self.co_consts = tuple(co_consts)
+        self.preserved_consts = []
+        self.code_template_data = None
 
         self.co_posonlyargcount = int(co_posonlyargcount)
         self.co_kwonlyargcount = int(co_kwonlyargcount)
@@ -135,9 +148,14 @@ class CodeObjectSpec(object):
 
     def getHash(self):
         return getStringHash(
-            "|".join(
-                "%s=%s" % (key, value)
-                for key, value in sorted(self.getDetails().items())
+            "%s|co_consts=%r|code_template_data=%r"
+            % (
+                "|".join(
+                    "%s=%s" % (key, value)
+                    for key, value in sorted(self.getDetails().items())
+                ),
+                self.co_consts,
+                self.code_template_data,
             )
         )
 
@@ -190,6 +208,50 @@ class CodeObjectSpec(object):
     def getArgumentCount(self):
         return self.co_argcount
 
+    def setConstants(self, co_consts):
+        self.co_consts = tuple(co_consts)
+
+    def getConstants(self):
+        return self.co_consts
+
+    @staticmethod
+    def _hasConstant(constants, constant):
+        return any(compareConstants(existing, constant) for existing in constants)
+
+    def addPreservedConstant(self, constant):
+        if not self._hasConstant(self.preserved_consts, constant):
+            self.preserved_consts.append(constant)
+
+        if not self._hasConstant(self.co_consts, constant):
+            self.co_consts += (constant,)
+
+    def getPreservedConstants(self):
+        return self.preserved_consts
+
+    def setCodeTemplate(self, code_object):
+        self.code_template_data = (
+            code_object.co_code,
+            code_object.co_names,
+            code_object.co_stacksize,
+            getattr(
+                code_object, "co_linetable", getattr(code_object, "co_lnotab", b"")
+            ),
+            getattr(code_object, "co_exceptiontable", b""),
+            code_object.co_cellvars,
+        )
+
+        template_constants = [
+            constant
+            for constant in code_object.co_consts
+            if CodeType is None or type(constant) is not CodeType
+        ]
+
+        self.preserved_consts = list(template_constants)
+        self.co_consts = tuple(template_constants)
+
+    def getCodeTemplateData(self):
+        return self.code_template_data
+
     def getPosOnlyParameterCount(self):
         return self.co_posonlyargcount
 
@@ -198,6 +260,9 @@ class CodeObjectSpec(object):
 
     def getCodeObjectName(self):
         return self.co_name
+
+    def setCodeObjectQualname(self, co_qualname):
+        self.co_qualname = co_qualname
 
     def getCodeObjectQualname(self):
         return self.co_qualname

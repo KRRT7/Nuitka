@@ -172,7 +172,7 @@ class StatementsFrameBase(StatementsSequenceMixin, StatementsSequenceBase):
     def computeStatementsSequence(self, trace_collection):
         # The extraction of parts of the frame that can be moved before or after
         # the frame scope, takes it toll to complexity, pylint: disable=too-many-branches
-        new_statements = []
+        new_statements = None
 
         statements = self.subnode_statements
 
@@ -187,14 +187,24 @@ class StatementsFrameBase(StatementsSequenceMixin, StatementsSequenceBase):
 
             if new_statement is not None:
                 if new_statement.isStatementsSequenceButNotFrame():
+                    if new_statements is None:
+                        new_statements = list(statements[:count])
+
                     new_statements.extend(new_statement.subnode_statements)
                 else:
-                    new_statements.append(new_statement)
+                    if new_statement is not statement and new_statements is None:
+                        new_statements = list(statements[:count])
+
+                    if new_statements is not None:
+                        new_statements.append(new_statement)
 
                 if (
                     statement is not statements[-1]
                     and new_statement.isStatementAborting()
                 ):
+                    if new_statements is None:
+                        new_statements = list(statements[: count + 1])
+
                     trace_collection.signalChange(
                         "new_statements",
                         statements[count + 1].getSourceReference(),
@@ -202,39 +212,61 @@ class StatementsFrameBase(StatementsSequenceMixin, StatementsSequenceBase):
                     )
 
                     break
+            elif new_statements is None:
+                new_statements = list(statements[:count])
 
-        if not new_statements:
-            trace_collection.signalChange(
-                "new_statements",
-                self.source_ref,
-                "Removed empty frame object of '%s'."
-                % self.code_object.getCodeObjectName(),
-            )
+        if new_statements is not None:
+            if not new_statements:
+                trace_collection.signalChange(
+                    "new_statements",
+                    self.source_ref,
+                    "Removed empty frame object of '%s'."
+                    % self.code_object.getCodeObjectName(),
+                )
 
-            return None
+                return None
 
-        # TODO: It might be worth to do the step that is done when nothing
-        # changes in one go, avoiding the 2 micro passes here.
+            # TODO: It might be worth to do the step that is done when nothing
+            # changes in one go, avoiding the 2 micro passes here.
 
-        # If our statements changed just now, they are not immediately usable,
-        # so do this in two steps. Next time we can reduce the frame scope just
-        # as well.
-        new_statements_tuple = tuple(new_statements)
-        if statements != new_statements_tuple:
-            self.setChildStatements(new_statements_tuple)
+            # If our statements changed just now, they are not immediately usable,
+            # so do this in two steps. Next time we can reduce the frame scope just
+            # as well.
+            new_statements = tuple(new_statements)
+            if statements != new_statements:
+                self.setChildStatements(new_statements)
+                return self
+        else:
+            new_statements = statements
+
+        if self.isStatementsFrameFunction():
+            if statements != new_statements:
+                self.setChildStatements(tuple(new_statements))
+
             return self
 
         # Determine statements inside the frame, that need not be in a frame,
         # because they wouldn't raise an exception.
-        outside_pre = []
-        while new_statements and not new_statements[0].needsFrame():
-            outside_pre.append(new_statements[0])
-            del new_statements[0]
+        outside_pre_count = 0
+        new_statements_count = len(new_statements)
 
-        outside_post = []
-        while new_statements and not new_statements[-1].needsFrame():
-            outside_post.insert(0, new_statements[-1])
-            del new_statements[-1]
+        while (
+            outside_pre_count < new_statements_count
+            and not new_statements[outside_pre_count].needsFrame()
+        ):
+            outside_pre_count += 1
+
+        outside_post_start = new_statements_count
+
+        while (
+            outside_post_start > outside_pre_count
+            and not new_statements[outside_post_start - 1].needsFrame()
+        ):
+            outside_post_start -= 1
+
+        outside_pre = new_statements[:outside_pre_count]
+        outside_post = new_statements[outside_post_start:]
+        new_statements = new_statements[outside_pre_count:outside_post_start]
 
         if outside_pre or outside_post:
             from .NodeMakingHelpers import (
@@ -245,7 +277,7 @@ class StatementsFrameBase(StatementsSequenceMixin, StatementsSequenceBase):
                 self.setChildStatements(tuple(new_statements))
 
                 return makeStatementsSequenceReplacementNode(
-                    statements=outside_pre + [self] + outside_post, node=self
+                    statements=outside_pre + (self,) + outside_post, node=self
                 )
             else:
                 trace_collection.signalChange(

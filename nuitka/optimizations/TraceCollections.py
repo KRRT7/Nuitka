@@ -308,6 +308,8 @@ class TraceCollectionBase(object):
         "variable_actives_needs_copy",
         "has_unescaped_variables",
         "variable_escapable",
+        "variable_unescaped",
+        "variable_unescaped_needs_copy",
     )
 
     if isCountingInstances():
@@ -323,10 +325,10 @@ class TraceCollectionBase(object):
         self.variable_actives = {}
         self.variable_actives_needs_copy = True
 
-        # Even though it's empty, we set it, because init of variables won't do it.
-        self.has_unescaped_variables = True
-
         self.variable_escapable = set()
+        self.variable_unescaped = set()
+        self.variable_unescaped_needs_copy = True
+        self.has_unescaped_variables = False
 
     def __repr__(self):
         return "<%s for %s at 0x%x>" % (self.__class__.__name__, self.name, id(self))
@@ -363,7 +365,21 @@ class TraceCollectionBase(object):
             self.variable_actives_needs_copy = False
 
         self.variable_actives[variable] = version
-        self.has_unescaped_variables = True
+
+        if version % 3 == 0 and variable in self.variable_escapable:
+            self.markVariableAsUnescaped(variable)
+
+    def markVariableAsEscapable(self, variable):
+        self.variable_escapable.add(variable)
+        self.markVariableAsUnescaped(variable)
+
+    def markVariableAsUnescaped(self, variable):
+        if self.variable_unescaped_needs_copy:
+            self.variable_unescaped = self.variable_unescaped.copy()
+            self.variable_unescaped_needs_copy = False
+
+        self.variable_unescaped.add(variable)
+        self.has_unescaped_variables = bool(self.variable_unescaped)
 
     def removeCurrentVariableTrace(self, variable):
         if self.variable_actives_needs_copy:
@@ -371,6 +387,14 @@ class TraceCollectionBase(object):
             self.variable_actives_needs_copy = False
 
         del self.variable_actives[variable]
+
+        if self.has_unescaped_variables and variable in self.variable_unescaped:
+            if self.variable_unescaped_needs_copy:
+                self.variable_unescaped = self.variable_unescaped.copy()
+                self.variable_unescaped_needs_copy = False
+
+            self.variable_unescaped.discard(variable)
+            self.has_unescaped_variables = bool(self.variable_unescaped)
 
     def initVariableLate(self, variable):
         if self.variable_actives_needs_copy:
@@ -474,7 +498,11 @@ class TraceCollectionBase(object):
 
         if self.has_unescaped_variables:
             #            print("Control flow escape in", self.name, self.variable_escapable)
-            for variable in self.variable_escapable:
+            variable_unescaped = self.variable_unescaped
+            self.variable_unescaped = set()
+            self.variable_unescaped_needs_copy = False
+
+            for variable in variable_unescaped:
                 if variable in self.variable_actives:
                     variable.onControlFlowEscape(self)
 
@@ -779,8 +807,8 @@ class TraceCollectionBase(object):
 
                 assert False
 
-        has_unescaped_variables = (
-            collection1.has_unescaped_variables or collection2.has_unescaped_variables
+        variable_unescaped = collection1.variable_unescaped.union(
+            collection2.variable_unescaped
         )
         new_actives = {}
 
@@ -806,16 +834,19 @@ class TraceCollectionBase(object):
                         ),
                     )
 
-                    has_unescaped_variables = True
+                    if variable in self.variable_escapable:
+                        variable_unescaped.add(variable)
 
             new_actives[variable] = version
 
         self.variable_actives = new_actives
         self.variable_actives_needs_copy = False
+        self.variable_unescaped = variable_unescaped
+        self.variable_unescaped_needs_copy = False
 
         # TODO: This could be avoided, if we detect no actual changes being present, but it might
         # be more costly.
-        self.has_unescaped_variables = has_unescaped_variables
+        self.has_unescaped_variables = bool(variable_unescaped)
 
     def mergeMultipleBranches(self, collections):
         # pylint: disable=too-many-locals
@@ -849,9 +880,10 @@ class TraceCollectionBase(object):
 
         new_actives = {}
 
-        has_unescaped_variables = any(
-            collection.has_unescaped_variables for collection in collections
-        )
+        variable_unescaped = set()
+
+        for collection in collections:
+            variable_unescaped.update(collection.variable_unescaped)
 
         other_collections = collections[1:]
 
@@ -868,9 +900,15 @@ class TraceCollectionBase(object):
                 continue
 
             # Slow path: collect unique versions, they are different.
-            versions = set(
-                collection.variable_actives[variable] for collection in collections
-            )
+            versions = [first_collection_version]
+
+            for collection in other_collections:
+                version = collection.variable_actives[variable]
+
+                if version not in versions:
+                    versions.append(version)
+
+            versions.sort()
 
             traces = []
             escaped = set()
@@ -878,7 +916,7 @@ class TraceCollectionBase(object):
 
             variable_traces = self.variable_traces[variable]
 
-            for version in sorted(versions):
+            for version in versions:
                 trace = variable_traces[version]
 
                 if version % 3 == 1:
@@ -903,26 +941,34 @@ class TraceCollectionBase(object):
                     traces,
                 )
 
-                has_unescaped_variables = True
+                if variable in self.variable_escapable:
+                    variable_unescaped.add(variable)
 
             new_actives[variable] = version
 
         self.variable_actives = new_actives
         self.variable_actives_needs_copy = False
+        self.variable_unescaped = variable_unescaped
+        self.variable_unescaped_needs_copy = False
 
         # TODO: This could be avoided, if we detect no actual changes being present, but it might
         # be more costly.
-        self.has_unescaped_variables = has_unescaped_variables
+        self.has_unescaped_variables = bool(variable_unescaped)
 
     def replaceBranch(self, collection_replace):
         self.variable_actives = collection_replace.variable_actives
         self.variable_actives_needs_copy = (
             collection_replace.variable_actives_needs_copy
         )
+        self.variable_unescaped = collection_replace.variable_unescaped
+        self.variable_unescaped_needs_copy = (
+            collection_replace.variable_unescaped_needs_copy
+        )
         self.has_unescaped_variables = collection_replace.has_unescaped_variables
 
         # Make the old one unusable.
         collection_replace.variable_actives = None
+        collection_replace.variable_unescaped = None
 
         _merge_counts[1] += 1
 
@@ -1116,6 +1162,8 @@ class TraceCollectionBranch(CollectionUpdateMixin, TraceCollectionBase):
         parent.variable_actives_needs_copy = True
 
         self.variable_escapable = parent.variable_escapable
+        self.variable_unescaped = parent.variable_unescaped
+        parent.variable_unescaped_needs_copy = True
         self.has_unescaped_variables = parent.has_unescaped_variables
 
         # For quick access without going to parent.
@@ -1151,6 +1199,8 @@ class TraceCollectionSnapshot(CollectionUpdateMixin, TraceCollectionBase):
         parent.variable_actives_needs_copy = True
 
         self.variable_escapable = parent.variable_escapable
+        self.variable_unescaped = parent.variable_unescaped
+        parent.variable_unescaped_needs_copy = True
         self.has_unescaped_variables = parent.has_unescaped_variables
 
         # For quick access without going to parent.
@@ -1201,33 +1251,33 @@ class TraceCollectionFunction(CollectionStartPointMixin, TraceCollectionBase):
 
             for parameter_variable in parameters.getTopLevelVariables():
                 self.initVariableInit(parameter_variable, old_collection)
-                self.variable_escapable.add(parameter_variable)
+                self.markVariableAsEscapable(parameter_variable)
 
             list_star_variable = parameters.getListStarArgVariable()
             if list_star_variable is not None:
                 self.initVariableInitStarArgs(list_star_variable, old_collection)
-                self.variable_escapable.add(list_star_variable)
+                self.markVariableAsEscapable(list_star_variable)
 
             dict_star_variable = parameters.getDictStarArgVariable()
             if dict_star_variable is not None:
                 self.initVariableInitStarDict(dict_star_variable, old_collection)
-                self.variable_escapable.add(dict_star_variable)
+                self.markVariableAsEscapable(dict_star_variable)
 
         for closure_variable in function_body.getClosureVariables():
             if closure_variable not in self.variable_actives:
                 self.initVariableUnknown(closure_variable, old_collection)
 
                 if closure_variable.isLocalVariable():
-                    self.variable_escapable.add(closure_variable)
+                    self.markVariableAsEscapable(closure_variable)
 
         for local_variable in function_body.getLocalVariables():
             if local_variable not in self.variable_actives:
                 self.initVariableUninitialized(local_variable, old_collection)
-                self.variable_escapable.add(local_variable)
+                self.markVariableAsEscapable(local_variable)
 
         for module_variable in function_body.getModuleVariables():
             self.initVariableModule(module_variable, old_collection)
-            self.variable_escapable.add(module_variable)
+            self.markVariableAsEscapable(module_variable)
 
         for temp_variable in function_body.getTempVariables(outline=None):
             self.initVariableUninitialized(temp_variable, old_collection)
@@ -1242,7 +1292,7 @@ class TraceCollectionFunction(CollectionStartPointMixin, TraceCollectionBase):
             else:
                 function_body.locals_scope = None
 
-        self.has_unescaped_variables = True
+        self.has_unescaped_variables = bool(self.variable_unescaped)
 
     def initVariableModule(self, variable, old_collection):
         # print("initVariableModule", variable, self)
@@ -1329,12 +1379,12 @@ class TraceCollectionModule(CollectionStartPointMixin, TraceCollectionBase):
 
         for module_variable in module.locals_scope.getLocalsRelevantVariables():
             self.initVariableModule(module_variable, old_collection)
-            self.variable_escapable.add(module_variable)
+            self.markVariableAsEscapable(module_variable)
 
         for temp_variable in module.getTempVariables(outline=None):
             self.initVariableUninitialized(temp_variable, old_collection)
 
-        self.has_unescaped_variables = True
+        self.has_unescaped_variables = bool(self.variable_unescaped)
 
     def getVeryTrustedModuleVariables(self):
         return self.very_trusted_module_variables

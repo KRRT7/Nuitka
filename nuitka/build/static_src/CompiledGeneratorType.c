@@ -121,6 +121,11 @@ static PyObject *Nuitka_Generator_tp_repr(struct Nuitka_GeneratorObject *generat
 #endif
 }
 
+static PyObject *Nuitka_Generator_get_class(PyObject *self, void *data) {
+    Py_INCREF((PyObject *)&PyGen_Type);
+    return (PyObject *)&PyGen_Type;
+}
+
 static long Nuitka_Generator_tp_traverse(struct Nuitka_GeneratorObject *generator, visitproc visit, void *arg) {
     CHECK_OBJECT(generator);
 
@@ -965,6 +970,10 @@ static bool _Nuitka_Generator_check_throw_args(PyThreadState *tstate, PyObject *
         *exception_value = *exception_type;
         *exception_type = PyExceptionInstance_Class(*exception_type);
         Py_INCREF(*exception_type);
+
+        if (*exception_tb == NULL) {
+            *exception_tb = (PyTracebackObject *)PyException_GetTraceback(*exception_value);
+        }
     } else {
 #if PYTHON_VERSION < 0x300
         PyErr_Format(PyExc_TypeError, "exceptions must be classes, or instances, not %s",
@@ -1048,6 +1057,11 @@ static bool _Nuitka_Generator_check_throw(PyThreadState *tstate,
 
         exception_state->exception_type = PyExceptionInstance_Class(exception_state->exception_type);
         Py_INCREF(exception_state->exception_type);
+
+        if (exception_state->exception_tb == NULL) {
+            exception_state->exception_tb =
+                (PyTracebackObject *)PyException_GetTraceback(exception_state->exception_value);
+        }
     } else {
 #if PYTHON_VERSION < 0x300
         PyErr_Format(PyExc_TypeError, "exceptions must be classes, or instances, not %s",
@@ -1738,6 +1752,7 @@ static int Nuitka_Generator_set_running(PyObject *self, PyObject *value, void *d
 // spell-checker: ignore gi_yieldfrom
 
 static PyGetSetDef Nuitka_Generator_tp_getset[] = {
+    {(char *)"__class__", Nuitka_Generator_get_class, NULL, NULL},
 #if PYTHON_VERSION < 0x350
     {(char *)"__name__", Nuitka_Generator_get_name, NULL, NULL},
 #else
@@ -1758,10 +1773,25 @@ static PyMethodDef Nuitka_Generator_methods[] = {{"send", (PyCFunction)Nuitka_Ge
 
 // This is only used.
 #if PYTHON_VERSION >= 0x3a0
+static PyObject *Nuitka_Generator_am_await(struct Nuitka_GeneratorObject *generator) {
+    if ((generator->m_code_object->co_flags & CO_ITERABLE_COROUTINE) != 0) {
+        Py_INCREF(generator);
+        return (PyObject *)generator;
+    }
+
+#if PYTHON_VERSION >= 0x3e0
+    PyErr_Format(PyExc_TypeError, "'compiled_generator' object can't be awaited");
+#else
+    PyErr_Format(PyExc_TypeError, "object compiled_generator can't be used in 'await' expression");
+#endif
+
+    return NULL;
+}
+
 static PyAsyncMethods Nuitka_Generator_as_async = {
-    NULL, /* am_await */
-    NULL, /* am_aiter */
-    NULL, /* am_anext */
+    (unaryfunc)Nuitka_Generator_am_await, /* am_await */
+    NULL,                                 /* am_aiter */
+    NULL,                                 /* am_anext */
     // TODO: have this too, (sendfunc)_Nuitka_Generator_am_send
     NULL /* am_send */
 };
@@ -1848,6 +1878,16 @@ void _initCompiledGeneratorType(void) {
     assert(Nuitka_Generator_Type.tp_iternext != PyGen_Type.tp_iternext || PyGen_Type.tp_iternext == NULL);
 #if PYTHON_VERSION >= 0x350
     assert(Nuitka_Generator_Type.tp_as_async != PyGen_Type.tp_as_async || PyGen_Type.tp_as_async == NULL);
+
+    // The C async slot is needed for CPython compatibility when awaiting
+    // compiled iterable-coroutine generators from uncompiled code. CPython
+    // generators do not expose "__await__" through normal attribute lookup
+    // though, and "collections.abc" relies on that visible type dictionary.
+    if (PyDict_DelItemString(Nuitka_Generator_Type.tp_dict, "__await__") == 0) {
+        PyType_Modified(&Nuitka_Generator_Type);
+    } else {
+        CLEAR_ERROR_OCCURRED(PyThreadState_GET());
+    }
 #endif
     assert(Nuitka_Generator_Type.tp_methods != PyGen_Type.tp_methods);
     assert(Nuitka_Generator_Type.tp_members != PyGen_Type.tp_members);

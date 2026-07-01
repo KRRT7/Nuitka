@@ -15,10 +15,57 @@ from nuitka.PythonVersions import python_version
 from .CodeHelpers import generateExpressionCode
 from .ExceptionCodes import getExceptionUnpublishedReleaseCode
 from .LabelCodes import getGotoCode
+from .LineNumberCodes import (
+    emitLineNumberUpdateCode,
+    emitLineNumberUpdateCodeForReturn,
+)
+
+
+def _emitImplicitReturnLineTraceCode(statement, emit, context):
+    if statement.getConstant() is not None:
+        return
+
+    frame_code_object = context.getFrameCodeObject()
+
+    if frame_code_object is None:
+        return
+
+    source_ref = statement.getCompatibleSourceReference()
+
+    if source_ref.getLineNumber() != frame_code_object.getLineNumber():
+        return
+
+    frame_handle = context.getFrameHandle()
+    exception_exit = context.getExceptionEscape()
+
+    if frame_handle is None or exception_exit is None:
+        return
+
+    (
+        exception_state_name,
+        exception_lineno,
+    ) = context.variable_storage.getExceptionVariableDescriptions()
+
+    emit(
+        """\
+if (Nuitka_Frame_TraceRemainingLinesToLast(tstate, %(frame_handle)s) < 0) {
+    FETCH_ERROR_OCCURRED_STATE(tstate, &%(exception_state_name)s);
+
+%(exception_lineno)s = Nuitka_GetFrameLineNumber(%(frame_handle)s);
+    goto %(exception_exit)s;
+}"""
+        % {
+            "frame_handle": frame_handle,
+            "exception_exit": exception_exit,
+            "exception_state_name": exception_state_name,
+            "exception_lineno": exception_lineno,
+        }
+    )
 
 
 def generateReturnCode(statement, emit, context):
     getExceptionUnpublishedReleaseCode(emit, context)
+    emitLineNumberUpdateCodeForReturn(statement, emit, context)
 
     return_value = statement.subnode_expression
 
@@ -47,12 +94,15 @@ def generateReturnedValueCode(statement, emit, context):
     # We don't need the statement, pylint: disable=unused-argument
 
     getExceptionUnpublishedReleaseCode(emit, context)
+    emitLineNumberUpdateCodeForReturn(statement, emit, context)
 
     getGotoCode(label=context.getReturnTarget(), emit=emit)
 
 
 def generateReturnConstantCode(statement, emit, context):
     getExceptionUnpublishedReleaseCode(emit, context)
+    emitLineNumberUpdateCodeForReturn(statement, emit, context)
+    _emitImplicitReturnLineTraceCode(statement, emit, context)
 
     return_value_name = context.getReturnValueName()
 

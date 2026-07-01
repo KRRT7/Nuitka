@@ -288,83 +288,7 @@ static inline bool _INPLACE_OPERATION_MULT_OBJECT_INT(PyObject **operand1, PyObj
     PyTypeObject *type1 = Py_TYPE(*operand1);
 
     if (type1 == &PyInt_Type) {
-        // return _BINARY_OPERATION_MULT_INT_INT_INPLACE(operand1, operand2);
-
-        // Not every code path will make use of all possible results.
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-        NUITKA_MAY_BE_UNUSED bool cbool_result;
-        NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-        NUITKA_MAY_BE_UNUSED long clong_result;
-        NUITKA_MAY_BE_UNUSED double cfloat_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-        CHECK_OBJECT(*operand1);
-        assert(PyInt_CheckExact(*operand1));
-        CHECK_OBJECT(operand2);
-        assert(PyInt_CheckExact(operand2));
-
-        const long a = PyInt_AS_LONG(*operand1);
-        const long b = PyInt_AS_LONG(operand2);
-
-        const long longprod = (long)((unsigned long)a * b);
-        const double doubleprod = (double)a * (double)b;
-        const double doubled_longprod = (double)longprod;
-
-        if (likely(doubled_longprod == doubleprod)) {
-            clong_result = longprod;
-            goto exit_result_ok_clong;
-        } else {
-            const double diff = doubled_longprod - doubleprod;
-            const double absdiff = diff >= 0.0 ? diff : -diff;
-            const double absprod = doubleprod >= 0.0 ? doubleprod : -doubleprod;
-
-            if (likely(32.0 * absdiff <= absprod)) {
-                clong_result = longprod;
-                goto exit_result_ok_clong;
-            }
-        }
-
-        {
-            PyObject *operand1_object = *operand1;
-            PyObject *operand2_object = operand2;
-
-            PyObject *r = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
-            assert(r != Py_NotImplemented);
-
-            obj_result = r;
-            goto exit_result_object;
-        }
-
-    exit_result_ok_clong:
-
-        // We got an object handed, that we have to release.
-        Py_DECREF(*operand1);
-
-        // That's our return value then. As we use a dedicated variable, it's
-        // OK that way.
-        *operand1 = Nuitka_PyInt_FromLong(clong_result);
-        goto exit_result_ok;
-
-    exit_result_object:
-        if (unlikely(obj_result == NULL)) {
-            goto exit_result_exception;
-        }
-        // We got an object handed, that we have to release.
-        Py_DECREF(*operand1);
-
-        *operand1 = obj_result;
-        goto exit_result_ok;
-
-    exit_result_ok:
-        return true;
-
-    exit_result_exception:
-        return false;
+        return _INPLACE_OPERATION_MULT_INT_INT(operand1, operand2);
     }
 
     return __INPLACE_OPERATION_MULT_OBJECT_INT(operand1, operand2);
@@ -564,83 +488,7 @@ static inline bool _INPLACE_OPERATION_MULT_INT_OBJECT(PyObject **operand1, PyObj
     PyTypeObject *type2 = Py_TYPE(operand2);
 
     if (&PyInt_Type == type2) {
-        // return _BINARY_OPERATION_MULT_INT_INT_INPLACE(operand1, operand2);
-
-        // Not every code path will make use of all possible results.
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-        NUITKA_MAY_BE_UNUSED bool cbool_result;
-        NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-        NUITKA_MAY_BE_UNUSED long clong_result;
-        NUITKA_MAY_BE_UNUSED double cfloat_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-        CHECK_OBJECT(*operand1);
-        assert(PyInt_CheckExact(*operand1));
-        CHECK_OBJECT(operand2);
-        assert(PyInt_CheckExact(operand2));
-
-        const long a = PyInt_AS_LONG(*operand1);
-        const long b = PyInt_AS_LONG(operand2);
-
-        const long longprod = (long)((unsigned long)a * b);
-        const double doubleprod = (double)a * (double)b;
-        const double doubled_longprod = (double)longprod;
-
-        if (likely(doubled_longprod == doubleprod)) {
-            clong_result = longprod;
-            goto exit_result_ok_clong;
-        } else {
-            const double diff = doubled_longprod - doubleprod;
-            const double absdiff = diff >= 0.0 ? diff : -diff;
-            const double absprod = doubleprod >= 0.0 ? doubleprod : -doubleprod;
-
-            if (likely(32.0 * absdiff <= absprod)) {
-                clong_result = longprod;
-                goto exit_result_ok_clong;
-            }
-        }
-
-        {
-            PyObject *operand1_object = *operand1;
-            PyObject *operand2_object = operand2;
-
-            PyObject *r = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
-            assert(r != Py_NotImplemented);
-
-            obj_result = r;
-            goto exit_result_object;
-        }
-
-    exit_result_ok_clong:
-
-        // We got an object handed, that we have to release.
-        Py_DECREF(*operand1);
-
-        // That's our return value then. As we use a dedicated variable, it's
-        // OK that way.
-        *operand1 = Nuitka_PyInt_FromLong(clong_result);
-        goto exit_result_ok;
-
-    exit_result_object:
-        if (unlikely(obj_result == NULL)) {
-            goto exit_result_exception;
-        }
-        // We got an object handed, that we have to release.
-        Py_DECREF(*operand1);
-
-        *operand1 = obj_result;
-        goto exit_result_ok;
-
-    exit_result_ok:
-        return true;
-
-    exit_result_exception:
-        return false;
+        return _INPLACE_OPERATION_MULT_INT_INT(operand1, operand2);
     }
 
     return __INPLACE_OPERATION_MULT_INT_OBJECT(operand1, operand2);
@@ -887,39 +735,7 @@ static inline bool _INPLACE_OPERATION_MULT_OBJECT_LONG(PyObject **operand1, PyOb
     PyTypeObject *type1 = Py_TYPE(*operand1);
 
     if (type1 == &PyLong_Type) {
-        // return _BINARY_OPERATION_MULT_LONG_LONG_INPLACE(operand1, operand2);
-
-        // Not every code path will make use of all possible results.
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-        NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-        NUITKA_MAY_BE_UNUSED long clong_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(*operand1, operand2);
-        assert(x != Py_NotImplemented);
-
-        obj_result = x;
-        goto exit_result_object;
-
-    exit_result_object:
-        if (unlikely(obj_result == NULL)) {
-            goto exit_result_exception;
-        }
-        // We got an object handed, that we have to release.
-        Py_DECREF(*operand1);
-        *operand1 = obj_result;
-        goto exit_result_ok;
-
-    exit_result_ok:
-        return true;
-
-    exit_result_exception:
-        return false;
+        return _INPLACE_OPERATION_MULT_LONG_LONG(operand1, operand2);
     }
 
     return __INPLACE_OPERATION_MULT_OBJECT_LONG(operand1, operand2);
@@ -1121,39 +937,7 @@ static inline bool _INPLACE_OPERATION_MULT_LONG_OBJECT(PyObject **operand1, PyOb
     PyTypeObject *type2 = Py_TYPE(operand2);
 
     if (&PyLong_Type == type2) {
-        // return _BINARY_OPERATION_MULT_LONG_LONG_INPLACE(operand1, operand2);
-
-        // Not every code path will make use of all possible results.
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-        NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-        NUITKA_MAY_BE_UNUSED long clong_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(*operand1, operand2);
-        assert(x != Py_NotImplemented);
-
-        obj_result = x;
-        goto exit_result_object;
-
-    exit_result_object:
-        if (unlikely(obj_result == NULL)) {
-            goto exit_result_exception;
-        }
-        // We got an object handed, that we have to release.
-        Py_DECREF(*operand1);
-        *operand1 = obj_result;
-        goto exit_result_ok;
-
-    exit_result_ok:
-        return true;
-
-    exit_result_exception:
-        return false;
+        return _INPLACE_OPERATION_MULT_LONG_LONG(operand1, operand2);
     }
 
     return __INPLACE_OPERATION_MULT_LONG_OBJECT(operand1, operand2);
@@ -1402,46 +1186,7 @@ static inline bool _INPLACE_OPERATION_MULT_OBJECT_FLOAT(PyObject **operand1, PyO
     PyTypeObject *type1 = Py_TYPE(*operand1);
 
     if (type1 == &PyFloat_Type) {
-        // return _BINARY_OPERATION_MULT_FLOAT_FLOAT_INPLACE(operand1, operand2);
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-        // Not every code path will make use of all possible results.
-        NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-        NUITKA_MAY_BE_UNUSED long clong_result;
-        NUITKA_MAY_BE_UNUSED double cfloat_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-        CHECK_OBJECT(*operand1);
-        assert(PyFloat_CheckExact(*operand1));
-        CHECK_OBJECT(operand2);
-        assert(PyFloat_CheckExact(operand2));
-
-        const double a = PyFloat_AS_DOUBLE(*operand1);
-        const double b = PyFloat_AS_DOUBLE(operand2);
-
-        double r = a * b;
-
-        cfloat_result = r;
-        goto exit_result_ok_cfloat;
-
-    exit_result_ok_cfloat:
-        if (Py_REFCNT(*operand1) == 1) {
-            PyFloat_SET_DOUBLE(*operand1, cfloat_result);
-        } else {
-            // We got an object handed, that we have to release.
-            Py_DECREF(*operand1);
-
-            *operand1 = MAKE_FLOAT_FROM_DOUBLE(cfloat_result);
-        }
-        goto exit_result_ok;
-
-    exit_result_ok:
-        return true;
+        return _INPLACE_OPERATION_MULT_FLOAT_FLOAT(operand1, operand2);
     }
 
     return __INPLACE_OPERATION_MULT_OBJECT_FLOAT(operand1, operand2);
@@ -1639,46 +1384,7 @@ static inline bool _INPLACE_OPERATION_MULT_FLOAT_OBJECT(PyObject **operand1, PyO
     PyTypeObject *type2 = Py_TYPE(operand2);
 
     if (&PyFloat_Type == type2) {
-        // return _BINARY_OPERATION_MULT_FLOAT_FLOAT_INPLACE(operand1, operand2);
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-        // Not every code path will make use of all possible results.
-        NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-        NUITKA_MAY_BE_UNUSED long clong_result;
-        NUITKA_MAY_BE_UNUSED double cfloat_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-        CHECK_OBJECT(*operand1);
-        assert(PyFloat_CheckExact(*operand1));
-        CHECK_OBJECT(operand2);
-        assert(PyFloat_CheckExact(operand2));
-
-        const double a = PyFloat_AS_DOUBLE(*operand1);
-        const double b = PyFloat_AS_DOUBLE(operand2);
-
-        double r = a * b;
-
-        cfloat_result = r;
-        goto exit_result_ok_cfloat;
-
-    exit_result_ok_cfloat:
-        if (Py_REFCNT(*operand1) == 1) {
-            PyFloat_SET_DOUBLE(*operand1, cfloat_result);
-        } else {
-            // We got an object handed, that we have to release.
-            Py_DECREF(*operand1);
-
-            *operand1 = MAKE_FLOAT_FROM_DOUBLE(cfloat_result);
-        }
-        goto exit_result_ok;
-
-    exit_result_ok:
-        return true;
+        return _INPLACE_OPERATION_MULT_FLOAT_FLOAT(operand1, operand2);
     }
 
     return __INPLACE_OPERATION_MULT_FLOAT_OBJECT(operand1, operand2);
@@ -2319,6 +2025,9 @@ static inline bool _INPLACE_OPERATION_MULT_STR_INT(PyObject **operand1, PyObject
 
             {
                 Py_ssize_t count = PyInt_AS_LONG(index_value);
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
+                    goto exit_inplace_exception;
+                }
                 {
                     ssizeargfunc repeatfunc = NULL;
                     if (repeatfunc == NULL) {
@@ -2401,6 +2110,9 @@ static inline bool _INPLACE_OPERATION_MULT_INT_STR(PyObject **operand1, PyObject
 
                 {
                     Py_ssize_t count = PyInt_AS_LONG(index_value);
+                    if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                        goto exit_inplace_exception;
+                    }
                     {
                         ssizeargfunc repeatfunc = NULL;
                         if (repeatfunc == NULL) {
@@ -2480,6 +2192,9 @@ static inline bool _INPLACE_OPERATION_MULT_UNICODE_INT(PyObject **operand1, PyOb
 
             {
                 Py_ssize_t count = PyInt_AS_LONG(index_value);
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
+                    goto exit_inplace_exception;
+                }
                 {
                     ssizeargfunc repeatfunc = NULL;
                     if (repeatfunc == NULL) {
@@ -2562,6 +2277,9 @@ static inline bool _INPLACE_OPERATION_MULT_INT_UNICODE(PyObject **operand1, PyOb
 
                 {
                     Py_ssize_t count = PyInt_AS_LONG(index_value);
+                    if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                        goto exit_inplace_exception;
+                    }
                     {
                         ssizeargfunc repeatfunc = NULL;
                         if (repeatfunc == NULL) {
@@ -2641,6 +2359,9 @@ static inline bool _INPLACE_OPERATION_MULT_TUPLE_INT(PyObject **operand1, PyObje
 
             {
                 Py_ssize_t count = PyInt_AS_LONG(index_value);
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
+                    goto exit_inplace_exception;
+                }
                 {
                     ssizeargfunc repeatfunc = NULL;
                     if (repeatfunc == NULL) {
@@ -2723,6 +2444,9 @@ static inline bool _INPLACE_OPERATION_MULT_INT_TUPLE(PyObject **operand1, PyObje
 
                 {
                     Py_ssize_t count = PyInt_AS_LONG(index_value);
+                    if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                        goto exit_inplace_exception;
+                    }
                     {
                         ssizeargfunc repeatfunc = NULL;
                         if (repeatfunc == NULL) {
@@ -2802,6 +2526,9 @@ static inline bool _INPLACE_OPERATION_MULT_LIST_INT(PyObject **operand1, PyObjec
 
             {
                 Py_ssize_t count = PyInt_AS_LONG(index_value);
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
+                    goto exit_inplace_exception;
+                }
                 {
                     ssizeargfunc repeatfunc = PyList_Type.tp_as_sequence->sq_inplace_repeat;
                     if (repeatfunc == NULL) {
@@ -2884,6 +2611,9 @@ static inline bool _INPLACE_OPERATION_MULT_INT_LIST(PyObject **operand1, PyObjec
 
                 {
                     Py_ssize_t count = PyInt_AS_LONG(index_value);
+                    if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                        goto exit_inplace_exception;
+                    }
                     {
                         ssizeargfunc repeatfunc = PyList_Type.tp_as_sequence->sq_inplace_repeat;
                         if (repeatfunc == NULL) {
@@ -2971,6 +2701,9 @@ static inline bool _INPLACE_OPERATION_MULT_UNICODE_LONG(PyObject **operand1, PyO
 #else
                     PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
 #endif
+                    goto exit_inplace_exception;
+                }
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
                     goto exit_inplace_exception;
                 }
                 {
@@ -3064,6 +2797,9 @@ static inline bool _INPLACE_OPERATION_MULT_LONG_UNICODE(PyObject **operand1, PyO
 #endif
                         goto exit_inplace_exception;
                     }
+                    if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
+                        goto exit_inplace_exception;
+                    }
                     {
                         ssizeargfunc repeatfunc = NULL;
                         if (repeatfunc == NULL) {
@@ -3107,179 +2843,6 @@ exit_inplace_exception:
 bool INPLACE_OPERATION_MULT_LONG_UNICODE(PyObject **operand1, PyObject *operand2) {
     return _INPLACE_OPERATION_MULT_LONG_UNICODE(operand1, operand2);
 }
-
-#if PYTHON_VERSION >= 0x300
-/* Code referring to "BYTES" corresponds to Python3 'bytes' and "LONG" to Python2 'long', Python3 'int'. */
-static inline bool _INPLACE_OPERATION_MULT_BYTES_LONG(PyObject **operand1, PyObject *operand2) {
-    assert(operand1); // Pointer must be non-null.
-
-    CHECK_OBJECT(*operand1);
-    assert(PyBytes_CheckExact(*operand1));
-    CHECK_OBJECT(operand2);
-    assert(PyLong_CheckExact(operand2));
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-    NUITKA_MAY_BE_UNUSED bool cbool_result;
-    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-    // No inplace number slot nb_inplace_multiply available for this type.
-
-    {
-        // Slot2 ignored on purpose, type1 takes precedence.
-
-        // Statically recognized that coercion is not possible with these types
-
-        if (unlikely(!1)) {
-            SET_CURRENT_EXCEPTION_TYPE_COMPLAINT("can't multiply sequence by non-int of type '%s'", operand2);
-
-            goto exit_inplace_exception;
-        }
-
-        {
-            PyObject *index_value = operand2;
-
-            {
-                Py_ssize_t count = CONVERT_LONG_TO_REPEAT_FACTOR(index_value);
-
-                /* Above conversion indicates an error as -1 */
-                if (unlikely(count == -1)) {
-                    PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
-                    goto exit_inplace_exception;
-                }
-                {
-                    ssizeargfunc repeatfunc = NULL;
-                    if (repeatfunc == NULL) {
-                        repeatfunc = PyBytes_Type.tp_as_sequence->sq_repeat;
-                    }
-                    PyObject *r = (*repeatfunc)(*operand1, count);
-
-                    obj_result = r;
-                    goto exit_inplace_result_object;
-                }
-            }
-        }
-
-        NUITKA_CANNOT_GET_HERE("missing error exit annotation");
-    }
-
-exit_inplace_result_object:
-    if (unlikely(obj_result == NULL)) {
-        return false;
-    }
-
-    // We got an object handed, that we have to release.
-    Py_DECREF(*operand1);
-
-    // That's our return value then. As we use a dedicated variable, it's
-    // OK that way.
-    *operand1 = obj_result;
-
-    return true;
-
-exit_inplace_exception:
-    return false;
-}
-
-bool INPLACE_OPERATION_MULT_BYTES_LONG(PyObject **operand1, PyObject *operand2) {
-    return _INPLACE_OPERATION_MULT_BYTES_LONG(operand1, operand2);
-}
-#endif
-
-#if PYTHON_VERSION >= 0x300
-/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "BYTES" to Python3 'bytes'. */
-static inline bool _INPLACE_OPERATION_MULT_LONG_BYTES(PyObject **operand1, PyObject *operand2) {
-    assert(operand1); // Pointer must be non-null.
-
-    CHECK_OBJECT(*operand1);
-    assert(PyLong_CheckExact(*operand1));
-    CHECK_OBJECT(operand2);
-    assert(PyBytes_CheckExact(operand2));
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable : 4101)
-#endif
-    NUITKA_MAY_BE_UNUSED bool cbool_result;
-    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-    // No inplace number slot nb_inplace_multiply available for this type.
-
-    {
-        // Slot1 ignored on purpose, type2 takes precedence.
-
-        // Statically recognized that coercion is not possible with these types
-
-        {
-            // No sequence repeat slot sq_repeat available for this type.
-            // No inplace sequence repeat slot sq_inplace_repeat available for this type.
-        }
-        if (true) {
-            if (unlikely(!1)) {
-                SET_CURRENT_EXCEPTION_TYPE_COMPLAINT("can't multiply sequence by non-int of type '%s'", *operand1);
-
-                goto exit_inplace_exception;
-            }
-
-            {
-                PyObject *index_value = *operand1;
-
-                {
-                    Py_ssize_t count = CONVERT_LONG_TO_REPEAT_FACTOR(index_value);
-
-                    /* Above conversion indicates an error as -1 */
-                    if (unlikely(count == -1)) {
-                        PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
-                        goto exit_inplace_exception;
-                    }
-                    {
-                        ssizeargfunc repeatfunc = NULL;
-                        if (repeatfunc == NULL) {
-                            repeatfunc = PyBytes_Type.tp_as_sequence->sq_repeat;
-                        }
-                        PyObject *r = (*repeatfunc)(operand2, count);
-
-                        obj_result = r;
-                        goto exit_inplace_result_object;
-                    }
-                }
-            }
-        }
-
-        PyErr_Format(PyExc_TypeError, "unsupported operand type(s) for *=: 'int' and 'bytes'");
-        goto exit_inplace_exception;
-    }
-
-exit_inplace_result_object:
-    if (unlikely(obj_result == NULL)) {
-        return false;
-    }
-
-    // We got an object handed, that we have to release.
-    Py_DECREF(*operand1);
-
-    // That's our return value then. As we use a dedicated variable, it's
-    // OK that way.
-    *operand1 = obj_result;
-
-    return true;
-
-exit_inplace_exception:
-    return false;
-}
-
-bool INPLACE_OPERATION_MULT_LONG_BYTES(PyObject **operand1, PyObject *operand2) {
-    return _INPLACE_OPERATION_MULT_LONG_BYTES(operand1, operand2);
-}
-#endif
 
 /* Code referring to "TUPLE" corresponds to Python 'tuple' and "LONG" to Python2 'long', Python3 'int'. */
 static inline bool _INPLACE_OPERATION_MULT_TUPLE_LONG(PyObject **operand1, PyObject *operand2) {
@@ -3326,6 +2889,9 @@ static inline bool _INPLACE_OPERATION_MULT_TUPLE_LONG(PyObject **operand1, PyObj
 #else
                     PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
 #endif
+                    goto exit_inplace_exception;
+                }
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
                     goto exit_inplace_exception;
                 }
                 {
@@ -3416,6 +2982,9 @@ static inline bool _INPLACE_OPERATION_MULT_LONG_TUPLE(PyObject **operand1, PyObj
 #else
                         PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
 #endif
+                        goto exit_inplace_exception;
+                    }
+                    if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
                         goto exit_inplace_exception;
                     }
                     {
@@ -3509,6 +3078,9 @@ static inline bool _INPLACE_OPERATION_MULT_LIST_LONG(PyObject **operand1, PyObje
 #endif
                     goto exit_inplace_exception;
                 }
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
+                    goto exit_inplace_exception;
+                }
                 {
                     ssizeargfunc repeatfunc = PyList_Type.tp_as_sequence->sq_inplace_repeat;
                     if (repeatfunc == NULL) {
@@ -3597,6 +3169,9 @@ static inline bool _INPLACE_OPERATION_MULT_LONG_LIST(PyObject **operand1, PyObje
 #else
                         PyErr_Format(PyExc_OverflowError, "cannot fit 'int' into an index-sized integer");
 #endif
+                        goto exit_inplace_exception;
+                    }
+                    if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(operand2, count))) {
                         goto exit_inplace_exception;
                     }
                     {
@@ -3750,6 +3325,9 @@ static inline bool _INPLACE_OPERATION_MULT_STR_OBJECT(PyObject **operand1, PyObj
                     PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
                     goto exit_inplace_exception;
                 }
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
+                    goto exit_inplace_exception;
+                }
                 {
                     ssizeargfunc repeatfunc = NULL;
                     if (repeatfunc == NULL) {
@@ -3893,6 +3471,9 @@ static inline bool _INPLACE_OPERATION_MULT_UNICODE_OBJECT(PyObject **operand1, P
                 /* Above conversion indicates an error as -1 */
                 if (unlikely(count == -1)) {
                     PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
+                    goto exit_inplace_exception;
+                }
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
                     goto exit_inplace_exception;
                 }
                 {
@@ -4040,6 +3621,9 @@ static inline bool _INPLACE_OPERATION_MULT_BYTES_OBJECT(PyObject **operand1, PyO
                     PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
                     goto exit_inplace_exception;
                 }
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
+                    goto exit_inplace_exception;
+                }
                 {
                     ssizeargfunc repeatfunc = NULL;
                     if (repeatfunc == NULL) {
@@ -4185,6 +3769,9 @@ static inline bool _INPLACE_OPERATION_MULT_TUPLE_OBJECT(PyObject **operand1, PyO
                     PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
                     goto exit_inplace_exception;
                 }
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
+                    goto exit_inplace_exception;
+                }
                 {
                     ssizeargfunc repeatfunc = NULL;
                     if (repeatfunc == NULL) {
@@ -4327,6 +3914,9 @@ static inline bool _INPLACE_OPERATION_MULT_LIST_OBJECT(PyObject **operand1, PyOb
                 /* Above conversion indicates an error as -1 */
                 if (unlikely(count == -1)) {
                     PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", type2->tp_name);
+                    goto exit_inplace_exception;
+                }
+                if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(*operand1, count))) {
                     goto exit_inplace_exception;
                 }
                 {

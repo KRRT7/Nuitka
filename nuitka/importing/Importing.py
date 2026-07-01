@@ -872,6 +872,8 @@ def _findModuleInPath2(package_name, module_name, search_path, logger):
 
 _egg_files = {}
 
+_python_unpacked_search_path_cache = {}
+
 
 def _unpackPathElement(path_entry):
     if not path_entry:
@@ -909,8 +911,14 @@ def _unpackPathElement(path_entry):
 def getPythonUnpackedSearchPath():
     """Python search path with with eggs unpacked."""
 
-    # TODO: Maybe cache this for a given "sys.path" as we do IO checks each time.
-    return [_unpackPathElement(path_element) for path_element in sys.path]
+    cache_key = tuple(sys.path)
+
+    if cache_key not in _python_unpacked_search_path_cache:
+        _python_unpacked_search_path_cache[cache_key] = tuple(
+            _unpackPathElement(path_element) for path_element in sys.path
+        )
+
+    return list(_python_unpacked_search_path_cache[cache_key])
 
 
 def getPackageSearchPath(package_name):

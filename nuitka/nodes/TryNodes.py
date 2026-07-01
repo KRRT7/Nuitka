@@ -27,12 +27,20 @@ class StatementTry(StatementTryBase):
     )
     auto_compute_handling = "post_init"
 
-    __slots__ = ("tried_may_raise",)
+    __slots__ = (
+        "tried_may_break",
+        "tried_may_continue",
+        "tried_may_raise",
+        "tried_may_return",
+    )
 
     # False alarm due to post_init, pylint: disable=attribute-defined-outside-init
 
     def postInitNode(self):
+        self.tried_may_break = None
+        self.tried_may_continue = None
         self.tried_may_raise = None
+        self.tried_may_return = None
 
     def getDetailsForDisplay(self):
         return {"aborting": self.isStatementAborting()}
@@ -73,10 +81,24 @@ class StatementTry(StatementTryBase):
                 self.setChildTried(result)
                 tried = result
 
+                self.tried_may_break = None
+                self.tried_may_continue = None
+                self.tried_may_raise = None
+                self.tried_may_return = None
+
             break_collections = trace_collection.getLoopBreakCollections()
             continue_collections = trace_collection.getLoopContinueCollections()
             return_collections = trace_collection.getFunctionReturnCollections()
             exception_collections = trace_collection.getExceptionRaiseCollections()
+
+            if break_handler is not None:
+                self.tried_may_break = bool(break_collections)
+
+            if continue_handler is not None:
+                self.tried_may_continue = bool(continue_collections)
+
+            if return_handler is not None:
+                self.tried_may_return = bool(return_collections)
 
         # Not raising never turns into raising, but None (never calculated) and True
         # may no longer be true, but not raising never becomes raising.
@@ -134,7 +156,7 @@ class StatementTry(StatementTryBase):
                     self.setChildExceptHandler(result)
 
         if break_handler is not None:
-            if not tried.mayBreak():
+            if not break_collections:
                 break_handler.finalize()
                 break_handler = None
 
@@ -157,7 +179,7 @@ class StatementTry(StatementTryBase):
                 break_handler = result
 
         if continue_handler is not None:
-            if not tried.mayContinue():
+            if not continue_collections:
                 continue_handler.finalize()
                 continue_handler = None
 
@@ -181,7 +203,7 @@ class StatementTry(StatementTryBase):
                 self.setChildContinueHandler(result)
 
         if return_handler is not None:
-            if not tried.mayReturn():
+            if not return_collections:
                 return_handler.finalize()
                 return_handler = None
 
@@ -215,9 +237,11 @@ class StatementTry(StatementTryBase):
 
         # Merge exception handler only if it is used. Empty means it is not
         # aborting, as it swallows the exception.
-        if self.tried_may_raise and (
-            except_handler is None or not except_handler.isStatementAborting()
-        ):
+        except_handler_is_aborting = (
+            except_handler is not None and except_handler.isStatementAborting()
+        )
+
+        if self.tried_may_raise and not except_handler_is_aborting:
             if tried.isStatementAborting():
                 trace_collection.variable_actives = (
                     collection_exception_handling.variable_actives
@@ -249,59 +273,83 @@ class StatementTry(StatementTryBase):
             )
 
         tried_statements = tried.subnode_statements
+        tried_statements_count = len(tried_statements)
 
-        pre_statements = []
+        pre_statement_count = 0
 
-        while tried_statements:
-            tried_statement = tried_statements[0]
+        needs_break_check = break_handler is not None
+        needs_continue_check = continue_handler is not None
+        needs_return_check = return_handler is not None
+        needs_control_flow_check = (
+            needs_break_check or needs_continue_check or needs_return_check
+        )
 
-            if tried_statement.mayRaiseException(BaseException):
-                break
-
-            if break_handler is not None and tried_statement.mayBreak():
-                break
-
-            if continue_handler is not None and tried_statement.mayContinue():
-                break
-
-            if return_handler is not None and tried_statement.mayReturn():
-                break
-
-            pre_statements.append(tried_statement)
-            tried_statements = list(tried_statements)
-
-            del tried_statements[0]
-
-        post_statements = []
-
-        if except_handler is not None and except_handler.isStatementAborting():
-            while tried_statements:
-                tried_statement = tried_statements[-1]
+        if needs_control_flow_check:
+            while pre_statement_count < tried_statements_count:
+                tried_statement = tried_statements[pre_statement_count]
 
                 if tried_statement.mayRaiseException(BaseException):
                     break
 
-                if break_handler is not None and tried_statement.mayBreak():
+                if needs_break_check and tried_statement.mayBreak():
                     break
 
-                if continue_handler is not None and tried_statement.mayContinue():
+                if needs_continue_check and tried_statement.mayContinue():
                     break
 
-                if return_handler is not None and tried_statement.mayReturn():
+                if needs_return_check and tried_statement.mayReturn():
                     break
 
-                post_statements.insert(0, tried_statement)
-                tried_statements = list(tried_statements)
+                pre_statement_count += 1
+        else:
+            while pre_statement_count < tried_statements_count:
+                if tried_statements[pre_statement_count].mayRaiseException(
+                    BaseException
+                ):
+                    break
 
-                del tried_statements[-1]
+                pre_statement_count += 1
+
+        post_statement_start = tried_statements_count
+
+        if except_handler_is_aborting:
+            if needs_control_flow_check:
+                while post_statement_start > pre_statement_count:
+                    tried_statement = tried_statements[post_statement_start - 1]
+
+                    if tried_statement.mayRaiseException(BaseException):
+                        break
+
+                    if needs_break_check and tried_statement.mayBreak():
+                        break
+
+                    if needs_continue_check and tried_statement.mayContinue():
+                        break
+
+                    if needs_return_check and tried_statement.mayReturn():
+                        break
+
+                    post_statement_start -= 1
+            else:
+                while post_statement_start > pre_statement_count:
+                    if tried_statements[post_statement_start - 1].mayRaiseException(
+                        BaseException
+                    ):
+                        break
+
+                    post_statement_start -= 1
+
+        pre_statements = tried_statements[:pre_statement_count]
+        post_statements = tried_statements[post_statement_start:]
+        tried_statements = tried_statements[pre_statement_count:post_statement_start]
 
         if pre_statements or post_statements:
             assert tried_statements  # Should be dealt with already
 
-            tried.setChildStatements(tuple(tried_statements))
+            tried.setChildStatements(tried_statements)
 
             result = StatementsSequence(
-                statements=tuple(pre_statements + [self] + post_statements),
+                statements=pre_statements + (self,) + post_statements,
                 source_ref=self.source_ref,
             )
 
@@ -334,7 +382,10 @@ class StatementTry(StatementTryBase):
     def mayReturn(self):
         # TODO: If we optimized return handler away, this would be not needed
         # or even non-optimal.
-        if self.subnode_tried.mayReturn():
+        if self.tried_may_return is True:
+            return True
+
+        if self.tried_may_return is not False and self.subnode_tried.mayReturn():
             return True
 
         if self.tried_may_raise is not False:
@@ -363,7 +414,10 @@ class StatementTry(StatementTryBase):
     def mayBreak(self):
         # TODO: If we optimized return handler away, this would be not needed
         # or even non-optimal.
-        if self.subnode_tried.mayBreak():
+        if self.tried_may_break is True:
+            return True
+
+        if self.tried_may_break is not False and self.subnode_tried.mayBreak():
             return True
 
         if self.tried_may_raise is not False:
@@ -392,7 +446,10 @@ class StatementTry(StatementTryBase):
     def mayContinue(self):
         # TODO: If we optimized return handler away, this would be not needed
         # or even non-optimal.
-        if self.subnode_tried.mayContinue():
+        if self.tried_may_continue is True:
+            return True
+
+        if self.tried_may_continue is not False and self.subnode_tried.mayContinue():
             return True
 
         if self.tried_may_raise is not False:

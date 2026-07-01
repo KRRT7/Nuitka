@@ -9,6 +9,7 @@ expressed via nesting of conditional statements.
 """
 
 from nuitka.optimizations.TraceCollections import TraceCollectionBranch
+from nuitka.PythonVersions import python_version
 
 from .BuiltinTypeNodes import ExpressionBuiltinBool
 from .Checkers import checkStatementsSequenceOrNone
@@ -28,7 +29,14 @@ from .OperatorNodesUnary import ExpressionOperationNot
 from .shapes.BuiltinTypeShapes import tshape_bool
 from .shapes.StandardShapes import tshape_unknown
 from .StatementBasesGenerated import StatementConditionalBase
-from .StatementNodes import StatementsSequence
+from .StatementNodes import StatementFrameLineUpdate, StatementsSequence
+
+
+def _makeFrameLineUpdateBranch(source_ref):
+    return StatementsSequence(
+        statements=(StatementFrameLineUpdate(source_ref=source_ref),),
+        source_ref=source_ref,
+    )
 
 
 class ConditionalValueComputeMixin(object):
@@ -602,17 +610,19 @@ branches.""",
         # Handle branches that became empty behind our back.
         if yes_branch is not None:
             if not yes_branch.subnode_statements:
+                yes_branch_source_ref = yes_branch.source_ref
                 yes_branch.finalize()
-                yes_branch = None
+                yes_branch = _makeFrameLineUpdateBranch(yes_branch_source_ref)
 
-                self.setChildYesBranch(None)
+                self.setChildYesBranch(yes_branch)
 
         if no_branch is not None:
             if not no_branch.subnode_statements:
+                no_branch_source_ref = no_branch.source_ref
                 no_branch.finalize()
-                no_branch = None
+                no_branch = _makeFrameLineUpdateBranch(no_branch_source_ref)
 
-                self.setChildNoBranch(None)
+                self.setChildNoBranch(no_branch)
 
         # Consider to not remove branches that we know won't be taken.
         if yes_branch is not None and truth_value is False:
@@ -645,11 +655,16 @@ branches.""",
         # Continue to execute for yes branch unless we know it's not going to be
         # relevant.
         if yes_branch is not None:
+            yes_branch_source_ref = yes_branch.source_ref
             branch_yes_collection = TraceCollectionBranch(
                 parent=trace_collection, name="conditional yes branch"
             )
 
             yes_branch = branch_yes_collection.computeBranch(branch=yes_branch)
+
+            if yes_branch is None or not yes_branch.subnode_statements:
+                yes_branch = _makeFrameLineUpdateBranch(yes_branch_source_ref)
+                self.setChildYesBranch(yes_branch)
 
             # If it's aborting, it doesn't contribute to merging.
             if yes_branch is not None and yes_branch.isStatementAborting():
@@ -660,11 +675,16 @@ branches.""",
 
         # Continue to execute for yes branch.
         if no_branch is not None:
+            no_branch_source_ref = no_branch.source_ref
             branch_no_collection = TraceCollectionBranch(
                 parent=trace_collection, name="conditional no branch"
             )
 
             no_branch = branch_no_collection.computeBranch(branch=no_branch)
+
+            if no_branch is None or not no_branch.subnode_statements:
+                no_branch = _makeFrameLineUpdateBranch(no_branch_source_ref)
+                self.setChildNoBranch(no_branch)
 
             # If it's aborting, it doesn't contribute to merging.
             if no_branch is not None and no_branch.isStatementAborting():
@@ -730,6 +750,22 @@ Removed conditional statement without effect.""",
         # results. TODO: Could pretend the other branch didn't exist to save
         # complexity the merging of processing.
         if truth_value is not None:
+            if (
+                python_version >= 0x3E0
+                and condition.isCompileTimeConstant()
+                and hasattr(condition, "getCompileTimeConstant")
+            ):
+                parent_function = self.getParentFunction()
+
+                if (
+                    parent_function is not None
+                    and parent_function.isExpressionFunctionBody()
+                    and parent_function.getDoc() is None
+                ):
+                    parent_function.getCodeObject().addPreservedConstant(
+                        condition.getCompileTimeConstant()
+                    )
+
             if truth_value is True:
                 choice = "true"
 

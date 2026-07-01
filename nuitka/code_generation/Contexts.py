@@ -5,7 +5,6 @@
 
 import collections
 from abc import abstractmethod
-from contextlib import contextmanager
 
 from nuitka.__past__ import iterItems
 from nuitka.Constants import isMutable
@@ -270,6 +269,7 @@ CodeObjectHandle = collections.namedtuple(
         "co_qualname",
         "co_kind",
         "co_varnames",
+        "co_consts",
         "co_argcount",
         "co_posonlyargcount",
         "co_kwonlyargcount",
@@ -305,6 +305,7 @@ if isExperimental("old-code-objects"):
                 co_qualname=code_object.getCodeObjectQualname(),
                 line_number=code_object.getLineNumber(),
                 co_varnames=code_object.getVarNames(),
+                co_consts=code_object.getConstants(),
                 co_argcount=code_object.getArgumentCount(),
                 co_freevars=code_object.getFreeVarNames(),
                 co_posonlyargcount=code_object.getPosOnlyParameterCount(),
@@ -337,14 +338,33 @@ else:
             )
 
 
+class _CurrentSourceCodeReferenceContext(object):
+    __slots__ = ("context", "old_value", "value")
+
+    def __init__(self, context, value):
+        self.context = context
+        self.old_value = None
+        self.value = value
+
+    def __enter__(self):
+        self.old_value = self.context.setCurrentSourceCodeReference(self.value)
+        return self.old_value
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.context.setCurrentSourceCodeReference(self.old_value)
+
+        return False
+
+
 class PythonContextBase(getMetaClassBase("Context", require_slots=True)):
-    __slots__ = ("source_ref", "current_source_ref")
+    __slots__ = ("source_ref", "current_source_ref", "initial_trace_lineno")
 
     @counted_init
     def __init__(self):
         self.source_ref = None
 
         self.current_source_ref = None
+        self.initial_trace_lineno = None
 
     if isCountingInstances():
         __del__ = counted_del()
@@ -358,16 +378,14 @@ class PythonContextBase(getMetaClassBase("Context", require_slots=True)):
 
         return result
 
-    @contextmanager
     def withCurrentSourceCodeReference(self, value):
-        old_source_ref = self.setCurrentSourceCodeReference(value)
-
-        yield old_source_ref
-
-        self.setCurrentSourceCodeReference(value)
+        return _CurrentSourceCodeReferenceContext(self, value)
 
     def getInplaceLeftName(self):
         return self.allocateTempName("inplace_orig", "PyObject *", True)
+
+    def hasAwaitingState(self):
+        return False
 
     @abstractmethod
     def getConstantCode(self, constant, deep_check=False):
@@ -558,6 +576,9 @@ class PythonChildContextBase(PythonContextBase):
     def hasHelperCode(self, key):
         return self.parent.hasHelperCode(key)
 
+    def hasAwaitingState(self):
+        return self.parent.hasAwaitingState()
+
     def addDeclaration(self, key, code):
         self.parent.addDeclaration(key, code)
 
@@ -609,13 +630,17 @@ class FrameDeclarationsMixin(object):
 
         # Currently active frame stack inside the context.
         self.frame_stack = [None]
+        self.frame_code_object_stack = [None]
 
         self.locals_dict_names = None
 
     def getFrameHandle(self):
         return self.frame_stack[-1]
 
-    def pushFrameHandle(self, frame_code_name, is_light):
+    def getFrameCodeObject(self):
+        return self.frame_code_object_stack[-1]
+
+    def pushFrameHandle(self, frame_code_name, is_light, code_object):
         self.frames_used += 1
 
         if is_light:
@@ -643,11 +668,13 @@ class FrameDeclarationsMixin(object):
         )
 
         self.frame_stack.append(frame_identifier)
+        self.frame_code_object_stack.append(code_object)
         return frame_identifier
 
     def popFrameHandle(self):
         result = self.frame_stack[-1]
         del self.frame_stack[-1]
+        del self.frame_code_object_stack[-1]
 
         return result
 
@@ -801,6 +828,7 @@ class PythonModuleContext(
         "frame_variable_types",
         "frames_used",
         "frame_stack",
+        "frame_code_object_stack",
         "locals_dict_names",
         # TempMixin:
         "tmp_names",
@@ -977,12 +1005,14 @@ class PythonFunctionContext(
         "function",
         "frame_handle",
         "variable_storage",
+        "tail_recursion_label_emitted",
         # FrameDeclarationsMixin
         "frame_variables_stack",
         "frame_type_descriptions",
         "frame_variable_types",
         "frames_used",
         "frame_stack",
+        "frame_code_object_stack",
         "locals_dict_names",
         # TempMixin:
         "tmp_names",
@@ -1017,6 +1047,7 @@ class PythonFunctionContext(
         self.setReturnTarget("function_return_exit")
 
         self.frame_handle = None
+        self.tail_recursion_label_emitted = False
 
         self.variable_storage = self._makeVariableStorage()
 
@@ -1081,6 +1112,10 @@ class PythonGeneratorObjectContext(PythonFunctionContext):
     def getContextObjectName():
         return "generator"
 
+    @staticmethod
+    def hasAwaitingState():
+        return False
+
     def getGeneratorReturnValueName(self):
         if python_version >= 0x300:
             return self.allocateTempName("return_value", "PyObject *", unique=True)
@@ -1095,6 +1130,10 @@ class PythonCoroutineObjectContext(PythonGeneratorObjectContext):
     def getContextObjectName():
         return "coroutine"
 
+    @staticmethod
+    def hasAwaitingState():
+        return True
+
 
 class PythonAsyncgenObjectContext(PythonGeneratorObjectContext):
     __slots__ = ()
@@ -1102,6 +1141,10 @@ class PythonAsyncgenObjectContext(PythonGeneratorObjectContext):
     @staticmethod
     def getContextObjectName():
         return "asyncgen"
+
+    @staticmethod
+    def hasAwaitingState():
+        return True
 
 
 class PythonFunctionCreatedContext(PythonFunctionContext):
@@ -1221,8 +1264,13 @@ class PythonFunctionOutlineContext(
     def getFrameHandle(self):
         return self.parent.getFrameHandle()
 
-    def pushFrameHandle(self, code_object_access_code, is_light):
-        return self.parent.pushFrameHandle(code_object_access_code, is_light)
+    def getFrameCodeObject(self):
+        return self.parent.getFrameCodeObject()
+
+    def pushFrameHandle(self, code_object_access_code, is_light, code_object):
+        return self.parent.pushFrameHandle(
+            code_object_access_code, is_light, code_object
+        )
 
     def popFrameHandle(self):
         return self.parent.popFrameHandle()

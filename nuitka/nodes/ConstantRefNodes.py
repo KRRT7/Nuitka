@@ -214,6 +214,21 @@ class ExpressionConstantUntrackedRefBase(CompileTimeConstantExpressionBase):
             constant=self.constant[count], source_ref=self.source_ref
         )
 
+    def getIterationValueShape(self, count):
+        result = None
+
+        for value in self.constant:
+            value_shape = makeConstantRefNode(
+                constant=value, source_ref=self.source_ref
+            ).getTypeShape()
+
+            if result is None:
+                result = value_shape
+            elif result is not value_shape:
+                return None
+
+        return result
+
     def getIterationValueRange(self, start, stop):
         return [
             makeConstantRefNode(constant=value, source_ref=self.source_ref)
@@ -486,6 +501,23 @@ class ExpressionConstantDictRef(
 
     def getIterationLength(self):
         return len(self.constant)
+
+    def getIterationValue(self, count):
+        return makeConstantRefNode(
+            constant=tuple(self.constant)[count],
+            user_provided=self.user_provided,
+            source_ref=self.source_ref,
+        )
+
+    def getIterationValueRange(self, start, stop):
+        return [
+            makeConstantRefNode(
+                constant=value,
+                user_provided=self.user_provided,
+                source_ref=self.source_ref,
+            )
+            for value in tuple(self.constant)[start:stop]
+        ]
 
     def computeExpressionIter1(self, iter_node, trace_collection):
         result = makeConstantRefNode(
@@ -775,8 +807,28 @@ class ExpressionConstantSetRef(ExpressionSetShapeExactMixin, ExpressionConstantR
         )
 
     def computeExpressionComparisonIn(self, in_node, value_node, trace_collection):
+        frozen_constant = frozenset(self.constant)
+
+        if python_version >= 0x3E0:
+            parent_function = self.getParentFunction()
+
+            if (
+                parent_function is not None
+                and parent_function.isExpressionFunctionBody()
+                and parent_function.getDoc() is None
+            ):
+                first_constant = next(iter(self.constant), None)
+
+                while type(first_constant) is tuple and first_constant:
+                    first_constant = first_constant[0]
+
+                if first_constant is not None:
+                    parent_function.getCodeObject().addPreservedConstant(first_constant)
+
+                parent_function.getCodeObject().addPreservedConstant(frozen_constant)
+
         result = makeConstantRefNode(
-            constant=frozenset(self.constant),
+            constant=frozen_constant,
             user_provided=self.user_provided,
             source_ref=self.source_ref,
         )

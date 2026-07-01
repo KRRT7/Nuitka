@@ -253,6 +253,85 @@ NUITKA_MAY_BE_UNUSED static PyObject *LOOKUP_SUBSCRIPT(PyThreadState *tstate, Py
 #endif
 }
 
+NUITKA_MAY_BE_UNUSED static PyObject *LOOKUP_SUBSCRIPT_NILONG(PyThreadState *tstate, PyObject *source,
+                                                              nuitka_ilong *subscript) {
+    CHECK_OBJECT(source);
+    assert(subscript->validity != NUITKA_ILONG_UNASSIGNED);
+
+#if _NUITKA_EXPERIMENTAL_DISABLE_SUBSCRIPT_OPT
+    ENFORCE_NILONG_OBJECT_VALUE(subscript);
+
+    return PyObject_GetItem(source, subscript->python_value);
+#else
+    if (IS_NILONG_C_VALUE_VALID(subscript)) {
+        Py_ssize_t int_subscript = subscript->c_value;
+        PyTypeObject *type = Py_TYPE(source);
+        PyMappingMethods *tp_as_mapping = type->tp_as_mapping;
+
+        if (tp_as_mapping && tp_as_mapping->mp_subscript) {
+            if (PyList_CheckExact(source)) {
+                Py_ssize_t list_size = PyList_GET_SIZE(source);
+
+                if (int_subscript < 0) {
+                    if (-int_subscript > list_size) {
+                        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "list index out of range");
+                        return NULL;
+                    }
+
+                    int_subscript += list_size;
+                } else {
+                    if (int_subscript >= list_size) {
+                        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "list index out of range");
+                        return NULL;
+                    }
+                }
+
+                PyObject *result = ((PyListObject *)source)->ob_item[int_subscript];
+
+                Py_INCREF(result);
+                return result;
+            }
+#if PYTHON_VERSION < 0x300
+            else if (PyString_CheckExact(source)) {
+                Py_ssize_t string_size = PyString_GET_SIZE(source);
+
+                if (int_subscript < 0) {
+                    if (-int_subscript > string_size) {
+                        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "string index out of range");
+                        return NULL;
+                    }
+
+                    int_subscript += string_size;
+                } else {
+                    if (int_subscript >= string_size) {
+                        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "string index out of range");
+                        return NULL;
+                    }
+                }
+
+                unsigned char c = ((PyStringObject *)source)->ob_sval[int_subscript];
+                return STRING_FROM_CHAR(c);
+            }
+#else
+            else if (PyUnicode_CheckExact(source)) {
+                if (int_subscript < 0) {
+                    int_subscript += PyUnicode_GET_LENGTH(source);
+                }
+
+                return type->tp_as_sequence->sq_item(source, int_subscript);
+            }
+#endif
+        } else if (HAS_SEQUENCE_ITEM_SLOT(type)) {
+            return SEQUENCE_GET_ITEM_CONST(source, int_subscript);
+        }
+    }
+
+    ENFORCE_NILONG_OBJECT_VALUE(subscript);
+
+    return LOOKUP_SUBSCRIPT(tstate, source, subscript->python_value);
+#endif
+}
+
 bool MATCH_MAPPING_KEY(PyThreadState *tstate, PyObject *map, PyObject *key);
 
 NUITKA_MAY_BE_UNUSED static bool SET_SUBSCRIPT_CONST(PyThreadState *tstate, PyObject *target, PyObject *subscript,
@@ -371,6 +450,56 @@ NUITKA_MAY_BE_UNUSED static bool SET_SUBSCRIPT(PyThreadState *tstate, PyObject *
     }
 
     return true;
+#endif
+}
+
+NUITKA_MAY_BE_UNUSED static bool SET_SUBSCRIPT_NILONG(PyThreadState *tstate, PyObject *target, nuitka_ilong *subscript,
+                                                      PyObject *value) {
+    CHECK_OBJECT(value);
+    CHECK_OBJECT(target);
+    assert(subscript->validity != NUITKA_ILONG_UNASSIGNED);
+
+#if _NUITKA_EXPERIMENTAL_DISABLE_SUBSCRIPT_OPT
+    ENFORCE_NILONG_OBJECT_VALUE(subscript);
+
+    int res = PyObject_SetItem(target, subscript->python_value, value);
+    return res == 0;
+#else
+    if (IS_NILONG_C_VALUE_VALID(subscript)) {
+        Py_ssize_t int_subscript = subscript->c_value;
+        PyMappingMethods *tp_as_mapping = Py_TYPE(target)->tp_as_mapping;
+
+        if (tp_as_mapping != NULL && tp_as_mapping->mp_ass_subscript) {
+            if (PyList_CheckExact(target)) {
+                Py_ssize_t list_size = PyList_GET_SIZE(target);
+
+                if (int_subscript < 0) {
+                    if (-int_subscript > list_size) {
+                        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "list assignment index out of range");
+
+                        return false;
+                    }
+
+                    int_subscript += list_size;
+                }
+
+                PyListObject *target_list = (PyListObject *)target;
+
+                PyObject *old_value = target_list->ob_item[int_subscript];
+                Py_INCREF(value);
+                target_list->ob_item[int_subscript] = value;
+                Py_DECREF(old_value);
+
+                return true;
+            }
+        } else if (Py_TYPE(target)->tp_as_sequence) {
+            return SEQUENCE_SET_ITEM(target, int_subscript, value);
+        }
+    }
+
+    ENFORCE_NILONG_OBJECT_VALUE(subscript);
+
+    return SET_SUBSCRIPT(tstate, target, subscript->python_value, value);
 #endif
 }
 

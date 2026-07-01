@@ -222,6 +222,13 @@ def _makeNumberOps(op_code, result_types):
             if op_code in ("ADD", "SUB") and result_types is not None
             else ()
         ),
+        (
+            _makeFriendOps(
+                op_code, friend_type_names=("NILONG", "DIGIT"), result_types=("NILONG",)
+            )
+            if op_code in ("ADD", "SUB", "FLOORDIV", "MOD") and result_types is not None
+            else ()
+        ),
     )
 
 
@@ -310,11 +317,6 @@ def _makeMultOps(in_place):
         ),
         _makeFriendOps(
             "MULT",
-            friend_type_names=("LONG", "BYTES"),
-            result_types=None if in_place else ("OBJECT",),
-        ),
-        _makeFriendOps(
-            "MULT",
             friend_type_names=("LONG", "TUPLE"),
             result_types=None if in_place else ("OBJECT",),
         ),
@@ -371,7 +373,22 @@ nonspecialized_olddiv_helpers_set = OrderedSet(
     helper.replace("TRUEDIV", "OLDDIV") for helper in nonspecialized_truediv_helpers_set
 )
 
-specialized_floordiv_helpers_set = _makeDivOps("FLOORDIV", result_types=("OBJECT",))
+specialized_floordiv_helpers_set = _makeDivOps(
+    "FLOORDIV",
+    # For integer-like inputs this can stay int/long shaped to avoid object roundtrips.
+    result_types=("NILONG", "OBJECT"),
+)
+
+specialized_floordiv_helpers_set = OrderedSet(
+    helper_name
+    for helper_name in specialized_floordiv_helpers_set
+    if not helper_name.startswith("BINARY_OPERATION_FLOORDIV_NILONG_")
+    or helper_name
+    in (
+        "BINARY_OPERATION_FLOORDIV_NILONG_NILONG_DIGIT",
+        "BINARY_OPERATION_FLOORDIV_NILONG_DIGIT_NILONG",
+    )
+)
 
 nonspecialized_floordiv_helpers_set = OrderedSet(
     helper.replace("TRUEDIV", "FLOORDIV")
@@ -423,6 +440,15 @@ def _makeModOps(in_place):
         _makeFormatOps(str_type_name="BYTES"),
         _makeDefaultOps(
             "MOD", result_types=None if in_place else standard_result_types
+        ),
+        (
+            _makeFriendOps(
+                op_code="MOD",
+                friend_type_names=("NILONG", "DIGIT"),
+                result_types=("NILONG",),
+            )
+            if not in_place
+            else ()
         ),
     )
 

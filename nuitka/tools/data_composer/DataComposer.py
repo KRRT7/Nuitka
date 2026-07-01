@@ -426,6 +426,12 @@ def _writeConstantValueCodeObject(output, code_object, blob_spec):
     if python_version < 0x3B0 and not code_object.getFreeVarNames():
         flags |= blob_spec.code_flag_nofree
 
+    if code_object.getConstants():
+        flags |= blob_spec.code_flag_consts
+
+    if code_object.getCodeTemplateData() is not None:
+        flags |= blob_spec.code_flag_template
+
     output.write(_encodeVariableLength(flags))
 
     # Name is mandatory, no flag needed.
@@ -462,6 +468,14 @@ def _writeConstantValueCodeObject(output, code_object, blob_spec):
     # Positional-only args are optional and version dependent.
     if flags & blob_spec.code_flag_pos_only:
         output.write(_encodeVariableLength(code_object.getPosOnlyParameterCount() - 1))
+
+    # Constants are optional; code objects without known constants use the
+    # runtime default.
+    if flags & blob_spec.code_flag_consts:
+        _writeConstantValue(output, code_object.getConstants(), blob_spec)
+
+    if flags & blob_spec.code_flag_template:
+        _writeConstantValue(output, code_object.getCodeTemplateData(), blob_spec)
 
 
 def _writeConstantStream(constants_reader, blob_spec):

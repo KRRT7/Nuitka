@@ -21,6 +21,33 @@ from nuitka import Tracing
 from nuitka.PythonVersions import python_version
 from nuitka.tree.Operations import VisitorNoopMixin
 
+return_statement_kinds = frozenset(
+    (
+        "STATEMENT_RETURN",
+        "STATEMENT_RETURN_NONE",
+        "STATEMENT_RETURN_FALSE",
+        "STATEMENT_RETURN_TRUE",
+        "STATEMENT_RETURN_CONSTANT",
+        "STATEMENT_RETURN_RETURNED_VALUE",
+        "STATEMENT_GENERATOR_RETURN",
+        "STATEMENT_GENERATOR_RETURN_NONE",
+    )
+)
+
+assignment_variable_statement_kinds = frozenset(
+    (
+        "STATEMENT_ASSIGNMENT_VARIABLE_GENERIC",
+        "STATEMENT_ASSIGNMENT_VARIABLE_ITERATOR",
+        "STATEMENT_ASSIGNMENT_VARIABLE_CONSTANT_MUTABLE",
+        "STATEMENT_ASSIGNMENT_VARIABLE_CONSTANT_IMMUTABLE",
+        "STATEMENT_ASSIGNMENT_VARIABLE_CONSTANT_MUTABLE_TRUSTED",
+        "STATEMENT_ASSIGNMENT_VARIABLE_CONSTANT_IMMUTABLE_TRUSTED",
+        "STATEMENT_ASSIGNMENT_VARIABLE_HARD_VALUE",
+        "STATEMENT_ASSIGNMENT_VARIABLE_FROM_VARIABLE",
+        "STATEMENT_ASSIGNMENT_VARIABLE_FROM_TEMP_VARIABLE",
+    )
+)
+
 
 class FinalizeMarkups(VisitorNoopMixin):
     def __init__(self, module):
@@ -40,7 +67,9 @@ class FinalizeMarkups(VisitorNoopMixin):
         # This has many different things it deals with, so there need to be a
         # lot of branches and statements, pylint: disable=too-many-branches
 
-        if node.isStatementReturn() or node.isStatementGeneratorReturn():
+        kind = node.kind
+
+        if kind in return_statement_kinds:
             # Search up to the containing function, and check for a try/finally
             # containing the "return" statement.
             search = node.getParentReturnConsumer()
@@ -52,17 +81,17 @@ class FinalizeMarkups(VisitorNoopMixin):
             ):
                 search.markAsNeedsGeneratorReturnHandling()
 
-        if node.isExpressionFunctionCreation():
+        if kind in ("EXPRESSION_FUNCTION_CREATION", "EXPRESSION_FUNCTION_CREATION_OLD"):
             if (
                 not node.getParent().isExpressionFunctionCall()
                 or node.getParent().subnode_function is not node
             ):
                 node.subnode_function_ref.getFunctionBody().markAsNeedsCreation()
 
-        if node.isExpressionFunctionCall():
+        if kind == "EXPRESSION_FUNCTION_CALL":
             node.subnode_function.subnode_function_ref.getFunctionBody().markAsDirectlyCalled()
 
-        if node.isExpressionFunctionRef():
+        if kind == "EXPRESSION_FUNCTION_REF":
             function_body = node.getFunctionBody()
             parent_module = function_body.getParentModule()
 
@@ -71,7 +100,7 @@ class FinalizeMarkups(VisitorNoopMixin):
 
                 self.module.addCrossUsedFunction(function_body)
 
-        if node.isStatementAssignmentVariable():
+        if kind in assignment_variable_statement_kinds:
             target_var = node.getVariable()
             assign_source = node.subnode_source
 
@@ -89,14 +118,14 @@ class FinalizeMarkups(VisitorNoopMixin):
             if target_var.isModuleVariable():
                 pass
 
-        if python_version < 0x300 and node.isStatementPublishException():
+        if python_version < 0x300 and kind == "STATEMENT_PUBLISH_EXCEPTION":
             node.getParentStatementsFrame().markAsFrameExceptionPreserving()
 
         if python_version >= 0x300:
-            if (
-                node.isExpressionYield()
-                or node.isExpressionYieldFrom()
-                or node.isExpressionYieldFromAwaitable()
+            if kind in (
+                "EXPRESSION_YIELD",
+                "EXPRESSION_YIELD_FROM",
+                "EXPRESSION_YIELD_FROM_AWAITABLE",
             ):
                 search = node.getParent()
 

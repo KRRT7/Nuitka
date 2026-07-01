@@ -390,7 +390,7 @@ class BinaryDistribution(Distribution):
         return not install_mode
 
 
-with open("README.rst", "rb") as input_file:
+with open(os.path.join("doc", "README.rst"), "rb") as input_file:
     long_description = input_file.read().decode("utf8")
 
     # Need to remove the ..contents etc from the rest, or else PyPI will not render

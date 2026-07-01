@@ -9,41 +9,67 @@ use of these will occur.
 
 """
 
-import contextlib
-
 
 class SourceCodeCollector(list):
     __slots__ = ()
 
-    def __call__(self, code):
-        self.append(code)
-
-    emit = __call__
+    __call__ = list.append
+    emit = list.append
 
 
-@contextlib.contextmanager
-def withSubCollector(emit, context):
-    context.pushCleanupScope()
+class _SubCollector:
+    __slots__ = ("context", "emit", "sub_emit")
 
-    with context.variable_storage.withLocalStorage():
+    def __init__(self, emit, context):
+        self.emit = emit
+        self.context = context
+
+    def __enter__(self):
+        context = self.context
+
+        context.pushCleanupScope()
+        context.variable_storage.variable_declarations_locals.append([])
+
         sub_emit = SourceCodeCollector()
+        self.sub_emit = sub_emit
 
         # To use the collector and put code in it and C declarations on the context.
-        yield sub_emit
+        return sub_emit
 
-        local_declarations = context.variable_storage.makeCLocalDeclarations()
+    def __exit__(self, exc_type, exc_value, traceback):
+        context = self.context
 
-        if local_declarations:
+        if exc_type is not None:
+            context.variable_storage.variable_declarations_locals.pop()
+            context.popCleanupScope()
+
+            return False
+
+        local_variable_declarations = (
+            context.variable_storage.variable_declarations_locals.pop()
+        )
+
+        emit = self.emit
+
+        if local_variable_declarations:
             emit("{")
 
-            emit.extend(local_declarations)
-            emit.extend(sub_emit)
+            emit.extend(
+                variable_declaration.makeCFunctionLevelDeclaration()
+                for variable_declaration in local_variable_declarations
+            )
+            emit.extend(self.sub_emit)
 
             emit("}")
         else:
-            emit.extend(sub_emit)
+            emit.extend(self.sub_emit)
 
         context.popCleanupScope()
+
+        return False
+
+
+withSubCollector = _SubCollector
 
 
 #     Part of "Nuitka", an optimizing Python compiler that is compatible and

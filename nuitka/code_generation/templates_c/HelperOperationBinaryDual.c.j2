@@ -30,10 +30,16 @@ bool BINARY_OPERATION_{{op_code}}_{{target.getHelperCodeName()}}_{{left.getHelpe
 {% if props["fall_through_needed"] %}
 {% if left.isDualType() %}
         {{left.getDualTypeEnsurePythonObjectCode("operand1")}}
-        obj_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{left.getDualType("Python").getHelperCodeName()}}_{{right.getDualType("C").getHelperCodeName()}}({{left.getDualTypeAccessCode("Python", "operand1")}}, {{right.getDualTypeAccessCode("C", "operand2")}});
+        PyObject *operand2_object = {{ right.getDualType("C").getAsObjectValueExpression(right.getDualTypeAccessCode("C", "operand2")) }};
+
+        obj_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{object_desc.getHelperCodeName()}}_{{object_desc.getHelperCodeName()}}({{left.getDualTypeAccessCode("Python", "operand1")}}, operand2_object);
+        {{ right.getDualType("C").releaseAsObjectValueStatement("operand2_object") }}
 {% else %}
         {{right.getDualTypeEnsurePythonObjectCode("operand2")}}
-        obj_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{left.getDualType("C").getHelperCodeName()}}_{{right.getDualType("Python").getHelperCodeName()}}({{left.getDualTypeAccessCode("C", "operand1")}}, {{right.getDualTypeAccessCode("Python", "operand2")}});
+        PyObject *operand1_object = {{ left.getDualType("C").getAsObjectValueExpression(left.getDualTypeAccessCode("C", "operand1")) }};
+
+        obj_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{object_desc.getHelperCodeName()}}_{{object_desc.getHelperCodeName()}}(operand1_object, {{right.getDualTypeAccessCode("Python", "operand2")}});
+        {{ left.getDualType("C").releaseAsObjectValueStatement("operand1_object") }}
 {% endif %}
 
         if (unlikely(obj_result == NULL)) {
@@ -54,9 +60,16 @@ exit_result_ok_clong:
         return true;
 {% endif %}
 
+{% if "exit_result_exception" in props["exits"] %}
+exit_result_exception:
+        return false;
+{% endif %}
+
 {% if left.isDualType() %}
     } else if (left_c_usable == false && right_c_usable) {
-        PyObject *python_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{left.getDualType("Python").getHelperCodeName()}}_{{right.getDualType("C").getHelperCodeName()}}({{left.getDualTypeAccessCode("Python", "operand1")}}, {{right.getDualTypeAccessCode("C", "operand2")}});
+        PyObject *operand2_object = {{ right.getDualType("C").getAsObjectValueExpression(right.getDualTypeAccessCode("C", "operand2")) }};
+        PyObject *python_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{object_desc.getHelperCodeName()}}_{{object_desc.getHelperCodeName()}}({{left.getDualTypeAccessCode("Python", "operand1")}}, operand2_object);
+        {{ right.getDualType("C").releaseAsObjectValueStatement("operand2_object") }}
 
         if (unlikely(python_result == NULL)) {
             return false;
@@ -67,11 +80,9 @@ exit_result_ok_clong:
 {% endif %}
 {% if right.isDualType() %}
     } else if (left_c_usable && right_c_usable == false) {
-{% if left.isCommutativeType() and right.isCommutativeType() and isCommutativeOperation(op_code) %}
-        PyObject *python_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{right.getDualType("Python").getHelperCodeName()}}_{{left.getDualType("C").getHelperCodeName()}}({{right.getDualTypeAccessCode("Python", "operand2")}}, {{left.getDualTypeAccessCode("C", "operand1")}});
-{% else %}
-        PyObject *python_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{left.getDualType("C").getHelperCodeName()}}_{{right.getDualType("Python").getHelperCodeName()}}({{left.getDualTypeAccessCode("C", "operand1")}}, {{right.getDualTypeAccessCode("Python", "operand2")}});
-{% endif %}
+        PyObject *operand1_object = {{ left.getDualType("C").getAsObjectValueExpression(left.getDualTypeAccessCode("C", "operand1")) }};
+        PyObject *python_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{object_desc.getHelperCodeName()}}_{{object_desc.getHelperCodeName()}}(operand1_object, {{right.getDualTypeAccessCode("Python", "operand2")}});
+        {{ left.getDualType("C").releaseAsObjectValueStatement("operand1_object") }}
 
         if (unlikely(python_result == NULL)) {
             return false;
@@ -83,7 +94,7 @@ exit_result_ok_clong:
 {% endif %}
     } else {
 {% if left.isDualType() and right.isDualType() %}
-        PyObject *python_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{left.getDualType("Python").getHelperCodeName()}}_{{right.getDualType("Python").getHelperCodeName()}}({{left.getDualTypeAccessCode("Python", "operand1")}}, {{right.getDualTypeAccessCode("Python", "operand2")}});
+        PyObject *python_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{object_desc.getHelperCodeName()}}_{{object_desc.getHelperCodeName()}}({{left.getDualTypeAccessCode("Python", "operand1")}}, {{right.getDualTypeAccessCode("Python", "operand2")}});
 
         if (unlikely(python_result == NULL)) {
             return false;

@@ -43,7 +43,7 @@ static PyObject *%(coroutine_maker_identifier)s(%(coroutine_creation_args)s) {
         %(coroutine_module)s,
         %(coroutine_name_obj)s,
         %(coroutine_qualname_obj)s,
-        %(code_identifier)s,
+        coroutine_code_object,
         %(closure_name)s,
         %(closure_count)d,
 #if %(has_heap_declaration)s

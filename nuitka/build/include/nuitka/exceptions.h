@@ -185,6 +185,10 @@ NUITKA_MAY_BE_UNUSED static PyTracebackObject *ADD_TRACEBACK(PyTracebackObject *
     CHECK_OBJECT(frame);
 
     PyTracebackObject *traceback_new = MAKE_TRACEBACK(frame, lineno);
+    if (unlikely(traceback_new == NULL)) {
+        return NULL;
+    }
+
     traceback_new->tb_next = exception_tb;
     Py_INCREF(exception_tb);
     return traceback_new;

@@ -23,6 +23,7 @@ permissions:
 
 env:
   NUITKA_UPDATE_CHECK: "never"
+  NUITKA_CACHE_DIR: ${{ github.workspace }}/.nuitka-cache
 
 jobs:
   checks:
@@ -30,7 +31,7 @@ jobs:
     name: Checks
     steps:
       - name: 🛎️ Checkout (Attempt 1)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -45,7 +46,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 2)
         if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -60,7 +61,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 3)
         if: steps.checkout_retry_1.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -68,35 +69,62 @@ jobs:
         id: checkout_retry_2
 
       - name: 🐍 Use Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Restore Nuitka tool data
+        id: restore-nuitka-tool-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-checks-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-checks-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
+
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install patchelf gdb ccache libfuse2
-          python -m pip install --no-python-version-warning --disable-pip-version-check .
+          export UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/nuitka-venv"
+          echo "UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT" >> "$GITHUB_ENV"
+          uv sync --dev --frozen --no-install-project --python python
+          echo "$UV_PROJECT_ENVIRONMENT/bin" >> "$GITHUB_PATH"
 
       - name: 🔎 PyLint on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-pylint --assume-yes-for-downloads
+          uv run --frozen --no-sync --with pylint==4.0.5 -m nuitka.tools.quality.pylint --assume-yes-for-downloads
 
       - name: 🔎 RestLint on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-restlint --assume-yes-for-downloads
+          uv run --frozen --no-sync -m nuitka.tools.quality.restlint --assume-yes-for-downloads
 
       - name: 🔎 YamlLint on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-yamllint --assume-yes-for-downloads
+          uv run --frozen --no-sync -m nuitka.tools.quality.yamllint --assume-yes-for-downloads
 
       - name: 🔎 Codespell on Nuitka source code
         run: |
-          python ./bin/check-nuitka-with-codespell --assume-yes-for-downloads
+          uv run --frozen --no-sync -m nuitka.tools.quality.codespell --assume-yes-for-downloads
 
       - name: 🔎 Auto-format check on Nuitka source code
         run: |
-          python ./bin/autoformat-nuitka-source --check-only --assume-yes-for-downloads
+          uv run --frozen --no-sync -m nuitka.tools.quality.auto_format --check-only --assume-yes-for-downloads
+
+      - name: ♻️ Save Nuitka tool data
+        if: always() && steps.restore-nuitka-tool-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: .nuitka-cache
+          key: ${{ steps.restore-nuitka-tool-cache.outputs.cache-primary-key }}
 
       - name: 🔎 Specialized C code check
         run: |
@@ -122,7 +150,7 @@ jobs:
     name: Ubuntu Python ${{ matrix.python_version }}
     steps:
       - name: 🛎️ Checkout (Attempt 1)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -137,7 +165,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 2)
         if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -152,7 +180,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 3)
         if: steps.checkout_retry_1.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -160,15 +188,41 @@ jobs:
         id: checkout_retry_2
 
       - name: 🐍 Use Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_version }}
 
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Cache Nuitka tool data
+        uses: actions/cache@v5
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: ♻️ Install cached APT packages
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.1
+        with:
+          packages: patchelf gdb ccache libfuse2
+          version: ubuntu-24.04
+          execute_install_scripts: true
+
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install patchelf gdb ccache libfuse2
-          python -m pip install --no-python-version-warning --disable-pip-version-check .
+          export UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/nuitka-venv"
+          echo "UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT" >> "$GITHUB_ENV"
+          uv sync --no-dev --frozen --no-install-project --python python
+          uv pip install --python "$UV_PROJECT_ENVIRONMENT" --no-deps .
+          echo "$UV_PROJECT_ENVIRONMENT/bin" >> "$GITHUB_PATH"
 
       - name: ⚙️ Verbose scons output in compilation
         run: |
@@ -183,7 +237,7 @@ jobs:
 
       - name: 📤 Archive compilation reports for empty modules
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: compilation-reports-${{ runner.os }}-${{ matrix.python_version }}
           path: |
@@ -192,7 +246,7 @@ jobs:
             standalone-binary-ldd.txt
 
       # This can be used to ssh into GitHub actions if debugging is needed.
-      # - uses: actions/checkout@v4
+      # - uses: actions/checkout@v5
       # - name: Setup upterm session
       #   uses: lhotari/action-upterm@v1
       #   with:
@@ -206,7 +260,7 @@ jobs:
           python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
 
   mac-python3:
-    needs: linux
+    needs: checks
     runs-on: macos-latest
     strategy:
       matrix:
@@ -220,7 +274,7 @@ jobs:
     name: macOS Python ${{ matrix.python_version }}
     steps:
       - name: 🛎️ Checkout (Attempt 1)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -235,7 +289,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 2)
         if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -250,7 +304,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 3)
         if: steps.checkout_retry_1.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -258,21 +312,42 @@ jobs:
         id: checkout_retry_2
 
       - name: 🐍 Use Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_version }}
+
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Cache Nuitka tool data
+        uses: actions/cache@v5
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
 
       - name: ⚙️ Verbose installation output for Python
         run: |
           set -x
           which python
-          otool -L $(which python)
-          otool -l $(which python)
-          ls -lR $(dirname $(dirname $(which python)))
+          otool -L "$(which python)"
+          otool -l "$(which python)"
+          ls -lR "$(dirname "$(dirname "$(which python)")")"
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          pip install --no-python-version-warning --disable-pip-version-check .
+          export UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/nuitka-venv"
+          echo "UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT" >> "$GITHUB_ENV"
+          uv sync --no-dev --frozen --no-install-project --python python
+          uv pip install --python "$UV_PROJECT_ENVIRONMENT" --no-deps .
+          echo "$UV_PROJECT_ENVIRONMENT/bin" >> "$GITHUB_PATH"
 
       - name: Verbose scons output in compilation
         run: |
@@ -309,7 +384,7 @@ jobs:
 
       - name: Archive compilation reports for empty modules
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: compilation-reports-${{ runner.os }}-${{ matrix.python_version }}
           path: |
@@ -334,7 +409,7 @@ jobs:
           python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
 
   windows:
-    needs: linux
+    needs: checks
     runs-on: windows-latest
     strategy:
       matrix:
@@ -350,7 +425,7 @@ jobs:
     name: Windows Python ${{ matrix.python_version }}
     steps:
       - name: 🛎️ Checkout (Attempt 1)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -365,7 +440,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 2)
         if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -380,7 +455,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 3)
         if: steps.checkout_retry_1.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -388,15 +463,36 @@ jobs:
         id: checkout_retry_2
 
       - name: 🐍 Use Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_version }}
+
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Cache Nuitka tool data
+        uses: actions/cache@v5
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
 
       - uses: ilammy/msvc-dev-cmd@v1
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          pip install --no-python-version-warning --disable-pip-version-check .
+          $env:UV_PROJECT_ENVIRONMENT = "$env:RUNNER_TEMP\nuitka-venv"
+          "UV_PROJECT_ENVIRONMENT=$env:UV_PROJECT_ENVIRONMENT" | Out-File -FilePath $env:GITHUB_ENV -Append
+          uv sync --no-dev --frozen --no-install-project --python python
+          uv pip install --python $env:UV_PROJECT_ENVIRONMENT --no-deps .
+          "$env:UV_PROJECT_ENVIRONMENT\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Verbose scons output in compilation
         run: |
@@ -409,7 +505,7 @@ jobs:
 
       - name: Archive compilation reports for empty modules
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: compilation-reports-${{ runner.os }}-${{ matrix.python_version }}
           path: |
@@ -422,7 +518,7 @@ jobs:
           python .\tests\run-tests --no-other-python --no-debug --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
 
   windows-arm:
-    needs: linux
+    needs: checks
     runs-on: windows-11-arm
     strategy:
       matrix:
@@ -434,7 +530,7 @@ jobs:
     name: Windows ARM Python ${{ matrix.python_version }}
     steps:
       - name: 🛎️ Checkout (Attempt 1)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -449,7 +545,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 2)
         if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -464,7 +560,7 @@ jobs:
 
       - name: 🛎️ Checkout (Attempt 3)
         if: steps.checkout_retry_1.outcome == 'failure'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           fetch-tags: false
@@ -472,9 +568,26 @@ jobs:
         id: checkout_retry_2
 
       - name: 🐍 Use Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_version }}
+
+      - name: ⚡ Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: ♻️ Cache Nuitka tool data
+        uses: actions/cache@v5
+        with:
+          path: .nuitka-cache
+          key: nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-${{ github.ref_name }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.python_version }}-
+            nuitka-cache-${{ runner.os }}-${{ runner.arch }}-
 
       - uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -482,7 +595,11 @@ jobs:
 
       - name: 🧳 Install Nuitka and dependencies
         run: |
-          pip install --no-python-version-warning --disable-pip-version-check .
+          $env:UV_PROJECT_ENVIRONMENT = "$env:RUNNER_TEMP\nuitka-venv"
+          "UV_PROJECT_ENVIRONMENT=$env:UV_PROJECT_ENVIRONMENT" | Out-File -FilePath $env:GITHUB_ENV -Append
+          uv sync --no-dev --frozen --no-install-project --python python
+          uv pip install --python $env:UV_PROJECT_ENVIRONMENT --no-deps .
+          "$env:UV_PROJECT_ENVIRONMENT\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Verbose scons output in compilation
         run: |
@@ -495,7 +612,7 @@ jobs:
 
       - name: Archive compilation reports for empty modules
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: compilation-reports-${{ runner.os }}-arm64-${{ matrix.python_version }}
           path: |

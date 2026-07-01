@@ -50,6 +50,50 @@ from .SyntaxErrors import raiseSyntaxError
 # basically class vs. function scope handling.
 
 
+class VariableClosureLookupVisitorPhase0(VisitorNoopMixin):
+    """Variable closure phase 0: Predeclare function local assignments.
+
+    CPython's symbol table knows all local assignments in a function before
+    resolving nested scopes. This makes e.g. class-body nonlocals valid even if
+    the enclosing function assignment appears later in source order.
+    """
+
+    @staticmethod
+    def _getNonlocalNames(provider):
+        result = set()
+
+        for non_local_names, _user_provided, _source_ref in (
+            provider.non_local_declarations or ()
+        ):
+            result.update(non_local_names)
+
+        return result
+
+    @staticmethod
+    def _isDeclaredGlobal(provider, variable_name):
+        return (
+            provider.hasTakenVariable(variable_name)
+            and provider.getTakenVariable(variable_name).isModuleVariable()
+        )
+
+    def onEnterNode(self, node):
+        if node.isStatementAssignmentVariableName():
+            provider = node.provider
+
+            if not provider.isExpressionFunctionBody():
+                return
+
+            variable_name = node.getVariableName()
+
+            if variable_name in self._getNonlocalNames(provider):
+                return
+
+            if self._isDeclaredGlobal(provider, variable_name):
+                return
+
+            provider.getProvidedVariable(variable_name)
+
+
 class VariableClosureLookupVisitorPhase1(VisitorNoopMixin):
     """Variable closure phase 1: Find assignments and early closure references.
 
@@ -523,6 +567,7 @@ can not delete variable '%s' referenced in nested scope""" % (variable.getName()
 
 def completeVariableClosures(tree):
     visitors = (
+        VariableClosureLookupVisitorPhase0(),
         VariableClosureLookupVisitorPhase1(),
         VariableClosureLookupVisitorPhase2(),
         VariableClosureLookupVisitorPhase3(tree),

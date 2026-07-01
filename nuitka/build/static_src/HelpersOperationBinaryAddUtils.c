@@ -76,7 +76,9 @@ static PyObject *LIST_CONCAT(PyThreadState *tstate, PyObject *operand1, PyObject
     }
 #define Nuitka_LongSetDigitSizeAndNegative(value, count, negative)                                                     \
     _PyLong_SetSignAndDigitCount(value, negative ? -1 : 1, count)
-#define Nuitka_LongFlipSign(value) _PyLong_FlipSign(value)
+#define Nuitka_LongFlipSign(value)                                                                                     \
+    ((PyLongObject *)value)->long_value.lv_tag = (((PyLongObject *)value)->long_value.lv_tag & NON_SIZE_MASK) |        \
+                                                 (2 - (((PyLongObject *)value)->long_value.lv_tag & SIGN_MASK))
 #endif
 
 // Our version of _PyLong_New(size);
@@ -233,7 +235,19 @@ long Nuitka_PyLong_AsLongAndOverflow(PyObject *value, int *overflow) {
         }
 
         if (digit_count == 1) {
-            return (long)MEDIUM_VALUE(value);
+            medium_result_value_t result = MEDIUM_VALUE(value);
+
+            if (unlikely(result > LONG_MAX)) {
+                *overflow = 1;
+                return -1;
+            }
+
+            if (unlikely(result < LONG_MIN)) {
+                *overflow = -1;
+                return -1;
+            }
+
+            return (long)result;
         }
 
         digit const *digits = Nuitka_LongGetDigitPointer(value);

@@ -56,6 +56,30 @@ pushFrameStackCompiledFrame(tstate, {{frame_identifier}});
 {% endif %}
 assert(Py_REFCNT({{frame_identifier}}) == 2);
 
+{% if frame_exception_exit %}
+if (Nuitka_Frame_TraceCall(tstate, {{frame_identifier}}) < 0) {
+    FETCH_ERROR_OCCURRED_STATE(tstate, &{{exception_state_name}});
+
+{{exception_lineno}} = 0;
+    goto {{frame_exception_exit}};
+}
+{% if initial_trace_lineno %}
+if (Nuitka_Frame_TraceLine(tstate, {{frame_identifier}}, {{initial_trace_lineno}}) < 0) {
+    FETCH_ERROR_OCCURRED_STATE(tstate, &{{exception_state_name}});
+
+{{exception_lineno}} = {{initial_trace_lineno}};
+    goto {{frame_exception_exit}};
+}
+Nuitka_Frame_SetLineNumber({{frame_identifier}}, {{initial_trace_lineno}});
+if (Nuitka_Frame_TraceOpcode(tstate, {{frame_identifier}}, {{initial_trace_lineno}}) < 0) {
+    FETCH_ERROR_OCCURRED_STATE(tstate, &{{exception_state_name}});
+
+{{exception_lineno}} = {{initial_trace_lineno}};
+    goto {{frame_exception_exit}};
+}
+{% endif %}
+{% endif %}
+
 {% if context_identifier and is_python3 %}
 // Store currently existing exception as the one to publish again when we
 // yield or yield from.
@@ -75,12 +99,32 @@ DROP_{{context_identifier.upper()}}_EXCEPTION({{context_identifier}});
 RESTORE_FRAME_EXCEPTION(tstate, {{frame_identifier}});
 {% endif %}
 
+{% if frame_exception_exit %}
+if (Nuitka_Frame_TraceRemainingLinesToLast(tstate, {{frame_identifier}}) < 0) {
+    FETCH_ERROR_OCCURRED_STATE(tstate, &{{exception_state_name}});
+
+{{exception_lineno}} = Nuitka_GetFrameLineNumber({{frame_identifier}});
+    goto {{frame_exception_exit}};
+}
+Nuitka_Frame_SetLineNumberToLast({{frame_identifier}});
+if (Nuitka_Frame_TraceReturn(tstate, {{frame_identifier}}, Py_None) < 0) {
+    FETCH_ERROR_OCCURRED_STATE(tstate, &{{exception_state_name}});
+
+{{exception_lineno}} = Nuitka_GetFrameLineNumber({{frame_identifier}});
+    goto {{frame_exception_exit}};
+}
+{% endif %}
+
 {% if not context_identifier %}
 // Put the previous frame back on top.
+Nuitka_Frame_ClearTrace({{frame_identifier}});
 popFrameStack(tstate);
 {% endif %}
 {% if frame_exit_code %}
 {{frame_exit_code}}
+{% endif %}
+{% if frame_cache_identifier %}
+Nuitka_Frame_UnTrackIfCacheOnly({{frame_identifier}});
 {% endif %}
 
 goto {{no_exception_exit}};
@@ -92,10 +136,21 @@ template_frame_guard_normal_return_handler = """\
 RESTORE_FRAME_EXCEPTION(tstate, {{frame_identifier}});
 {% endif %}
 
+if (Nuitka_Frame_TraceReturn(tstate, {{frame_identifier}}, tmp_return_value) < 0) {
+    FETCH_ERROR_OCCURRED_STATE(tstate, &{{exception_state_name}});
+
+{{exception_lineno}} = Nuitka_GetFrameLineNumber({{frame_identifier}});
+    goto {{frame_exception_exit}};
+}
+
 // Put the previous frame back on top.
+Nuitka_Frame_ClearTrace({{frame_identifier}});
 popFrameStack(tstate);
 {% if frame_exit_code %}
 {{frame_exit_code}}s
+{% endif %}
+{% if frame_cache_identifier %}
+Nuitka_Frame_UnTrackIfCacheOnly({{frame_identifier}});
 {% endif %}
 
 goto {{return_exit}};
@@ -146,6 +201,7 @@ if ({{frame_identifier}} == {{frame_cache_identifier}}) {
 assertFrameObject({{frame_identifier}});
 
 // Put the previous frame back on top.
+Nuitka_Frame_ClearTrace({{frame_identifier}});
 popFrameStack(tstate);
 {% if frame_exit_code %}
 {{frame_exit_code}}

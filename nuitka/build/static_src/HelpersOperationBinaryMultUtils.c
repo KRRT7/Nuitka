@@ -77,6 +77,28 @@ static Py_ssize_t CONVERT_TO_REPEAT_FACTOR(PyObject *value) {
 #endif
 }
 
+static bool CHECK_SEQUENCE_REPEAT_OVERFLOW(PyObject *seq, Py_ssize_t count) {
+    if (count <= 0) {
+        return false;
+    }
+
+    Py_ssize_t size;
+
+    if (PyBytes_CheckExact(seq) || PyByteArray_CheckExact(seq) || PyTuple_CheckExact(seq) || PyList_CheckExact(seq) ||
+        PyUnicode_CheckExact(seq)) {
+        size = Py_SIZE(seq);
+    } else {
+        return false;
+    }
+
+    if (size != 0 && count > PY_SSIZE_T_MAX / size) {
+        PyErr_NoMemory();
+        return true;
+    }
+
+    return false;
+}
+
 static PyObject *SEQUENCE_REPEAT(ssizeargfunc repeatfunc, PyObject *seq, PyObject *n) {
     if (unlikely(!Nuitka_Index_Check(n))) {
         PyErr_Format(PyExc_TypeError, "can't multiply sequence by non-int of type '%s'", Py_TYPE(n)->tp_name);
@@ -97,6 +119,10 @@ static PyObject *SEQUENCE_REPEAT(ssizeargfunc repeatfunc, PyObject *seq, PyObjec
     /* Above conversion indicates an error as -1 */
     if (unlikely(count == -1)) {
         PyErr_Format(PyExc_OverflowError, "cannot fit '%s' into an index-sized integer", Py_TYPE(n)->tp_name);
+        return NULL;
+    }
+
+    if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW(seq, count))) {
         return NULL;
     }
 

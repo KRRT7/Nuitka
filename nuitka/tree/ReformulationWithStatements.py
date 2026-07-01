@@ -9,7 +9,10 @@ source code comments with Developer Manual sections.
 """
 
 from nuitka.nodes.AttributeLookupNodes import ExpressionAttributeLookupSpecial
-from nuitka.nodes.AttributeNodes import makeExpressionAttributeLookup
+from nuitka.nodes.AttributeNodes import (
+    StatementAssignmentAttribute,
+    makeExpressionAttributeLookup,
+)
 from nuitka.nodes.CallNodes import (
     ExpressionCallEmpty,
     ExpressionCallNoKeywords,
@@ -70,6 +73,9 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
     )
     tmp_enter_variable = provider.allocateTempVariable(
         temp_scope=temp_scope, name="enter", temp_type="object"
+    )
+    tmp_traceback_variable = provider.allocateTempVariable(
+        temp_scope=temp_scope, name="traceback", temp_type="object"
     )
 
     # Indicator variable, will end up with C bool type, and need not be released.
@@ -135,7 +141,9 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
             elements=(
                 ExpressionCaughtExceptionTypeRef(source_ref=with_exit_source_ref),
                 ExpressionCaughtExceptionValueRef(source_ref=with_exit_source_ref),
-                ExpressionCaughtExceptionTracebackRef(source_ref=source_ref),
+                ExpressionTempVariableRef(
+                    variable=tmp_traceback_variable, source_ref=source_ref
+                ),
             ),
             source_ref=source_ref,
         ),
@@ -197,12 +205,10 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
         source_ref=source_ref,
     )
 
-    # Next, assign "__enter__" and "__exit__" attributes to temporary variables, and
-    # depending on Python versions switch the order of these lookups and the order of
-    # awaiting enter.
-    # Normal "with" statements are enter, exit ordered after 3.6, and "async with"
-    # are since 3.9, and since 3.9 the enter is not awaited, until an exit is present.
-    if python_version >= 0x390 and not sync:
+    # Next, assign "__enter__" and "__exit__" attributes to temporary variables,
+    # and depending on Python versions switch the order of these lookups and the
+    # order of awaiting enter.
+    if not sync and python_version >= 0x390:
         enter_await_statement = makeStatementAssignmentVariable(
             variable=tmp_enter_variable,
             source=ExpressionYieldFromAwaitable(
@@ -217,11 +223,19 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
             source_ref=source_ref,
         )
 
-        attribute_assignments = (
-            attribute_enter_assignment,
-            attribute_exit_assignment,
-            enter_await_statement,
-        )
+        # Python 3.14 changed async-with to look up __aexit__ before __aenter__.
+        if python_version >= 0x3E0:
+            attribute_assignments = (
+                attribute_exit_assignment,
+                attribute_enter_assignment,
+                enter_await_statement,
+            )
+        else:
+            attribute_assignments = (
+                attribute_enter_assignment,
+                attribute_exit_assignment,
+                enter_await_statement,
+            )
     # It's weird, but 3.14 looks up __exit__ before __enter__
     elif 0x360 <= python_version < 0x3E0 and sync:
         attribute_assignments = (attribute_enter_assignment, attribute_exit_assignment)
@@ -256,10 +270,33 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
                             ),
                             source_ref=source_ref,
                         ),
+                        makeStatementAssignmentVariable(
+                            variable=tmp_traceback_variable,
+                            source=ExpressionCaughtExceptionTracebackRef(
+                                source_ref=source_ref
+                            ),
+                            source_ref=source_ref,
+                        ),
                         makeStatementConditional(
                             condition=exit_value_exception,
-                            no_branch=makeReraiseExceptionStatement(
-                                source_ref=with_exit_source_ref
+                            no_branch=StatementsSequence(
+                                statements=(
+                                    StatementAssignmentAttribute(
+                                        expression=ExpressionCaughtExceptionValueRef(
+                                            source_ref=with_exit_source_ref
+                                        ),
+                                        attribute_name="__traceback__",
+                                        source=ExpressionTempVariableRef(
+                                            variable=tmp_traceback_variable,
+                                            source_ref=source_ref,
+                                        ),
+                                        source_ref=with_exit_source_ref,
+                                    ),
+                                    makeReraiseExceptionStatement(
+                                        source_ref=with_exit_source_ref
+                                    ),
+                                ),
+                                source_ref=with_exit_source_ref,
                             ),
                             yes_branch=None,
                             source_ref=with_exit_source_ref,
@@ -295,6 +332,7 @@ def _buildWithNode(provider, context_expr, assign_target, body, sync, source_ref
             tmp_source_variable,
             tmp_enter_variable,
             tmp_exit_variable,
+            tmp_traceback_variable,
         ),
         source_ref=source_ref,
     )

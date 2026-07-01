@@ -3,6 +3,7 @@
 
 """Code to generate and interact with compiled function objects."""
 
+from nuitka.Constants import compareConstants, isMutable
 from nuitka.PythonVersions import python_version
 from nuitka.Tracing import general
 
@@ -51,6 +52,47 @@ from .VariableCodes import (
     decideLocalVariableCodeType,
     getLocalVariableDeclaration,
 )
+
+
+def _hasCodeObjectConstant(constants, constant):
+    return any(compareConstants(existing, constant) for existing in constants)
+
+
+def _collectCodeObjectConstantsFromNode(node, result):
+    if (
+        hasattr(node, "isExpressionFunctionBodyBase")
+        and node.isExpressionFunctionBodyBase()
+    ):
+        return
+
+    if (
+        hasattr(node, "isCompileTimeConstant")
+        and hasattr(node, "getCompileTimeConstant")
+        and node.isCompileTimeConstant()
+    ):
+        constant = node.getCompileTimeConstant()
+
+        if not isMutable(constant) and not _hasCodeObjectConstant(result, constant):
+            result.append(constant)
+
+    for child in node.getVisitableNodes():
+        if child is not None:
+            _collectCodeObjectConstantsFromNode(child, result)
+
+
+def _collectCodeObjectConstants(function_body):
+    body = function_body.subnode_body
+
+    if body is None:
+        return ()
+
+    result = []
+
+    for child in body.getVisitableNodes():
+        if child is not None:
+            _collectCodeObjectConstantsFromNode(child, result)
+
+    return result
 
 
 def getFunctionQualnameObj(owner, context):
@@ -154,6 +196,50 @@ def getFunctionMakerCode(
         is_constant_returning,
         constant_return_value,
     ) = function_body.getConstantReturnValue()
+
+    function_doc_value = function_body.getDoc()
+    preserved_consts = function_body.getCodeObject().getPreservedConstants()
+
+    if preserved_consts:
+        co_consts = list(preserved_consts)
+    elif (
+        python_version >= 0x3E0
+        and function_doc_value is None
+        and is_constant_returning
+        and constant_return_value is not None
+    ):
+        co_consts = []
+    else:
+        co_consts = [function_doc_value if function_doc_value is not None else None]
+
+    if preserved_consts:
+        pass
+    elif is_constant_returning and constant_return_value is not None:
+        if (
+            python_version >= 0x3E0
+            and type(constant_return_value) is tuple
+            and constant_return_value
+        ):
+            first_value = constant_return_value[0]
+
+            if not isMutable(first_value) and not _hasCodeObjectConstant(
+                co_consts, first_value
+            ):
+                co_consts.append(first_value)
+
+        if _hasCodeObjectConstant(co_consts, constant_return_value):
+            pass
+        elif not (
+            python_version >= 0x3E0
+            and function_doc_value is not None
+            and type(constant_return_value) is int
+            and 0 <= constant_return_value <= 255
+        ):
+            co_consts.append(constant_return_value)
+    elif not is_constant_returning:
+        co_consts.extend(_collectCodeObjectConstants(function_body))
+
+    function_body.getCodeObject().setConstants(co_consts)
 
     if is_constant_returning:
         function_impl_identifier = "NULL"
@@ -458,9 +544,18 @@ def getDirectFunctionCallCode(
 
         variable_c_type = variable_declaration.getCType()
 
-        suffix_args.append(
-            variable_c_type.getVariableArgReferencePassingCode(variable_declaration)
-        )
+        if variable_declaration.c_type == "nuitka_ilong":
+            closure_arg_name = context.allocateTempName(
+                "closure_arg", "PyObject *", unique=True
+            )
+
+            emit("ENFORCE_NILONG_OBJECT_VALUE(&%s);" % variable_declaration)
+            emit("%s = %s.python_value;" % (closure_arg_name, variable_declaration))
+            suffix_args.append("&%s" % closure_arg_name)
+        else:
+            suffix_args.append(
+                variable_c_type.getVariableArgReferencePassingCode(variable_declaration)
+            )
 
     # TODO: We ought to not assume references for direct calls, or make a
     # profile if an argument needs a reference at all. Most functions don't
@@ -605,7 +700,17 @@ def setupFunctionLocalVariables(
 
 
 def finalizeFunctionLocalVariables(context):
-    function_cleanup = []
+    if hasattr(context, "isForCreatedFunction") and (
+        context.isForCreatedFunction() or context.isForDirectCall()
+    ):
+        function_cleanup = [
+            "while (nuitka_tail_recursion_depth > 0) {",
+            "    nuitka_tail_recursion_depth -= 1;",
+            "    Nuitka_LeaveTailRecursivePythonCall(tstate);",
+            "}",
+        ]
+    else:
+        function_cleanup = []
 
     # TODO: Many times it will not be necessary to release locals dict, because
     # they already were, but our tracing doesn't yet allow us to know.
@@ -688,8 +793,6 @@ def _getFunctionCode(
 
     function_cleanup = finalizeFunctionLocalVariables(context=context)
 
-    function_locals = context.variable_storage.makeCFunctionLevelDeclarations()
-
     function_doc = context.getConstantCode(constant=function_doc)
 
     result = ""
@@ -713,6 +816,8 @@ def _getFunctionCode(
             "function_cleanup": indented(function_cleanup),
             "exception_state_name": exception_state_name,
         }
+
+    function_locals = context.variable_storage.makeCFunctionLevelDeclarations()
 
     if context.hasTempName("return_value"):
         function_exit += template_function_return_exit % {

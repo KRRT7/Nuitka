@@ -113,6 +113,9 @@
                 {{ cannot_fit_to_index_size_error_exit(props, left, right, type2, exit_result_exception) }}
             }
 {% endif %}
+            if (unlikely(CHECK_SEQUENCE_REPEAT_OVERFLOW({{ operand1 }}, count))) {
+                {{ goto_exit(props, exit_result_exception) }}
+            }
             {
 {% if sq_inplace_slot %}
                 {{ left.getSlotType(sq_slot) }} repeatfunc = {{ left.getSlotValueExpression(type1, sq_inplace_slot) }};

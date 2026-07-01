@@ -776,6 +776,118 @@ extern PyThreadState *_PyThreadState_Current;
 #define Py_LeaveRecursiveCall()
 #endif
 
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_EnterRecursivePythonCall(PyThreadState *tstate, char const *where) {
+#if PYTHON_VERSION >= 0x3e0
+    if (unlikely((Py_EnterRecursiveCall)(where))) {
+        return -1;
+    }
+
+    tstate->py_recursion_remaining--;
+
+    if (unlikely(tstate->py_recursion_remaining <= 0)) {
+        if (tstate->recursion_headroom) {
+            if (unlikely(tstate->py_recursion_remaining < -50)) {
+                Py_FatalError("Cannot recover from Python stack overflow.");
+            }
+        } else {
+            tstate->recursion_headroom++;
+            PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded");
+            tstate->recursion_headroom--;
+
+            tstate->py_recursion_remaining++;
+            (Py_LeaveRecursiveCall)();
+
+            return -1;
+        }
+    }
+
+    return 0;
+#elif defined(_NUITKA_FULL_COMPAT)
+    return Py_EnterRecursiveCall(where);
+#else
+    return 0;
+#endif
+}
+
+NUITKA_MAY_BE_UNUSED static inline void Nuitka_LeaveRecursivePythonCall(PyThreadState *tstate) {
+#if PYTHON_VERSION >= 0x3e0
+    tstate->py_recursion_remaining++;
+    (Py_LeaveRecursiveCall)();
+#elif defined(_NUITKA_FULL_COMPAT)
+    Py_LeaveRecursiveCall();
+#else
+    (void)tstate;
+#endif
+}
+
+NUITKA_MAY_BE_UNUSED static inline int Nuitka_EnterTailRecursivePythonCall(PyThreadState *tstate) {
+#if PYTHON_VERSION >= 0x3c0
+    tstate->py_recursion_remaining--;
+
+    if (unlikely(tstate->py_recursion_remaining < 0)) {
+        tstate->recursion_headroom++;
+        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded while calling a Python object");
+        tstate->recursion_headroom--;
+
+        tstate->py_recursion_remaining++;
+
+        return -1;
+    }
+
+    return 0;
+#elif PYTHON_VERSION >= 0x3b0
+    tstate->recursion_remaining--;
+
+    if (unlikely(tstate->recursion_remaining < 0)) {
+        tstate->recursion_headroom++;
+        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded while calling a Python object");
+        tstate->recursion_headroom--;
+
+        tstate->recursion_remaining++;
+
+        return -1;
+    }
+
+    return 0;
+#elif PYTHON_VERSION >= 0x3a0
+    tstate->recursion_depth++;
+
+    if (unlikely(tstate->recursion_depth > Py_GetRecursionLimit())) {
+        tstate->recursion_headroom++;
+        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded while calling a Python object");
+        tstate->recursion_headroom--;
+
+        tstate->recursion_depth--;
+
+        return -1;
+    }
+
+    return 0;
+#else
+    tstate->recursion_depth++;
+
+    if (unlikely(tstate->recursion_depth > Py_GetRecursionLimit())) {
+        tstate->overflowed = 1;
+        PyErr_SetString(PyExc_RecursionError, "maximum recursion depth exceeded while calling a Python object");
+        tstate->recursion_depth--;
+
+        return -1;
+    }
+
+    return 0;
+#endif
+}
+
+NUITKA_MAY_BE_UNUSED static inline void Nuitka_LeaveTailRecursivePythonCall(PyThreadState *tstate) {
+#if PYTHON_VERSION >= 0x3c0
+    tstate->py_recursion_remaining++;
+#elif PYTHON_VERSION >= 0x3b0
+    tstate->recursion_remaining++;
+#else
+    tstate->recursion_depth--;
+#endif
+}
+
 #if PYTHON_VERSION < 0x300
 #define TP_RICHCOMPARE(t) (PyType_HasFeature((t), Py_TPFLAGS_HAVE_RICHCOMPARE) ? (t)->tp_richcompare : NULL)
 #else

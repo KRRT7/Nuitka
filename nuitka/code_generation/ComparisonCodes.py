@@ -9,8 +9,13 @@ Rich comparisons, "in", and "not in", also "is", and "is not", and the
 
 from nuitka.nodes.shapes.BuiltinTypeShapes import (
     tshape_bool,
+    tshape_bytes,
     tshape_frozenset,
+    tshape_int,
+    tshape_long,
     tshape_set,
+    tshape_str,
+    tshape_unicode,
 )
 from nuitka.nodes.shapes.StandardShapes import tshape_unknown
 from nuitka.PythonOperators import (
@@ -19,6 +24,7 @@ from nuitka.PythonOperators import (
 )
 
 from .c_types.CTypeBooleans import CTypeBool
+from .c_types.CTypeCLongs import CTypeCLong
 from .c_types.CTypeNuitkaBooleans import CTypeNuitkaBoolEnum
 from .c_types.CTypeNuitkaVoids import CTypeNuitkaVoidEnum
 from .c_types.CTypePyObjectPointers import CTypePyObjectPtr
@@ -39,20 +45,88 @@ from .ErrorCodes import (
 from .ExpressionCTypeSelectionHelpers import decideExpressionCTypes
 
 
+def _getBuiltinTypeComparisonCode(expression, emit, context):
+    left = expression.subnode_left
+    right = expression.subnode_right
+
+    if left.isExpressionBuiltinType1() and right.isCompileTimeConstant():
+        type_arg = left.subnode_value
+        type_value = right.getCompileTimeConstant()
+        needs_inversion = expression.getComparator() == "IsNot"
+    elif right.isExpressionBuiltinType1() and left.isCompileTimeConstant():
+        type_arg = right.subnode_value
+        type_value = left.getCompileTimeConstant()
+        needs_inversion = expression.getComparator() == "IsNot"
+    else:
+        return None
+
+    if type(type_value) is not type:
+        return None
+
+    type_arg_name = context.allocateTempName("type_arg")
+
+    generateExpressionCode(
+        to_name=type_arg_name, expression=type_arg, emit=emit, context=context
+    )
+
+    condition = "Py_TYPE(%s) == (PyTypeObject *)%s" % (
+        type_arg_name,
+        context.getConstantCode(constant=type_value),
+    )
+
+    if needs_inversion:
+        condition = "!(%s)" % condition
+
+    return condition, type_arg_name
+
+
+def _canInvertComparisonToHelperSubset(
+    left_shape, right_shape, left_c_type, right_c_type
+):
+    if left_c_type is CTypePyObjectPtr and right_c_type is CTypeCLong:
+        return left_shape in (tshape_int, tshape_long)
+
+    if left_c_type is not right_c_type:
+        return False
+
+    if left_c_type is not CTypePyObjectPtr:
+        return False
+
+    safe_shape_families = (
+        (tshape_int, tshape_long),
+        (tshape_str, tshape_unicode),
+        (tshape_bytes,),
+    )
+
+    return any(
+        left_shape in safe_shape_family and right_shape in safe_shape_family
+        for safe_shape_family in safe_shape_families
+    )
+
+
 def _handleArgumentSwapAndInversion(
-    comparator, needs_argument_swap, left_c_type, right_c_type
+    comparator, needs_argument_swap, left_shape, right_shape, left_c_type, right_c_type
 ):
     needs_result_inversion = False
     if needs_argument_swap:
         comparator = rich_comparison_arg_swaps[comparator]
-    else:
-        # Same types, we can swap too, but this time to avoid the comparator variety.
-        if (
-            left_c_type is right_c_type
-            and comparator not in rich_comparison_subset_codes
-        ):
-            needs_result_inversion = True
-            comparator = comparison_inversions[comparator]
+        left_shape, right_shape = right_shape, left_shape
+        left_c_type, right_c_type = right_c_type, left_c_type
+
+    can_invert_to_helper_subset = _canInvertComparisonToHelperSubset(
+        left_shape=left_shape,
+        right_shape=right_shape,
+        left_c_type=left_c_type,
+        right_c_type=right_c_type,
+    )
+
+    # Reduce to the subset of comparators {Lt, LtE, Eq} where helper generation
+    # also uses shortcuts. This is deliberately narrow: float comparisons with
+    # NaN, and container comparisons involving NaN elements, are not complements
+    # of their inverse comparisons.
+    if comparator not in rich_comparison_subset_codes and can_invert_to_helper_subset:
+        needs_result_inversion = True
+        comparator = comparison_inversions[comparator]
 
     return comparator, needs_result_inversion
 
@@ -78,6 +152,7 @@ def getRichComparisonCode(
         right=right,
         may_swap_arguments="always",
         context=context,
+        use_storage_types=True,
     )
 
     if unknown_types:
@@ -86,7 +161,12 @@ def getRichComparisonCode(
     else:
         # Same types, we can swap too, but this time to avoid the comparator variety.
         comparator, needs_result_inversion = _handleArgumentSwapAndInversion(
-            comparator, needs_argument_swap, left_c_type, right_c_type
+            comparator,
+            needs_argument_swap,
+            left_shape,
+            right_shape,
+            left_c_type,
+            right_c_type,
         )
 
     # If a more specific C type was picked that "PyObject *" then we can use that to have the helper.
@@ -273,6 +353,22 @@ def generateComparisonExpressionCode(to_name, expression, emit, context):
     right = expression.subnode_right
 
     comparator = expression.getComparator()
+
+    if comparator in ("Is", "IsNot"):
+        builtin_type_comparison = _getBuiltinTypeComparisonCode(
+            expression=expression, emit=emit, context=context
+        )
+
+        if builtin_type_comparison is not None:
+            condition, type_arg_name = builtin_type_comparison
+
+            to_name.getCType().emitAssignmentCodeFromBoolCondition(
+                to_name=to_name, condition=condition, emit=emit
+            )
+
+            getReleaseCode(release_name=type_arg_name, emit=emit, context=context)
+
+            return
 
     type_name = "PyObject *"
     if comparator in ("Is", "IsNot"):

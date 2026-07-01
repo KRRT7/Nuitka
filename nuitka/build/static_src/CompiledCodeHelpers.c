@@ -14,6 +14,8 @@
 
 #include "HelpersBuiltinTypeMethods.c"
 
+static void _initNuitkaEnumerateType(void);
+
 static void _initBuiltinTypeMethods(void) {
 #if PYTHON_VERSION < 0x300
     NUITKA_PRINT_TRACE("main(): Calling _initStrBuiltinMethods().");
@@ -28,6 +30,8 @@ static void _initBuiltinTypeMethods(void) {
     _initDictBuiltinMethods();
     NUITKA_PRINT_TRACE("main(): Calling _initListBuiltinMethods().");
     _initListBuiltinMethods();
+    NUITKA_PRINT_TRACE("main(): Calling _initNuitkaEnumerateType().");
+    _initNuitkaEnumerateType();
 }
 
 #if PYTHON_VERSION >= 0x350
@@ -1293,15 +1297,294 @@ struct Nuitka_QuickIterator {
     } iterator_data;
 };
 
-// TODO: Accept PyObject ** with a count to avoid the intermediate args array.
+struct Nuitka_EnumerateObject {
+    PyObject_HEAD
+
+        Py_ssize_t enumerate_index;
+
+    PyObject *enumerate_iterator;
+    PyObject *enumerate_result;
+    PyObject *enumerate_long_index;
+};
+
+static PyTypeObject Nuitka_Enumerate_Type;
+static PyObject *MAKE_ENUMERATE(PyThreadState *tstate, PyObject *sequence, PyObject *start);
+
+static int Nuitka_Enumerate_tp_traverse(struct Nuitka_EnumerateObject *enumerate, visitproc visit, void *arg) {
+    Py_VISIT(enumerate->enumerate_iterator);
+    Py_VISIT(enumerate->enumerate_result);
+    Py_VISIT(enumerate->enumerate_long_index);
+
+    return 0;
+}
+
+static int Nuitka_Enumerate_tp_clear(struct Nuitka_EnumerateObject *enumerate) {
+    Py_CLEAR(enumerate->enumerate_iterator);
+    Py_CLEAR(enumerate->enumerate_result);
+    Py_CLEAR(enumerate->enumerate_long_index);
+
+    return 0;
+}
+
+static void Nuitka_Enumerate_tp_dealloc(struct Nuitka_EnumerateObject *enumerate) {
+    Nuitka_GC_UnTrack(enumerate);
+
+    Nuitka_Enumerate_tp_clear(enumerate);
+
+    PyObject_GC_Del(enumerate);
+}
+
+static PyObject *Nuitka_Enumerate_tp_iternext(struct Nuitka_EnumerateObject *enumerate) {
+    PyThreadState *tstate = PyThreadState_GET();
+
+    PyObject *item = ITERATOR_NEXT_ITERATOR(enumerate->enumerate_iterator);
+
+    if (unlikely(item == NULL)) {
+        if (unlikely(!CHECK_AND_CLEAR_STOP_ITERATION_OCCURRED(tstate))) {
+            return NULL;
+        }
+
+        return NULL;
+    }
+
+    PyObject *index_object;
+
+    if (enumerate->enumerate_long_index == NULL) {
+        index_object = PyInt_FromSsize_t(enumerate->enumerate_index);
+
+        if (unlikely(index_object == NULL)) {
+            Py_DECREF(item);
+            return NULL;
+        }
+
+        if (enumerate->enumerate_index < PY_SSIZE_T_MAX) {
+            enumerate->enumerate_index += 1;
+        } else {
+            Py_INCREF(index_object);
+            enumerate->enumerate_long_index = index_object;
+        }
+    } else {
+        index_object = enumerate->enumerate_long_index;
+        Py_INCREF(index_object);
+
+        PyObject *next_index = PyNumber_Add(index_object, const_int_pos_1);
+        if (unlikely(next_index == NULL)) {
+            Py_DECREF(index_object);
+            Py_DECREF(item);
+            return NULL;
+        }
+
+        Py_SETREF(enumerate->enumerate_long_index, next_index);
+    }
+
+    PyObject *result = enumerate->enumerate_result;
+
+    if (Py_REFCNT(result) == 1) {
+        Py_INCREF(result);
+
+        PyObject *old_index = PyTuple_GET_ITEM(result, 0);
+        PyObject *old_item = PyTuple_GET_ITEM(result, 1);
+
+        PyTuple_SET_ITEM(result, 0, index_object);
+        PyTuple_SET_ITEM(result, 1, item);
+
+        Py_DECREF(old_index);
+        Py_DECREF(old_item);
+
+        if (!_PyObject_GC_IS_TRACKED(result)) {
+            Nuitka_GC_Track(result);
+        }
+
+        return result;
+    }
+
+    result = MAKE_TUPLE_EMPTY(tstate, 2);
+
+    if (unlikely(result == NULL)) {
+        Py_DECREF(index_object);
+        Py_DECREF(item);
+        return NULL;
+    }
+
+    PyTuple_SET_ITEM(result, 0, index_object);
+    PyTuple_SET_ITEM(result, 1, item);
+
+    return result;
+}
+
+static PyObject *Nuitka_Enumerate_reduce(struct Nuitka_EnumerateObject *enumerate, PyObject *unused) {
+    NUITKA_MAY_BE_UNUSED PyThreadState *tstate = PyThreadState_GET();
+
+    PyObject *iterator = enumerate->enumerate_iterator;
+    Py_INCREF(iterator);
+
+    PyObject *index_object;
+
+    if (enumerate->enumerate_long_index == NULL) {
+        index_object = PyInt_FromSsize_t(enumerate->enumerate_index);
+    } else {
+        index_object = enumerate->enumerate_long_index;
+        Py_INCREF(index_object);
+    }
+
+    if (unlikely(index_object == NULL)) {
+        Py_DECREF(iterator);
+        return NULL;
+    }
+
+    PyObject *args = MAKE_TUPLE_EMPTY(tstate, 2);
+
+    if (unlikely(args == NULL)) {
+        Py_DECREF(iterator);
+        Py_DECREF(index_object);
+        return NULL;
+    }
+
+    PyTuple_SET_ITEM0(args, 0, iterator);
+    PyTuple_SET_ITEM0(args, 1, index_object);
+
+    PyObject *result = MAKE_TUPLE_EMPTY(tstate, 2);
+
+    if (unlikely(result == NULL)) {
+        Py_DECREF(args);
+        return NULL;
+    }
+
+    PyObject *builtin_enumerate = LOOKUP_BUILTIN_STR("enumerate");
+    CHECK_OBJECT(builtin_enumerate);
+
+    Py_INCREF(builtin_enumerate);
+    PyTuple_SET_ITEM0(result, 0, builtin_enumerate);
+    PyTuple_SET_ITEM0(result, 1, args);
+
+    return result;
+}
+
+static PyObject *Nuitka_Enumerate_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    PyThreadState *tstate = PyThreadState_GET();
+    PyObject *sequence;
+    PyObject *start = const_int_0;
+
+    if (unlikely(kwds != NULL && PyDict_GET_SIZE(kwds) != 0)) {
+        PyErr_SetString(PyExc_TypeError, "compiled_enumerate() takes no keyword arguments");
+        return NULL;
+    }
+
+    if (unlikely(!PyArg_UnpackTuple(args, "compiled_enumerate", 1, 2, &sequence, &start))) {
+        return NULL;
+    }
+
+    return MAKE_ENUMERATE(tstate, sequence, start);
+}
+
+static PyMethodDef Nuitka_Enumerate_methods[] = {
+    {"__reduce__", (PyCFunction)Nuitka_Enumerate_reduce, METH_NOARGS, NULL},
+    {NULL, NULL, 0, NULL},
+};
+
+static PyTypeObject Nuitka_Enumerate_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0) "compiled_enumerate",
+    sizeof(struct Nuitka_EnumerateObject),      // tp_basicsize
+    0,                                          // tp_itemsize
+    (destructor)Nuitka_Enumerate_tp_dealloc,    // tp_dealloc
+    0,                                          // tp_print
+    0,                                          // tp_getattr
+    0,                                          // tp_setattr
+    0,                                          // tp_reserved
+    0,                                          // tp_repr
+    0,                                          // tp_as_number
+    0,                                          // tp_as_sequence
+    0,                                          // tp_as_mapping
+    0,                                          // tp_hash
+    0,                                          // tp_call
+    0,                                          // tp_str
+    0,                                          // tp_getattro (PyObject_GenericGetAttr)
+    0,                                          // tp_setattro
+    0,                                          // tp_as_buffer
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    // tp_flags
+    0,                                          // tp_doc
+    (traverseproc)Nuitka_Enumerate_tp_traverse, // tp_traverse
+    (inquiry)Nuitka_Enumerate_tp_clear,         // tp_clear
+    0,                                          // tp_richcompare
+    0,                                          // tp_weaklistoffset
+    0,                                          // tp_iter
+    (iternextfunc)Nuitka_Enumerate_tp_iternext, // tp_iternext
+    Nuitka_Enumerate_methods,                   // tp_methods
+    0,                                          // tp_members
+    0,                                          // tp_getset
+};
+
+static void _initNuitkaEnumerateType(void) {
+    Nuitka_Enumerate_Type.tp_new = Nuitka_Enumerate_tp_new;
+    Nuitka_PyType_Ready(&Nuitka_Enumerate_Type, NULL, false, false, true, false, false);
+}
+
+static PyObject *MAKE_ENUMERATE(PyThreadState *tstate, PyObject *sequence, PyObject *start) {
+    struct Nuitka_EnumerateObject *result;
+
+    CHECK_OBJECT(sequence);
+    CHECK_OBJECT(start);
+
+    result = (struct Nuitka_EnumerateObject *)Nuitka_GC_New(&Nuitka_Enumerate_Type);
+
+    if (unlikely(result == NULL)) {
+        return NULL;
+    }
+
+    result->enumerate_iterator = NULL;
+    result->enumerate_result = NULL;
+    result->enumerate_long_index = NULL;
+    result->enumerate_index = 0;
+
+    PyObject *start_index = Nuitka_Number_IndexAsLong(start);
+
+    if (unlikely(start_index == NULL)) {
+        PyObject_GC_Del(result);
+        return NULL;
+    }
+
+    Py_ssize_t start_index_ssize = PyLong_AsSsize_t(start_index);
+
+    if (unlikely(start_index_ssize == -1 && PyErr_Occurred())) {
+        PyErr_Clear();
+        result->enumerate_long_index = start_index;
+    } else {
+        result->enumerate_index = start_index_ssize;
+        Py_DECREF(start_index);
+    }
+
+    result->enumerate_iterator = MAKE_ITERATOR(tstate, sequence);
+
+    if (unlikely(result->enumerate_iterator == NULL)) {
+        Nuitka_Enumerate_tp_clear(result);
+        PyObject_GC_Del(result);
+        return NULL;
+    }
+
+    result->enumerate_result = MAKE_TUPLE_EMPTY(tstate, 2);
+
+    if (unlikely(result->enumerate_result == NULL)) {
+        Nuitka_Enumerate_tp_clear(result);
+        PyObject_GC_Del(result);
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    PyTuple_SET_ITEM(result->enumerate_result, 0, Py_None);
+    Py_INCREF(Py_None);
+    PyTuple_SET_ITEM(result->enumerate_result, 1, Py_None);
+
+    Nuitka_GC_Track(result);
+
+    return (PyObject *)result;
+}
+
 PyObject *BUILTIN_ENUMERATE1(PyThreadState *tstate, PyObject *sequence) {
-    return CALL_FUNCTION_WITH_SINGLE_ARG(tstate, (PyObject *)&PyEnum_Type, sequence);
+    return MAKE_ENUMERATE(tstate, sequence, const_int_0);
 }
 
 PyObject *BUILTIN_ENUMERATE2(PyThreadState *tstate, PyObject *sequence, PyObject *start) {
-    PyObject *args[2] = {sequence, start};
-
-    return CALL_FUNCTION_WITH_ARGS2(tstate, (PyObject *)&PyEnum_Type, args);
+    return MAKE_ENUMERATE(tstate, sequence, start);
 }
 
 #if PYTHON_VERSION < 0x300
@@ -2233,6 +2516,9 @@ PyObject *MAKE_UNION_TYPE(PyObject *args) {
 #endif
 
 #include "HelpersOperationBinaryDualAdd.c"
+#include "HelpersOperationBinaryDualFloordiv.c"
+#include "HelpersOperationBinaryDualMod.c"
+#include "HelpersOperationBinaryDualSub.c"
 
 #include "HelpersOperationInplaceAdd.c"
 #include "HelpersOperationInplaceBitand.c"

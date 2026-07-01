@@ -46,13 +46,16 @@ bool BINARY_OPERATION_ADD_NILONG_NILONG_NILONG(nuitka_ilong *result, nuitka_ilon
         }
 
         ENFORCE_NILONG_OBJECT_VALUE(operand1);
-        obj_result = BINARY_OPERATION_ADD_OBJECT_LONG_CLONG(operand1->python_value, operand2->c_value);
+        PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2->c_value);
+
+        obj_result = BINARY_OPERATION_ADD_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
+        Py_DECREF(operand2_object);
 
         if (unlikely(obj_result == NULL)) {
             return false;
         }
 
-        SET_NILONG_OBJECT_VALUE(result, obj_result);
+        *result = Nuitka_NILONG_FromObject(obj_result);
         return true;
 
     exit_result_ok_clong:
@@ -60,32 +63,37 @@ bool BINARY_OPERATION_ADD_NILONG_NILONG_NILONG(nuitka_ilong *result, nuitka_ilon
         return true;
 
     } else if (left_c_usable == false && right_c_usable) {
-        PyObject *python_result = BINARY_OPERATION_ADD_OBJECT_LONG_CLONG(operand1->python_value, operand2->c_value);
+        PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2->c_value);
+        PyObject *python_result = BINARY_OPERATION_ADD_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
+        Py_DECREF(operand2_object);
 
         if (unlikely(python_result == NULL)) {
             return false;
         }
 
-        SET_NILONG_OBJECT_VALUE(result, python_result);
+        *result = Nuitka_NILONG_FromObject(python_result);
         return true;
     } else if (left_c_usable && right_c_usable == false) {
-        PyObject *python_result = BINARY_OPERATION_ADD_OBJECT_LONG_CLONG(operand2->python_value, operand1->c_value);
+        PyObject *operand1_object = Nuitka_PyLong_FromLong(operand1->c_value);
+        PyObject *python_result = BINARY_OPERATION_ADD_OBJECT_OBJECT_OBJECT(operand1_object, operand2->python_value);
+        Py_DECREF(operand1_object);
 
         if (unlikely(python_result == NULL)) {
             return false;
         }
 
-        SET_NILONG_OBJECT_VALUE(result, python_result);
+        *result = Nuitka_NILONG_FromObject(python_result);
 
         return true;
     } else {
-        PyObject *python_result = BINARY_OPERATION_ADD_OBJECT_LONG_LONG(operand1->python_value, operand2->python_value);
+        PyObject *python_result =
+            BINARY_OPERATION_ADD_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2->python_value);
 
         if (unlikely(python_result == NULL)) {
             return false;
         }
 
-        SET_NILONG_OBJECT_VALUE(result, python_result);
+        *result = Nuitka_NILONG_FromObject(python_result);
 
         return true;
     }
@@ -128,13 +136,16 @@ bool BINARY_OPERATION_ADD_NILONG_NILONG_DIGIT(nuitka_ilong *result, nuitka_ilong
         }
 
         ENFORCE_NILONG_OBJECT_VALUE(operand1);
-        obj_result = BINARY_OPERATION_ADD_OBJECT_LONG_DIGIT(operand1->python_value, operand2);
+        PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+
+        obj_result = BINARY_OPERATION_ADD_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
+        Py_DECREF(operand2_object);
 
         if (unlikely(obj_result == NULL)) {
             return false;
         }
 
-        SET_NILONG_OBJECT_VALUE(result, obj_result);
+        *result = Nuitka_NILONG_FromObject(obj_result);
         return true;
 
     exit_result_ok_clong:
@@ -142,13 +153,15 @@ bool BINARY_OPERATION_ADD_NILONG_NILONG_DIGIT(nuitka_ilong *result, nuitka_ilong
         return true;
 
     } else if (left_c_usable == false && right_c_usable) {
-        PyObject *python_result = BINARY_OPERATION_ADD_OBJECT_LONG_DIGIT(operand1->python_value, operand2);
+        PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+        PyObject *python_result = BINARY_OPERATION_ADD_OBJECT_OBJECT_OBJECT(operand1->python_value, operand2_object);
+        Py_DECREF(operand2_object);
 
         if (unlikely(python_result == NULL)) {
             return false;
         }
 
-        SET_NILONG_OBJECT_VALUE(result, python_result);
+        *result = Nuitka_NILONG_FromObject(python_result);
         return true;
     } else {
         NUITKA_CANNOT_GET_HERE("cannot happen with types NILONG DIGIT");

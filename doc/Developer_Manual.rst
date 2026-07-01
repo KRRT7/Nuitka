@@ -165,7 +165,7 @@ In order to set up hooks, you need to execute these commands:
 
    # Where python is the one you use with Nuitka, this then gets all
    # development requirements, can be full PATH.
-   python -m pip install -r requirements-devel.txt
+   uv sync --dev
    python ./misc/install-git-hooks.py
 
 These commands will make sure that the ``autoformat-nuitka-source`` is
@@ -833,11 +833,11 @@ recently added standard plugins ``NumpyPlugin.py`` and
 Going forward, this will also happen for the remaining standard plugins.
 
 Please find `here
-<https://github.com/Nuitka/Nuitka/blob/develop/UserPlugin-Creation.rst>`__
+<https://github.com/Nuitka/Nuitka/blob/develop/doc/UserPlugin-Creation.rst>`__
 a detailed description of how to write your own plugin.
 
 To learn about plugin option specification consult `this document
-<https://github.com/Nuitka/Nuitka/blob/develop/Using-Plugin-Options.rst>`__.
+<https://github.com/Nuitka/Nuitka/blob/develop/doc/Using-Plugin-Options.rst>`__.
 
 *********************************
  Working with the CPython suites
@@ -4384,9 +4384,9 @@ being installed, because e.g. on some platforms it will not be easy to
 do so. That bar has lifted somewhat, but it means e.g. that XML based
 optimization tests are not run with all Python versions.
 
-The list of run time dependencies is in ``requirements.txt`` and it is
-for those the case, that they are not really required to be installed by
-the user, consider this snippet:
+The list of run time dependencies is in ``pyproject.toml`` and it is for
+those the case, that they are not really required to be installed by the
+user, consider this snippet:
 
 .. code:: python
 
@@ -4425,8 +4425,8 @@ maintained an available on newer Pythons. Then we can use it, no problem
 normally. But if it's really big, say all of SciPy, we might want to
 justify it a bit better.
 
-The list of development dependencies is in ``requirements-devel.txt``
-and it is for example like this:
+The list of development dependencies is in the ``dev`` dependency group
+of ``pyproject.toml`` and it is for example like this:
 
 .. code:: python
 
@@ -4667,6 +4667,6 @@ This document is written in REST. That is an ASCII format which is
 readable to human, but easily used to generate PDF or HTML documents.
 
 You will find the current source under:
-https://github.com/Nuitka/Nuitka/blob/develop/Developer_Manual.rst
+https://github.com/Nuitka/Nuitka/blob/develop/doc/Developer_Manual.rst
 
 And the current PDF under: https://nuitka.net/doc/Developer_Manual.pdf

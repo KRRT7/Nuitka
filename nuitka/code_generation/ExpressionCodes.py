@@ -8,14 +8,152 @@ only statement.
 
 """
 
+from .CallCodes import getCallCodeNoArgs, getCallCodePosArgsQuick
 from .CodeHelpers import generateExpressionCode
-from .ErrorCodes import getReleaseCode
+from .ErrorCodes import getErrorExitBoolCode, getReleaseCode
+from .VariableCodes import getLocalVariableDeclaration
 
 
 def generateExpressionOnlyCode(statement, emit, context):
-    return getStatementOnlyCode(
-        value=statement.subnode_expression, emit=emit, context=context
+    value = statement.subnode_expression
+
+    if _generateTailSelfCallCode(value=value, emit=emit, context=context):
+        return
+
+    return getStatementOnlyCode(value=value, emit=emit, context=context)
+
+
+def _getTailSelfCallDetails(value, context):
+    if (
+        not hasattr(context, "isForCreatedFunction")
+        or not context.isForCreatedFunction()
+    ):
+        return None
+
+    if not value.isExpressionCall() or value.subnode_kwargs is not None:
+        return None
+
+    called = value.subnode_called
+
+    if not called.isExpressionVariableRefOrTempVariableRef():
+        return None
+
+    owner = context.getOwner()
+
+    if called.getVariableName() != owner.getFunctionName():
+        return None
+
+    parameters = owner.getParameters()
+
+    if (
+        parameters.kw_only_variables
+        or parameters.list_star_variable is not None
+        or parameters.dict_star_variable is not None
+    ):
+        return None
+
+    parameter_variables = parameters.pos_only_variables + parameters.normal_variables
+    call_args = value.subnode_args
+
+    if call_args is None:
+        arg_expressions = ()
+    elif call_args.isExpressionConstantTupleEmptyRef():
+        arg_expressions = ()
+    elif call_args.isExpressionMakeTuple():
+        arg_expressions = call_args.subnode_elements
+    else:
+        return None
+
+    if len(arg_expressions) != len(parameter_variables):
+        return None
+
+    parameter_declarations = []
+
+    for variable in parameter_variables:
+        variable_declaration = getLocalVariableDeclaration(
+            context=context, variable=variable, variable_trace=None
+        )
+
+        if variable_declaration.c_type != "PyObject *":
+            return None
+
+        parameter_declarations.append(variable_declaration)
+
+    return called, arg_expressions, parameter_declarations
+
+
+def _generateTailSelfCallCode(value, emit, context):
+    details = _getTailSelfCallDetails(value=value, context=context)
+
+    if details is None:
+        return False
+
+    called, arg_expressions, parameter_declarations = details
+
+    called_name = context.allocateTempName("tail_called")
+    generateExpressionCode(
+        to_name=called_name, expression=called, emit=emit, context=context
     )
+
+    arg_names = []
+
+    for arg_expression in arg_expressions:
+        arg_name = context.allocateTempName("tail_arg")
+        generateExpressionCode(
+            to_name=arg_name, expression=arg_expression, emit=emit, context=context
+        )
+
+        arg_names.append(arg_name)
+
+    emit("if (%s == (PyObject *)self) {" % called_name)
+
+    getErrorExitBoolCode(
+        condition="Nuitka_EnterTailRecursivePythonCall(tstate)",
+        emit=emit,
+        context=context,
+    )
+
+    emit("    nuitka_tail_recursion_depth += 1;")
+
+    if context.needsCleanup(called_name):
+        emit("    Py_DECREF(%s);" % called_name)
+
+    for parameter_declaration in parameter_declarations:
+        emit("    CHECK_OBJECT(%s);" % parameter_declaration)
+        emit("    Py_DECREF(%s);" % parameter_declaration)
+
+    for parameter_declaration, arg_name in zip(parameter_declarations, arg_names):
+        if not context.needsCleanup(arg_name):
+            emit("    Py_INCREF(%s);" % arg_name)
+
+        emit("    %s = %s;" % (parameter_declaration, arg_name))
+
+    emit("    goto function_tail_reentry;")
+    emit("}")
+
+    tmp_name = context.allocateTempName(base_name="unused_tail_call", unique=True)
+
+    if arg_names:
+        getCallCodePosArgsQuick(
+            to_name=tmp_name,
+            called_name=called_name,
+            arg_names=arg_names,
+            expression=value,
+            emit=emit,
+            context=context,
+        )
+    else:
+        getCallCodeNoArgs(
+            to_name=tmp_name,
+            called_name=called_name,
+            expression=value,
+            emit=emit,
+            context=context,
+        )
+
+    getReleaseCode(release_name=tmp_name, emit=emit, context=context)
+
+    return True
 
 
 def getStatementOnlyCode(value, emit, context):

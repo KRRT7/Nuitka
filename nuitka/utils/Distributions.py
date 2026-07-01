@@ -495,6 +495,7 @@ def _getDistributionFromModuleName(module_name, prefer_shorter_distribution_name
 
 
 _distribution_from_name_cache = {}
+_distribution_cache = {}
 
 
 def getDistributionFromModuleName(module_name, prefer_shorter_distribution_name=False):
@@ -509,10 +510,7 @@ def getDistributionFromModuleName(module_name, prefer_shorter_distribution_name=
     return _distribution_from_name_cache[module_name]
 
 
-def getDistribution(distribution_name):
-    """Get a distribution by name."""
-    assert isValidDistributionName(distribution_name), distribution_name
-
+def _getDistribution(distribution_name):
     try:
         if isExperimental("force-pkg-resources-metadata"):
             raise ImportError
@@ -536,6 +534,16 @@ def getDistribution(distribution_name):
             return metadata.distribution(distribution_name)
         except metadata.PackageNotFoundError:
             return None
+
+
+def getDistribution(distribution_name):
+    """Get a distribution by name."""
+    assert isValidDistributionName(distribution_name), distribution_name
+
+    if distribution_name not in _distribution_cache:
+        _distribution_cache[distribution_name] = _getDistribution(distribution_name)
+
+    return _distribution_cache[distribution_name]
 
 
 _distribution_to_installer = {}

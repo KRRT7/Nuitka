@@ -72,6 +72,7 @@ from nuitka.plugins.Hooks import (
 from nuitka.PythonVersions import python_version
 from nuitka.specs.ParameterSpecs import ParameterSpec
 
+from .CodeObjectTemplates import attachCodeObjectTemplate
 from .FutureSpecState import getFutureSpec
 from .ReformulationExecStatements import wrapEvalGlobalsAndLocals
 from .ReformulationTryFinallyStatements import (
@@ -1111,6 +1112,9 @@ def buildFunctionWithParsing(
         code_prefix="function",
         source_ref=source_ref,
     )
+
+    code_object.setCodeObjectQualname(outer_body.getFunctionQualname())
+    attachCodeObjectTemplate(code_object)
 
     # Wrap if necessary for special nested arguments.
     if special_args:

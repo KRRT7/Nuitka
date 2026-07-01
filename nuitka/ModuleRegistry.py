@@ -21,12 +21,15 @@ from nuitka.utils.CStrings import decodePythonIdentifierFromC
 
 # One or more root modules, i.e. entry points that must be there.
 root_modules = OrderedSet()
+root_modules_by_name = {}
 
 # To be traversed modules
 active_modules = OrderedSet()
+active_modules_by_name = {}
 
 # Information about why a module became active.
 active_modules_info = {}
+active_modules_info_by_name = {}
 
 ActiveModuleInfo = collections.namedtuple(
     "ActiveModuleInfo", ("using_module", "usage_tag", "reason", "source_ref")
@@ -34,10 +37,12 @@ ActiveModuleInfo = collections.namedtuple(
 
 # Already traversed modules
 done_modules = set()
+done_modules_by_name = {}
 
 
 def addRootModule(module):
     root_modules.add(module)
+    root_modules_by_name[module.getFullName()] = module
 
 
 def getRootModules():
@@ -53,25 +58,25 @@ def getRootTopModule():
 
 
 def hasRootModule(module_name):
-    for module in root_modules:
-        if module.getFullName() == module_name:
-            return True
-
-    return False
+    return module_name in root_modules_by_name
 
 
 def replaceRootModule(old, new):
     # Using global here, as this is really a singleton, in the form of a module,
     # pylint: disable=global-statement
-    global root_modules
+    global root_modules, root_modules_by_name
     new_root_modules = OrderedSet()
+    new_root_modules_by_name = {}
 
     for module in root_modules:
-        new_root_modules.add(module if module is not old else new)
+        module = module if module is not old else new
+        new_root_modules.add(module)
+        new_root_modules_by_name[module.getFullName()] = module
 
     assert len(root_modules) == len(new_root_modules)
 
     root_modules = new_root_modules
+    root_modules_by_name = new_root_modules_by_name
 
 
 def getUncompiledModules():
@@ -135,19 +140,26 @@ def _normalizeModuleFilename(filename):
 def startTraversal():
     # Using global here, as this is really a singleton, in the form of a module,
     # pylint: disable=global-statement
-    global active_modules, done_modules, active_modules_info
+    global active_modules, active_modules_by_name
+    global active_modules_info, active_modules_info_by_name
+    global done_modules, done_modules_by_name
 
     active_modules = OrderedSet(root_modules)
+    active_modules_by_name = dict(root_modules_by_name)
 
     active_modules_info = {}
+    active_modules_info_by_name = {}
     for root_module in root_modules:
-        active_modules_info[root_module] = ActiveModuleInfo(
+        active_module_info = ActiveModuleInfo(
             using_module=None,
             usage_tag="root_module",
             reason="Root module",
             source_ref=None,
         )
+        active_modules_info[root_module] = active_module_info
+        active_modules_info_by_name[root_module.getFullName()] = active_module_info
     done_modules = set()
+    done_modules_by_name = {}
 
     for active_module in active_modules:
         active_module.startTraversal()
@@ -156,13 +168,16 @@ def startTraversal():
 def addUsedModule(module, using_module, usage_tag, reason, source_ref):
     if module not in done_modules and module not in active_modules:
         active_modules.add(module)
+        active_modules_by_name[module.getFullName()] = module
 
-        active_modules_info[module] = ActiveModuleInfo(
+        active_module_info = ActiveModuleInfo(
             using_module=using_module,
             usage_tag=usage_tag,
             reason=reason,
             source_ref=source_ref,
         )
+        active_modules_info[module] = active_module_info
+        active_modules_info_by_name[module.getFullName()] = active_module_info
 
         module.startTraversal()
 
@@ -170,7 +185,10 @@ def addUsedModule(module, using_module, usage_tag, reason, source_ref):
 def nextModule():
     if active_modules:
         result = active_modules.pop()
+        del active_modules_by_name[result.getFullName()]
+
         done_modules.add(result)
+        done_modules_by_name[result.getFullName()] = result
 
         return result
     else:
@@ -190,15 +208,11 @@ def getDoneModules():
 
 
 def hasDoneModule(module_name):
-    return any(module.getFullName() == module_name for module in done_modules)
+    return module_name in done_modules_by_name
 
 
 def getModuleInclusionInfoByName(module_name):
-    for module, info in active_modules_info.items():
-        if module.getFullName() == module_name:
-            return info
-
-    return None
+    return active_modules_info_by_name.get(module_name)
 
 
 def getModuleFromCodeName(code_name):
@@ -225,15 +239,12 @@ def getOwnerFromCodeName(code_name):
 
 
 def getModuleByName(module_name):
-    for module in active_modules:
-        if module.getFullName() == module_name:
-            return module
+    result = active_modules_by_name.get(module_name)
 
-    for module in done_modules:
-        if module.getFullName() == module_name:
-            return module
+    if result is None:
+        result = done_modules_by_name.get(module_name)
 
-    return None
+    return result
 
 
 module_influencing_plugins = {}

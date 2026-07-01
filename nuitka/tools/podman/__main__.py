@@ -370,26 +370,17 @@ def _updateContainerByBuild(
         build_context_dir=build_context_dir,
     )
 
-    # Append new instructions
-    container_content += "\n# Automatic requirements caching\n"
-    container_content += "COPY requirements-devel.txt /etc/requirements-devel.txt\n"
-    container_content += "COPY nuitka/utils/requirements-private.txt /etc/nuitka/utils/requirements-private.txt\n"
+    # Append new instructions.
+    container_content += "\n# Automatic dependency caching\n"
+    container_content += "COPY pyproject.toml uv.lock /etc/nuitka/\n"
 
-    # Install requirements
-    # We try both python3 and python2.
+    # Install development dependencies.
     container_content += _makeRunCommand(
         command=(
             "if command -v python3; "
-            "then python3 -m pip install ${NUITKA_PIP_FLAGS} -r /etc/requirements-devel.txt; "
-            "fi"
-        ),
-    )
-    container_content += _makeRunCommand(
-        command=(
-            "if command -v python2; "
-            "then wget https://bootstrap.pypa.io/pip/2.7/get-pip.py -O /var/tmp/get-pip.py && "
-            "python2 /var/tmp/get-pip.py && "
-            "python2 -m pip install ${NUITKA_PIP_FLAGS} -r /etc/requirements-devel.txt; "
+            "then python3 -m pip install ${NUITKA_PIP_FLAGS} uv && "
+            "cd /etc/nuitka && "
+            "uv sync --dev --no-install-project --frozen; "
             "fi"
         ),
     )
@@ -453,37 +444,23 @@ def updateContainer(podman_path, container_tag_name, container_file_path, quiet)
 
         return
 
-    requirements_file = os.path.join(
-        os.path.dirname(__file__), "..", "..", "..", "requirements-devel.txt"
+    repo_root = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..")
     )
 
-    if not os.path.exists(requirements_file):
-        containers_logger.sysexit(
-            "Error, cannot find expected requirements-devel.txt file."
-        )
+    pyproject_file = os.path.join(repo_root, "pyproject.toml")
+    lock_file = os.path.join(repo_root, "uv.lock")
 
-    requirements_private_file = os.path.join(
-        os.path.dirname(requirements_file),
-        "nuitka",
-        "utils",
-        "requirements-private.txt",
-    )
-    repo_root = os.path.dirname(requirements_file)
+    for filename in pyproject_file, lock_file:
+        if not os.path.exists(filename):
+            containers_logger.sysexit(
+                "Error, cannot find expected dependency file '%s'." % filename
+            )
 
     # Use a temporary directory for the build context.
     with withTemporaryDirectory(containers_logger) as build_context_dir:
-        # Copy requirements-devel.txt
-        copyFile(
-            requirements_file, os.path.join(build_context_dir, "requirements-devel.txt")
-        )
-
-        # Copy nuitka/utils/requirements-private.txt
-        requirements_private_dest = os.path.join(build_context_dir, "nuitka", "utils")
-        makePath(requirements_private_dest)
-        copyFile(
-            requirements_private_file,
-            os.path.join(requirements_private_dest, "requirements-private.txt"),
-        )
+        copyFile(pyproject_file, os.path.join(build_context_dir, "pyproject.toml"))
+        copyFile(lock_file, os.path.join(build_context_dir, "uv.lock"))
 
         _updateContainerByBuild(
             podman_path=podman_path,

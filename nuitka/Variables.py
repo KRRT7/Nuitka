@@ -120,6 +120,10 @@ class Variable(getMetaClassBase("Variable", require_slots=True)):
         return False
 
     @staticmethod
+    def isTempVariableNuitkaIntOrLong():
+        return False
+
+    @staticmethod
     def isLocalsDictVariable():
         return False
 
@@ -305,8 +309,7 @@ class LocalVariable(Variable):
 
     def initVariableLate(self, trace_collection):
         """Initialize variable in trace collection state."""
-        trace_collection.variable_escapable.add(self)
-        trace_collection.has_unescaped_variables = True
+        trace_collection.markVariableAsEscapable(self)
         return trace_collection.initVariableUninitialized(self, None)
 
     if str is not bytes:
@@ -373,8 +376,7 @@ class ModuleVariable(Variable):
 
     def initVariableLate(self, trace_collection):
         """Initialize variable in trace collection state."""
-        trace_collection.variable_escapable.add(self)
-        trace_collection.has_unescaped_variables = True
+        trace_collection.markVariableAsEscapable(self)
         return trace_collection.initVariableModule(self, None)
 
     def onControlFlowEscape(self, trace_collection):
@@ -419,6 +421,9 @@ class TempVariable(Variable):
 
     def isTempVariableBool(self):
         return self.variable_type == "bool"
+
+    def isTempVariableNuitkaIntOrLong(self):
+        return self.variable_type == "nuitka_ilong"
 
     def getDescription(self):
         return "temp variable '%s'" % self.variable_name

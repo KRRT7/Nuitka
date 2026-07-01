@@ -14,6 +14,15 @@
 #define nb_nonzero nb_bool
 #endif
 
+typedef enum {
+    NUITKA_BOOL_FALSE = 0,
+    NUITKA_BOOL_TRUE = 1,
+    NUITKA_BOOL_UNASSIGNED = 2,
+    NUITKA_BOOL_EXCEPTION = -1
+} nuitka_bool;
+
+typedef enum { NUITKA_VOID_OK = 0, NUITKA_VOID_EXCEPTION = 1 } nuitka_void;
+
 NUITKA_MAY_BE_UNUSED static int CHECK_IF_TRUE(PyObject *object) {
     CHECK_OBJECT(object);
 
@@ -63,16 +72,17 @@ NUITKA_MAY_BE_UNUSED static inline PyObject *BOOL_FROM(bool value) {
     return value ? Py_True : Py_False;
 }
 
+NUITKA_MAY_BE_UNUSED static inline nuitka_bool NBOOL_FROM_INT(int value) {
+    if (value > 0) {
+        return NUITKA_BOOL_TRUE;
+    } else if (value == 0) {
+        return NUITKA_BOOL_FALSE;
+    } else {
+        return NUITKA_BOOL_EXCEPTION;
+    }
+}
+
 #undef nb_nonzero
-
-typedef enum {
-    NUITKA_BOOL_FALSE = 0,
-    NUITKA_BOOL_TRUE = 1,
-    NUITKA_BOOL_UNASSIGNED = 2,
-    NUITKA_BOOL_EXCEPTION = -1
-} nuitka_bool;
-
-typedef enum { NUITKA_VOID_OK = 0, NUITKA_VOID_EXCEPTION = 1 } nuitka_void;
 
 #endif
 

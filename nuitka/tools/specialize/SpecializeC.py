@@ -656,6 +656,29 @@ def makeHelpersComparisonDualOperation(operand, op_code):
 
 
 def _getSpecializedBinaryOperations(op_code, dual):
+    if dual:
+        filtered_helpers = OrderedSet()
+        for helper in getSpecializedBinaryOperations(op_code):
+            if not any(part in helper for part in ("NILONG", "NFLOAT")):
+                continue
+            if op_code == "FLOORDIV":
+                target_code, left_code, right_code = parseTypesFromHelper(helper)
+                if target_code != "NILONG":
+                    continue
+
+                if left_code not in ("NILONG", "DIGIT") or right_code not in (
+                    "NILONG",
+                    "DIGIT",
+                ):
+                    continue
+
+                filtered_helpers.add(helper)
+            else:
+                # Existing dual families are expected to be narrowly scoped.
+                filtered_helpers.add(helper)
+
+        return filtered_helpers
+
     return OrderedSet(
         helper
         for helper in getSpecializedBinaryOperations(op_code)
@@ -1221,14 +1244,19 @@ generate_builtin_type_operations = [
             "index",
             "rindex",
             "capitalize",
+            "casefold",
             "upper",
             "lower",
             "swapcase",
             "title",
             "isalnum",
             "isalpha",
+            "isdecimal",
             "isdigit",
+            "isidentifier",
             "islower",
+            "isnumeric",
+            "isprintable",
             "isupper",
             "isspace",
             "istitle",
@@ -1410,6 +1438,17 @@ def makeHelperBuiltinTypeMethods():
                     emit("#if %s" % type_desc.python_requirement)
 
                 for method_name in sorted(method_names):
+                    method_requirement = None
+
+                    if (
+                        type_desc is unicode_desc
+                        and method_name in python3_str_methods
+                        and method_name not in python2_unicode_methods
+                    ):
+                        method_requirement = "PYTHON_VERSION >= 0x300"
+                        emit_c("#if %s" % method_requirement)
+                        emit_h("#if %s" % method_requirement)
+
                     (
                         present,
                         arg_names,
@@ -1474,6 +1513,10 @@ def makeHelperBuiltinTypeMethods():
 
                         emit_c(code)
                         emit_h(getTemplateCodeDeclaredFunction(code))
+
+                    if method_requirement:
+                        emit_c("#endif")
+                        emit_h("#endif")
                 if type_desc.python_requirement:
                     emit("#endif")
 
@@ -1619,6 +1662,8 @@ def main():
     parseOptions()
 
     makeHelpersBinaryDualOperation("+", "ADD")
+    makeHelpersBinaryDualOperation("//", "FLOORDIV")
+    makeHelpersBinaryDualOperation("%", "MOD")
     makeHelpersBinaryDualOperation("-", "SUB")
 
     makeDictCopyHelperCodes()

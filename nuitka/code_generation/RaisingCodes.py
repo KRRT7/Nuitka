@@ -30,7 +30,7 @@ def generateReraiseCode(statement, emit, context):
     with context.withCurrentSourceCodeReference(
         value=statement.getCompatibleSourceReference()
     ):
-        getReRaiseExceptionCode(emit=emit, context=context)
+        getReRaiseExceptionCode(statement=statement, emit=emit, context=context)
 
 
 def _haveQuickExceptionCreationCode(exception_name):
@@ -112,6 +112,7 @@ def generateRaiseCode(statement, emit, context):
     exception_value = statement.subnode_exception_value
     exception_tb = statement.subnode_exception_trace
     exception_cause = statement.subnode_exception_cause
+    explicit_raise = statement.isExplicitRaise()
 
     # Exception cause is only possible with simple raise form.
     if exception_cause is not None:
@@ -151,6 +152,7 @@ def generateRaiseCode(statement, emit, context):
             _getRaiseExceptionWithCauseCode(
                 raise_type_name=raise_type_name,
                 raise_cause_name=raise_cause_name,
+                explicit_raise=explicit_raise,
                 emit=emit,
                 context=context,
             )
@@ -178,7 +180,10 @@ def generateRaiseCode(statement, emit, context):
             value=exception_type.getCompatibleSourceReference()
         ):
             _getRaiseExceptionWithTypeCode(
-                raise_type_name=raise_type_name, emit=emit, context=context
+                raise_type_name=raise_type_name,
+                explicit_raise=explicit_raise,
+                emit=emit,
+                context=context,
             )
 
     elif exception_tb is None:
@@ -206,6 +211,7 @@ def generateRaiseCode(statement, emit, context):
             _getRaiseExceptionWithValueCode(
                 raise_type_name=raise_type_name,
                 raise_value_name=raise_value_name,
+                explicit_raise=explicit_raise,
                 emit=emit,
                 context=context,
             )
@@ -239,6 +245,7 @@ def generateRaiseCode(statement, emit, context):
                 raise_type_name=raise_type_name,
                 raise_value_name=raise_value_name,
                 raise_tb_name=raise_tb_name,
+                explicit_raise=explicit_raise,
                 emit=emit,
                 context=context,
             )
@@ -272,12 +279,13 @@ def generateRaiseExpressionCode(to_name, expression, emit, context):
 
         _getRaiseExceptionWithTypeCode(
             raise_type_name=exception_value_name,
+            explicit_raise=False,
             emit=emit,
             context=context,
         )
 
 
-def getReRaiseExceptionCode(emit, context):
+def getReRaiseExceptionCode(statement, emit, context):
     (
         exception_state_name,
         exception_lineno,
@@ -312,7 +320,7 @@ if (unlikely(%(bool_res_name)s == false)) {
     PyTracebackObject *exception_tb = GET_EXCEPTION_STATE_TRACEBACK(&%(exception_state_name)s);
 
     if ((exception_tb != NULL) && (exception_tb->tb_frame == &%(frame_identifier)s->m_frame)) {
-        %(frame_identifier)s->m_frame.f_lineno = exception_tb->tb_lineno;
+        Nuitka_Frame_SetLineNumber(%(frame_identifier)s, exception_tb->tb_lineno);
     }
 }"""
                 % {
@@ -342,10 +350,58 @@ if (unlikely(%(bool_res_name)s == false)) {
             }
         )
 
+        frame_handle = context.getFrameHandle()
+
+        if frame_handle and statement.isExplicitReraise():
+            emit(
+                """\
+{
+    PyTracebackObject *exception_tb = GET_EXCEPTION_STATE_TRACEBACK(&%(exception_state_name)s);
+
+    if (exception_tb != NULL) {
+        exception_tb = ADD_TRACEBACK(exception_tb, %(frame_identifier)s, %(exception_lineno)s);
+        SET_EXCEPTION_STATE_TRACEBACK(&%(exception_state_name)s, exception_tb);
+    }
+}"""
+                % {
+                    "exception_state_name": exception_state_name,
+                    "exception_lineno": exception_lineno,
+                    "frame_identifier": frame_handle,
+                }
+            )
+
     getGotoCode(context.getExceptionEscape(), emit)
 
 
-def _getRaiseExceptionWithCauseCode(raise_type_name, raise_cause_name, emit, context):
+def _emitExplicitRaiseTracebackCode(
+    exception_state_name, explicit_raise, emit, context
+):
+    frame_handle = context.getFrameHandle()
+
+    if explicit_raise and frame_handle:
+        emit(
+            """\
+{
+    PyTracebackObject *exception_tb = GET_EXCEPTION_STATE_TRACEBACK(&%(exception_state_name)s);
+
+    if (exception_tb != NULL) {
+        exception_tb = ADD_TRACEBACK(exception_tb, %(frame_identifier)s, %(exception_lineno)s);
+        SET_EXCEPTION_STATE_TRACEBACK(&%(exception_state_name)s, exception_tb);
+    }
+}"""
+            % {
+                "exception_state_name": exception_state_name,
+                "exception_lineno": context.variable_storage.getExceptionVariableDescriptions()[
+                    1
+                ],
+                "frame_identifier": frame_handle,
+            }
+        )
+
+
+def _getRaiseExceptionWithCauseCode(
+    raise_type_name, raise_cause_name, explicit_raise, emit, context
+):
     (
         exception_state_name,
         _exception_lineno,
@@ -365,6 +421,7 @@ def _getRaiseExceptionWithCauseCode(raise_type_name, raise_cause_name, emit, con
         "RAISE_EXCEPTION_WITH_CAUSE(tstate, &%s, %s);"
         % (exception_state_name, raise_cause_name)
     )
+    _emitExplicitRaiseTracebackCode(exception_state_name, explicit_raise, emit, context)
 
     emit(getFrameVariableTypeDescriptionCode(context))
 
@@ -376,7 +433,7 @@ def _getRaiseExceptionWithCauseCode(raise_type_name, raise_cause_name, emit, con
         context.removeCleanupTempName(raise_cause_name)
 
 
-def _getRaiseExceptionWithTypeCode(raise_type_name, emit, context):
+def _getRaiseExceptionWithTypeCode(raise_type_name, explicit_raise, emit, context):
     (
         exception_state_name,
         _exception_lineno,
@@ -397,6 +454,8 @@ def _getRaiseExceptionWithTypeCode(raise_type_name, emit, context):
 
         emit("RAISE_EXCEPTION_WITH_VALUE(tstate, &%s);" % exception_state_name)
 
+    _emitExplicitRaiseTracebackCode(exception_state_name, explicit_raise, emit, context)
+
     emit(getFrameVariableTypeDescriptionCode(context))
 
     getGotoCode(context.getExceptionEscape(), emit)
@@ -405,7 +464,9 @@ def _getRaiseExceptionWithTypeCode(raise_type_name, emit, context):
         context.removeCleanupTempName(raise_type_name)
 
 
-def _getRaiseExceptionWithValueCode(raise_type_name, raise_value_name, emit, context):
+def _getRaiseExceptionWithValueCode(
+    raise_type_name, raise_value_name, explicit_raise, emit, context
+):
     (
         exception_state_name,
         _exception_lineno,
@@ -419,6 +480,7 @@ def _getRaiseExceptionWithValueCode(raise_type_name, raise_value_name, emit, con
     emitErrorLineNumberUpdateCode(emit, context)
 
     emit("RAISE_EXCEPTION_WITH_TYPE_AND_VALUE(tstate, &%s);" % (exception_state_name,))
+    _emitExplicitRaiseTracebackCode(exception_state_name, explicit_raise, emit, context)
 
     emit(getFrameVariableTypeDescriptionCode(context))
 
@@ -431,7 +493,7 @@ def _getRaiseExceptionWithValueCode(raise_type_name, raise_value_name, emit, con
 
 
 def _getRaiseExceptionWithTracebackCode(
-    raise_type_name, raise_value_name, raise_tb_name, emit, context
+    raise_type_name, raise_value_name, raise_tb_name, explicit_raise, emit, context
 ):
     (
         exception_state_name,
@@ -449,6 +511,7 @@ def _getRaiseExceptionWithTracebackCode(
     getReferenceExportCode(raise_tb_name, emit, context)
 
     emit("RAISE_EXCEPTION_WITH_TRACEBACK(tstate, &%s);" % (exception_state_name))
+    _emitExplicitRaiseTracebackCode(exception_state_name, explicit_raise, emit, context)
 
     # If anything is wrong, that will be used.
     emitErrorLineNumberUpdateCode(emit, context)

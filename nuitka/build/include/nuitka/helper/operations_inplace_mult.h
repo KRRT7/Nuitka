@@ -124,16 +124,6 @@ extern bool INPLACE_OPERATION_MULT_UNICODE_LONG(PyObject **operand1, PyObject *o
  * 'str'. */
 extern bool INPLACE_OPERATION_MULT_LONG_UNICODE(PyObject **operand1, PyObject *operand2);
 
-#if PYTHON_VERSION >= 0x300
-/* Code referring to "BYTES" corresponds to Python3 'bytes' and "LONG" to Python2 'long', Python3 'int'. */
-extern bool INPLACE_OPERATION_MULT_BYTES_LONG(PyObject **operand1, PyObject *operand2);
-#endif
-
-#if PYTHON_VERSION >= 0x300
-/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "BYTES" to Python3 'bytes'. */
-extern bool INPLACE_OPERATION_MULT_LONG_BYTES(PyObject **operand1, PyObject *operand2);
-#endif
-
 /* Code referring to "TUPLE" corresponds to Python 'tuple' and "LONG" to Python2 'long', Python3 'int'. */
 extern bool INPLACE_OPERATION_MULT_TUPLE_LONG(PyObject **operand1, PyObject *operand2);
 

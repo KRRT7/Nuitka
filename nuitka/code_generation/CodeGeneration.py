@@ -226,6 +226,7 @@ from .IteratorCodes import (
     generateUnpackCheckCode,
     generateUnpackCheckFromIteratedCode,
 )
+from .LineNumberCodes import generateFrameLineUpdateCode
 from .ListCodes import (
     generateBuiltinListCode,
     generateListCreationCode,
@@ -426,7 +427,12 @@ def generateFunctionBodyCode(function_body, context):
             function=function_body,
         )
 
-    needs_exception_exit = function_body.mayRaiseException(BaseException)
+    # Frame tracing calls arbitrary Python code and can raise even for function
+    # bodies whose optimized statements cannot raise by themselves.
+    needs_exception_exit = (
+        function_body.subnode_body is not None
+        or function_body.mayRaiseException(BaseException)
+    )
 
     if function_body.isExpressionGeneratorObjectBody():
         if function_body.subnode_body is not None:
@@ -1080,6 +1086,7 @@ setStatementDispatchDict(
         "STATEMENT_RELEASE_VARIABLE_LOCAL": generateVariableReleaseCode,
         "STATEMENT_RELEASE_VARIABLE_PARAMETER": generateVariableReleaseCode,
         "STATEMENT_EXPRESSION_ONLY": generateExpressionOnlyCode,
+        "STATEMENT_FRAME_LINE_UPDATE": generateFrameLineUpdateCode,
         "STATEMENT_RETURN": generateReturnCode,
         "STATEMENT_RETURN_TRUE": generateReturnConstantCode,
         "STATEMENT_RETURN_FALSE": generateReturnConstantCode,

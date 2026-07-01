@@ -86,7 +86,7 @@ _plain_files = (
     "custom.css",
     "pre-commit",
     "Containerfile",
-    "requirements.txt",
+    "pyproject.toml",
     "requirements-commercial.txt",
     "commercial.nuitka-package.config.yml",
     "runner",
