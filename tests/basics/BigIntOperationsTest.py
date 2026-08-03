@@ -9,6 +9,10 @@ from __future__ import print_function
 a = 10**100
 b = 10**50
 
+# A constant larger than the platform C long range must remain object-backed.
+c_long_overflow = 2**64
+print(c_long_overflow)
+
 # BINARY_OPERATION_SUB_NILONG_NILONG_NILONG
 print(a - b)
 print(b - a)

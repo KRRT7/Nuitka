@@ -7,6 +7,7 @@ from nuitka.code_generation.templates.CodeTemplatesVariables import (
     template_release_object_clear,
     template_release_object_unclear,
 )
+from nuitka.PythonVersions import isPythonValidCLongValue
 
 from ..ErrorCodes import getErrorExitBoolCode, getTakeReferenceCode
 from .CTypeBases import CTypeBase
@@ -185,13 +186,19 @@ class CTypeNuitkaIntOrLongStruct(CTypeBase):
 
         assert type(constant) is int, repr(constant)
 
-        cls.emitVariantAssignmentCode(
-            to_name=to_name,
-            ilong_value_name=context.getConstantCode(constant=constant),
-            int_value=constant,
-            emit=emit,
-            context=context,
-        )
+        ilong_value_name = context.getConstantCode(constant=constant)
+
+        if isPythonValidCLongValue(constant):
+            cls.emitVariantAssignmentCode(
+                to_name=to_name,
+                ilong_value_name=ilong_value_name,
+                int_value=constant,
+                emit=emit,
+                context=context,
+            )
+        else:
+            emit("SET_NILONG_OBJECT_VALUE(&%s, %s);" % (to_name, ilong_value_name))
+            context.transferCleanupTempName(ilong_value_name, to_name)
 
     @classmethod
     def getTakeReferenceCode(cls, value_name, emit):
