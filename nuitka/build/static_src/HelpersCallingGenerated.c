@@ -12815,6 +12815,16 @@ PyObject *CALL_METHOD_WITH_ARGS3(PyThreadState *tstate, PyObject *source, PyObje
 
     CHECK_OBJECTS(args, 3);
 
+    if (source == (PyObject *)&PyBaseObject_Type && PyUnicode_CheckExact(attr_name) &&
+        PyUnicode_CompareWithASCIIString(attr_name, "__setattr__") == 0) {
+        if (PyObject_GenericSetAttr(args[0], args[1], args[2]) < 0) {
+            return NULL;
+        }
+
+        Py_INCREF_IMMORTAL(Py_None);
+        return Py_None;
+    }
+
     PyTypeObject *type = Py_TYPE(source);
 
     if (hasTypeGenericGetAttr(type)) {
