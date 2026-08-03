@@ -2226,6 +2226,11 @@ static PyObject *_BINARY_OPERATION_RSHIFT_OBJECT_OBJECT_OBJECT(PyObject *operand
     CHECK_OBJECT(operand1);
     CHECK_OBJECT(operand2);
 
+#if PYTHON_VERSION >= 0x300
+    if (PyLong_CheckExact(operand1) && PyLong_CheckExact(operand2)) {
+        return BINARY_OPERATION_RSHIFT_OBJECT_LONG_LONG(operand1, operand2);
+    }
+#endif
 #if PYTHON_VERSION < 0x300
     if (PyInt_CheckExact(operand1) && PyInt_CheckExact(operand2)) {
         PyObject *result;

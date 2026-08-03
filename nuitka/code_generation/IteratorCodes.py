@@ -7,6 +7,7 @@ Next variants and unpacking with related checks.
 """
 
 from nuitka.nodes.ConstantRefNodes import makeConstantRefNode
+from nuitka.nodes.shapes.BuiltinTypeShapes import tshape_bytes_iterator
 from nuitka.PythonVersions import python_version
 
 from .CodeHelpers import (
@@ -42,11 +43,20 @@ def generateBuiltinNext1Code(to_name, expression, emit, context):
     with withObjectCodeTemporaryAssignment(
         to_name, "next_value", expression, emit, context
     ) as result_name:
-        # TODO: Make use of "ITERATOR_NEXT_ITERATOR" in case of known type shape
-        # iterator.
+        value_shape = expression.subnode_value.getTypeShape()
+        next_helper = (
+            "ITERATOR_NEXT_BYTES"
+            if value_shape is tshape_bytes_iterator
+            else (
+                "ITERATOR_NEXT_ITERATOR"
+                if value_shape.isShapeIterator()
+                else "ITERATOR_NEXT"
+            )
+        )
+
         emit(
             """\
-%(to_name)s = ITERATOR_NEXT(%(iterator_name)s);
+%(to_name)s = %(next_helper)s(%(iterator_name)s);
 if (%(to_name)s == NULL) {
     FETCH_ERROR_OCCURRED_STATE(tstate, &%(exception_state_name)s);
 
@@ -58,6 +68,7 @@ if (%(to_name)s == NULL) {
             % {
                 "to_name": result_name,
                 "iterator_name": value_name,
+                "next_helper": next_helper,
                 "exception_state_name": exception_state_name,
             }
         )
@@ -119,12 +130,15 @@ def generateBuiltinEnumerate2Code(to_name, expression, emit, context):
 def generateBuiltinZipCode(to_name, expression, emit, context):
     values_name = context.allocateTempName("zip_iterables")
 
-    getTupleCreationCode(
-        to_name=values_name,
-        elements=expression.subnode_values,
-        emit=emit,
-        context=context,
-    )
+    if len(expression.subnode_values) == 0:
+        emit("%s = MAKE_TUPLE_EMPTY(tstate, 0);" % (values_name,))
+    else:
+        getTupleCreationCode(
+            to_name=values_name,
+            elements=expression.subnode_values,
+            emit=emit,
+            context=context,
+        )
 
     with withObjectCodeTemporaryAssignment(
         to_name, "zip_value", expression, emit, context
@@ -141,36 +155,14 @@ def generateBuiltinZipCode(to_name, expression, emit, context):
         context.addCleanupTempName(result_name)
 
 
-def generateBuiltinZip310Code(to_name, expression, emit, context):
-    values_name = context.allocateTempName("zip_iterables")
-
-    getTupleCreationCode(
-        to_name=values_name,
-        elements=expression.subnode_values,
-        emit=emit,
-        context=context,
-    )
-
-    strict_name = context.allocateTempName("zip_strict")
-
-    generateExpressionCode(
-        to_name=strict_name,
-        expression=expression.subnode_strict,
-        emit=emit,
-        context=context,
-    )
-
+def generateBuiltinZip0Code(to_name, expression, emit, context):
     with withObjectCodeTemporaryAssignment(
         to_name, "zip_value", expression, emit, context
     ) as result_name:
-        emit(
-            "%s = BUILTIN_ZIP310(tstate, %s, %s);"
-            % (result_name, values_name, strict_name)
-        )
+        emit("%s = BUILTIN_ZIP0(tstate);" % (result_name,))
 
         getErrorExitCode(
             check_name=result_name,
-            release_names=(values_name, strict_name),
             emit=emit,
             context=context,
         )
@@ -180,7 +172,12 @@ def generateBuiltinZip310Code(to_name, expression, emit, context):
 
 def getBuiltinLoopBreakNextCode(expression, to_name, value, emit, context):
     if expression.getTypeShape().isShapeIterator():
-        emit("%s = %s;" % (to_name, "ITERATOR_NEXT_ITERATOR(%s)" % value))
+        next_helper = (
+            "ITERATOR_NEXT_BYTES"
+            if expression.getTypeShape() is tshape_bytes_iterator
+            else "ITERATOR_NEXT_ITERATOR"
+        )
+        emit("%s = %s;" % (to_name, "%s(%s)" % (next_helper, value)))
     else:
         emit("%s = %s;" % (to_name, "ITERATOR_NEXT(%s)" % value))
 
@@ -312,24 +309,37 @@ def generateUnpackCheckCode(statement, emit, context):
 
 
 def generateUnpackCheckFromIteratedCode(statement, emit, context):
+    iteration_length_name = context.allocateTempName("iteration_length", unique=True)
+
+    generateExpressionCode(
+        to_name=iteration_length_name,
+        expression=statement.subnode_iterated_length,
+        emit=emit,
+        context=context,
+    )
+
     to_name = context.getBoolResName()
 
-    # TODO: Have a way to pass a C integer value to getRichComparisonCode
-    # without creating a temporary constant ref node.
     getRichComparisonCode(
         to_name=to_name,
         comparator="Gt",
         left=statement.subnode_iterated_length,
+        # Creating a temporary node on the fly, knowing it's not used for many
+        # things. TODO: Once we have value shapes, we ought to use those.
         right=makeConstantRefNode(
             constant=statement.count,
             source_ref=statement.source_ref,
             user_provided=True,
         ),
+        # We know that cannot fail.
         needs_check=False,
         source_ref=statement.source_ref,
         emit=emit,
         context=context,
     )
+
+    # TODO: Why is this necessary, to_name doesn't allow storage.
+    context.removeCleanupTempName(to_name)
 
     # TODO: This exception ought to have a creator function.
     emit("""

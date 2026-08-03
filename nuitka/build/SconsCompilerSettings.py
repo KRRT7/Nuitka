@@ -1148,6 +1148,7 @@ def createNuitkaSconsEnvironment(needs_source_dir=True):
 
     # PGO mode: Use profile guided optimization of C compiler if available.
     pgo_mode = getArgumentDefaulted("pgo_mode", "no")
+    pgo_profile = getArgumentDefaulted("pgo_profile", "")
 
     # Console mode specified
     console_mode = getArgumentDefaulted("console_mode", "attach")
@@ -1274,6 +1275,7 @@ def createNuitkaSconsEnvironment(needs_source_dir=True):
     env.lto_mode = lto_mode
     env.reproducible_mode = reproducible_mode
     env.pgo_mode = pgo_mode
+    env.pgo_profile = pgo_profile
     env.job_count = job_count
     env.frozen_modules = frozen_modules
     env.uninstalled_python = uninstalled_python
@@ -1758,7 +1760,10 @@ def _enablePgoSettings(env):
         env.progressbar_name = "Profile"
         env.Append(CPPDEFINES=["_NUITKA_PGO_GENERATE"])
 
-        if env.gcc_mode or env.zig_mode:
+        if env.clang_mode:
+            env.Append(CCFLAGS=["-fprofile-instr-generate"])
+            env.Append(LINKFLAGS=["-fprofile-instr-generate"])
+        elif env.gcc_mode or env.zig_mode:
             env.Append(CCFLAGS=["-fprofile-generate"])
             env.Append(LINKFLAGS=["-fprofile-generate"])
         elif env.msvc_mode:
@@ -1776,7 +1781,15 @@ def _enablePgoSettings(env):
 
         env.Append(CPPDEFINES=["_NUITKA_PGO_USE"])
 
-        if env.gcc_mode or env.zig_mode:
+        if env.clang_mode:
+            if not env.pgo_profile:
+                return scons_logger.sysexit(
+                    "Error, missing Clang PGO profile data path."
+                )
+
+            env.Append(CCFLAGS=["-fprofile-instr-use=%s" % env.pgo_profile])
+            env.Append(LINKFLAGS=["-fprofile-instr-use=%s" % env.pgo_profile])
+        elif env.gcc_mode or env.zig_mode:
             env.Append(CCFLAGS=["-fprofile-use"])
             env.Append(LINKFLAGS=["-fprofile-use"])
         elif env.msvc_mode:

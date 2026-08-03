@@ -112,7 +112,10 @@ class ExpressionBuiltinIter1(ExpressionBuiltinSingleArgBase):
         return self.subnode_value.canPredictIterationValues()
 
     def getIterationValue(self, element_index):
-        return self.subnode_value.getIterationValue(element_index)
+        if hasattr(self.subnode_value, "getIterationValue"):
+            return self.subnode_value.getIterationValue(element_index)
+
+        return None
 
     def getIterationHandle(self):
         return self.subnode_value.getIterationHandle()
@@ -162,6 +165,13 @@ class ExpressionBuiltinEnumerateMixin(object):
     def getTypeShape():
         return tshape_iterator
 
+    def getEnumerateChildren(self):
+        return (self.subnode_sequence,)
+
+    @staticmethod
+    def getEnumerateStartInteger():
+        return 0
+
     def computeExpression(self, trace_collection):
         self.onContentEscapes(trace_collection)
 
@@ -182,6 +192,91 @@ class ExpressionBuiltinEnumerateMixin(object):
     def getIterationLength(self):
         return self.subnode_sequence.getIterationLength()
 
+    def canPredictIterationValues(self):
+        return (
+            self.subnode_sequence.canPredictIterationValues()
+            and self.getEnumerateStartInteger() is not None
+        )
+
+    def getIterationValue(self, element_index):
+        start_value = self.getEnumerateStartInteger()
+
+        if start_value is None:
+            return None
+
+        if not hasattr(self.subnode_sequence, "getIterationValue"):
+            return None
+
+        sequence_value = self.subnode_sequence.getIterationValue(element_index)
+
+        if sequence_value is None:
+            return None
+
+        from .ConstantRefNodes import makeConstantRefNode
+        from .ContainerMakingNodes import makeExpressionMakeTupleOrConstant
+
+        return makeExpressionMakeTupleOrConstant(
+            elements=(
+                makeConstantRefNode(
+                    constant=start_value + element_index,
+                    source_ref=self.source_ref,
+                ),
+                sequence_value,
+            ),
+            user_provided=False,
+            source_ref=self.source_ref,
+        )
+
+    def getIterationHandle(self):
+        start_value = self.getEnumerateStartInteger()
+
+        if start_value is None:
+            return None
+
+        sequence_handle = self.subnode_sequence.getIterationHandle()
+
+        if sequence_handle is None:
+            return None
+
+        from .IterationHandles import EnumerateIterationHandle
+
+        return EnumerateIterationHandle(
+            iteration_handle=sequence_handle,
+            start=start_value,
+            source_ref=self.source_ref,
+        )
+
+    def computeExpressionNext1(self, next_node, trace_collection):
+        sequence = self.subnode_sequence
+        start_value = self.getEnumerateStartInteger()
+
+        if (
+            start_value is not None
+            and sequence.isKnownToBeIterableAtMin(1)
+            and sequence.canPredictIterationValues()
+        ):
+            result = self.getIterationValue(0)
+
+            if result is not None:
+                result = wrapExpressionWithSideEffects(
+                    side_effects=self.getEnumerateChildren(),
+                    old_node=self,
+                    new_node=result,
+                )
+
+                return False, (
+                    result,
+                    "new_expression",
+                    "Predicted 'next' value from built-in enumerate.",
+                )
+
+        self.onContentEscapes(trace_collection)
+
+        trace_collection.onControlFlowEscape(self)
+        trace_collection.onExceptionRaiseExit(BaseException)
+
+        return True, (next_node, None, None)
+
     def mayRaiseException(self, exception_type):
         sequence = self.subnode_sequence
 
@@ -190,6 +285,10 @@ class ExpressionBuiltinEnumerateMixin(object):
 
         if not sequence.getTypeShape().hasShapeSlotIter():
             return True
+
+        for child in self.getEnumerateChildren():
+            if child.mayRaiseException(exception_type):
+                return True
 
         return False
 
@@ -297,7 +396,7 @@ class ExpressionBuiltinZipMixin(object):
             if value.mayRaiseException(exception_type):
                 return True
 
-            if value.getTypeShape().hasShapeSlotIter() is not True:
+            if value.getTypeShape().hasShapeSlotIter() is False:
                 return True
 
         return False
@@ -347,6 +446,44 @@ class ExpressionBuiltinZip310(
             return True
 
         return ExpressionBuiltinZipMixin.mayRaiseException(self, exception_type)
+
+
+class ExpressionBuiltinZip0(ExpressionBase):
+    kind = "EXPRESSION_BUILTIN_ZIP0"
+
+    __slots__ = ()
+
+    def finalize(self):
+        del self.parent
+
+    @staticmethod
+    def getTypeShape():
+        return tshape_iterator
+
+    def computeExpressionRaw(self, trace_collection):
+        return self, None, None
+
+    def computeExpression(self, trace_collection):
+        self.onContentEscapes(trace_collection)
+
+        trace_collection.onControlFlowEscape(self)
+        trace_collection.onExceptionRaiseExit(BaseException)
+
+        return self, None, None
+
+    def getIterationLength(self):
+        return 0
+
+    def computeExpressionNext1(self, next_node, trace_collection):
+        self.onContentEscapes(trace_collection)
+
+        trace_collection.onControlFlowEscape(self)
+        trace_collection.onExceptionRaiseExit(BaseException)
+
+        return True, (next_node, None, None)
+
+    def mayRaiseException(self, exception_type):
+        return False
 
 
 class ExpressionBuiltinIterForUnpack(ExpressionBuiltinIter1):

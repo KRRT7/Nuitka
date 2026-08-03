@@ -56,6 +56,13 @@ static {{ target.getTypeDecl() }} _BINARY_OPERATION_{{op_code}}_{{target.getHelp
     {{ right.getCheckValueCode("operand2") }}
 
 {% if left.type_name == "object" and right.type_name == "object" %}
+{% if target.getHelperCodeName() == "OBJECT" and op_code in ("ADD", "SUB", "MULT", "MOD", "FLOORDIV", "TRUEDIV", "LSHIFT", "RSHIFT", "BITAND", "BITOR", "BITXOR", "POW") %}
+#if PYTHON_VERSION >= 0x300
+    if (PyLong_CheckExact(operand1) && PyLong_CheckExact(operand2)) {
+        return BINARY_OPERATION_{{op_code}}_{{target.getHelperCodeName()}}_LONG_LONG(operand1, operand2);
+    }
+#endif
+{% endif %}
     {# CPython2 treats integer values with fast path. #}
 #if PYTHON_VERSION < 0x300
     if ({{ left.getIntCheckExpression("operand1") }} && {{ right.getIntCheckExpression("operand2") }}) {

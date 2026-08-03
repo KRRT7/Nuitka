@@ -3,6 +3,13 @@
 {% macro comparison_fallback(op_code, target, left, right, type1, type2, operand1, operand2) %}
 {# For non-identical types, or for "OBJECT_OBJECT", do the full work. #}
 {% if left != right or left.type_name == "object" %}
+{% if left.type_name == "object" == right.type_name and target.getHelperCodeName() == "OBJECT" and op_code in ("EQ", "LE", "LT") %}
+#if PYTHON_VERSION >= 0x300
+    if (PyLong_CheckExact(operand1) && PyLong_CheckExact(operand2)) {
+        return RICH_COMPARE_{{op_code}}_{{target.getHelperCodeName()}}_LONG_LONG(operand1, operand2);
+    }
+#endif
+{% endif %}
 {# CPython2 treats integer values with fast path. #}
 {% if left.type_name == "object" == right.type_name %}
 #if PYTHON_VERSION < 0x300

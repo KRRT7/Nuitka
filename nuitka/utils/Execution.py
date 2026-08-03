@@ -238,7 +238,10 @@ def executeCompiledBinary(args, shell, logger):
     # those explicitly set for the binary's use.
     env = {}
     for key, value in os.environ.items():
-        if not key.startswith("NUITKA_") or key == "NUITKA_PGO_OUTPUT":
+        if not key.startswith("NUITKA_") or key in (
+            "NUITKA_PGO_OUTPUT",
+            "LLVM_PROFILE_FILE",
+        ):
             env[key] = value
 
     try:

@@ -28,7 +28,12 @@ from .templates.CodeTemplatesExceptions import (
 
 def getErrorExitReleaseCode(context):
     temp_release = "\n".join(
-        "Py_DECREF(%s);" % tmp_name for tmp_name in context.getCleanupTempNames()
+        (
+            "RELEASE_NILONG_VALUE(&%s);" % tmp_name
+            if tmp_name.c_type == "nuitka_ilong"
+            else "Py_DECREF(%s);" % tmp_name
+        )
+        for tmp_name in context.getCleanupTempNames()
     )
 
     (

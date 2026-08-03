@@ -7,6 +7,7 @@ There is special handling for integer indexes, which can be dealt with
 much faster than general subscript lookups.
 """
 
+from nuitka.nodes.shapes.BuiltinTypeShapes import tshape_int_or_long
 from nuitka.States import states
 
 from .CodeHelpers import (
@@ -47,7 +48,11 @@ def generateAssignmentSubscriptCode(statement, emit, context):
         to_name=subscribed_name, expression=subscribed, emit=emit, context=context
     )
 
-    subscript_name = context.allocateTempName("ass_subscript")
+    if not integer_subscript and subscript.getTypeShape() is tshape_int_or_long:
+        subscript_name = context.allocateTempName("ass_subscript_value", "nuitka_ilong")
+    else:
+        subscript_name = context.allocateTempName("ass_subscript")
+
     generateExpressionCode(
         to_name=subscript_name, expression=subscript, emit=emit, context=context
     )
@@ -62,6 +67,14 @@ def generateAssignmentSubscriptCode(statement, emit, context):
                 subscribed_name=subscribed_name,
                 subscript_name=subscript_name,
                 subscript_value=subscript_constant,
+                value_name=value_name,
+                emit=emit,
+                context=context,
+            )
+        elif subscript_name.c_type == "nuitka_ilong":
+            _getNuitkaIntOrLongSubscriptAssignmentCode(
+                target_name=subscribed_name,
+                subscript_name=subscript_name,
                 value_name=value_name,
                 emit=emit,
                 context=context,
@@ -108,11 +121,18 @@ def generateSubscriptLookupCode(to_name, expression, emit, context):
         expression=subscribed, emit=emit, context=context
     )
 
-    subscript_name = generateChildExpressionCode(
-        expression=subscript, emit=emit, context=context
-    )
-
     subscript_constant, integer_subscript = decideIntegerSubscript(subscript)
+
+    if not integer_subscript and subscript.getTypeShape() is tshape_int_or_long:
+        subscript_name = context.allocateTempName("subscript_value", "nuitka_ilong")
+
+        generateExpressionCode(
+            to_name=subscript_name, expression=subscript, emit=emit, context=context
+        )
+    else:
+        subscript_name = generateChildExpressionCode(
+            expression=subscript, emit=emit, context=context
+        )
 
     with withObjectCodeTemporaryAssignment(
         to_name, "subscript_result", expression, emit, context
@@ -123,6 +143,14 @@ def generateSubscriptLookupCode(to_name, expression, emit, context):
                 subscribed_name=subscribed_name,
                 subscript_name=subscript_name,
                 subscript_value=subscript_constant,
+                emit=emit,
+                context=context,
+            )
+        elif subscript_name.c_type == "nuitka_ilong":
+            _getNuitkaIntOrLongSubscriptLookupCode(
+                to_name=value_name,
+                subscribed_name=subscribed_name,
+                subscript_name=subscript_name,
                 emit=emit,
                 context=context,
             )
@@ -182,6 +210,26 @@ def _getIntegerSubscriptLookupCode(
     context.addCleanupTempName(to_name)
 
 
+def _getNuitkaIntOrLongSubscriptLookupCode(
+    to_name, subscribed_name, subscript_name, emit, context
+):
+    emit("assert(%s.validity != NUITKA_ILONG_UNASSIGNED);" % subscript_name)
+
+    emit(
+        "%s = LOOKUP_SUBSCRIPT_NILONG(tstate, %s, &%s);"
+        % (to_name, subscribed_name, subscript_name)
+    )
+
+    getErrorExitCode(
+        check_name=to_name,
+        release_names=(subscribed_name, subscript_name),
+        emit=emit,
+        context=context,
+    )
+
+    context.addCleanupTempName(to_name)
+
+
 def _getSubscriptLookupCode(to_name, subscript_name, subscribed_name, emit, context):
     emit(
         "%s = LOOKUP_SUBSCRIPT(tstate, %s, %s);"
@@ -223,6 +271,26 @@ def _getSubscriptAssignmentCode(target_name, subscript_name, value_name, emit, c
 
     emit(
         "%s = SET_SUBSCRIPT(tstate, %s, %s, %s);"
+        % (res_name, target_name, subscript_name, value_name)
+    )
+
+    getErrorExitBoolCode(
+        condition="%s == false" % res_name,
+        release_names=(target_name, subscript_name, value_name),
+        emit=emit,
+        context=context,
+    )
+
+
+def _getNuitkaIntOrLongSubscriptAssignmentCode(
+    target_name, subscript_name, value_name, emit, context
+):
+    emit("assert(%s.validity != NUITKA_ILONG_UNASSIGNED);" % subscript_name)
+
+    res_name = context.getBoolResName()
+
+    emit(
+        "%s = SET_SUBSCRIPT_NILONG(tstate, %s, &%s, %s);"
         % (res_name, target_name, subscript_name, value_name)
     )
 

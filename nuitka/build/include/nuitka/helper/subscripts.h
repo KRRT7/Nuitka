@@ -190,6 +190,28 @@ NUITKA_MAY_BE_UNUSED static PyObject *LOOKUP_SUBSCRIPT(PyThreadState *tstate, Py
 #if _NUITKA_EXPERIMENTAL_DISABLE_SUBSCRIPT_OPT
     return PyObject_GetItem(source, subscript);
 #else
+    if (Py_TYPE(source) == &PyBytes_Type &&
+        (PyLong_CheckExact(subscript) || subscript == Py_True || subscript == Py_False)) {
+        Py_ssize_t index = PyNumber_AsSsize_t(subscript, NULL);
+
+        if (index == -1 && HAS_ERROR_OCCURRED(tstate)) {
+            return NULL;
+        }
+
+        Py_ssize_t size = PyBytes_GET_SIZE(source);
+
+        if (index < 0) {
+            index += size;
+        }
+
+        if (index < 0 || index >= size) {
+            SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "index out of range");
+            return NULL;
+        }
+
+        return PyLong_FromLong((unsigned char)PyBytes_AS_STRING(source)[index]);
+    }
+
     PyTypeObject *type = Py_TYPE(source);
     PyMappingMethods *tp_as_mapping = type->tp_as_mapping;
 
@@ -250,6 +272,132 @@ NUITKA_MAY_BE_UNUSED static PyObject *LOOKUP_SUBSCRIPT(PyThreadState *tstate, Py
 
     formatNotSubscriptableError(source);
     return NULL;
+#endif
+}
+
+NUITKA_MAY_BE_UNUSED static PyObject *LOOKUP_SUBSCRIPT_NILONG(PyThreadState *tstate, PyObject *source,
+                                                              nuitka_ilong *subscript) {
+    CHECK_OBJECT(source);
+    assert(subscript->validity != NUITKA_ILONG_UNASSIGNED);
+
+#if _NUITKA_EXPERIMENTAL_DISABLE_SUBSCRIPT_OPT
+    ENFORCE_NILONG_OBJECT_VALUE(subscript);
+
+    return PyObject_GetItem(source, subscript->python_value);
+#else
+    if (IS_NILONG_C_VALUE_VALID(subscript)) {
+        Py_ssize_t int_subscript = subscript->c_value;
+
+        if (Py_TYPE(source) == &PyMemoryView_Type) {
+            Py_buffer *view = PyMemoryView_GET_BUFFER(source);
+
+            if (view->ndim == 1 && view->itemsize == 1 && view->format != NULL && view->format[0] == 'B' &&
+                view->format[1] == '\0' && view->strides[0] == 1 && view->suboffsets == NULL) {
+                Py_ssize_t memoryview_size = view->len;
+
+                if (int_subscript < 0) {
+                    int_subscript += memoryview_size;
+                }
+
+                if (int_subscript < 0 || int_subscript >= memoryview_size) {
+                    SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "index out of bounds");
+                    return NULL;
+                }
+
+                return PyLong_FromLong((unsigned char)((const char *)view->buf)[int_subscript]);
+            }
+        }
+
+        PyTypeObject *type = Py_TYPE(source);
+        PyMappingMethods *tp_as_mapping = type->tp_as_mapping;
+
+        if (tp_as_mapping && tp_as_mapping->mp_subscript) {
+            if (Py_TYPE(source) == &PyBytes_Type) {
+                Py_ssize_t bytes_size = PyBytes_GET_SIZE(source);
+
+                if (int_subscript < 0) {
+                    int_subscript += bytes_size;
+                }
+
+                if (int_subscript < 0 || int_subscript >= bytes_size) {
+                    SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "index out of range");
+                    return NULL;
+                }
+
+                return PyLong_FromLong((unsigned char)PyBytes_AS_STRING(source)[int_subscript]);
+            } else if (Py_TYPE(source) == &PyByteArray_Type) {
+                Py_ssize_t bytearray_size = PyByteArray_GET_SIZE(source);
+
+                if (int_subscript < 0) {
+                    int_subscript += bytearray_size;
+                }
+
+                if (int_subscript < 0 || int_subscript >= bytearray_size) {
+                    SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "bytearray index out of range");
+                    return NULL;
+                }
+
+                return PyLong_FromLong((unsigned char)PyByteArray_AS_STRING(source)[int_subscript]);
+            } else if (PyList_CheckExact(source)) {
+                Py_ssize_t list_size = PyList_GET_SIZE(source);
+
+                if (int_subscript < 0) {
+                    if (-int_subscript > list_size) {
+                        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "list index out of range");
+                        return NULL;
+                    }
+
+                    int_subscript += list_size;
+                } else {
+                    if (int_subscript >= list_size) {
+                        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "list index out of range");
+                        return NULL;
+                    }
+                }
+
+                PyObject *result = ((PyListObject *)source)->ob_item[int_subscript];
+
+                Py_INCREF(result);
+                return result;
+            }
+#if PYTHON_VERSION < 0x300
+            else if (PyString_CheckExact(source)) {
+                Py_ssize_t string_size = PyString_GET_SIZE(source);
+
+                if (int_subscript < 0) {
+                    if (-int_subscript > string_size) {
+                        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "string index out of range");
+                        return NULL;
+                    }
+
+                    int_subscript += string_size;
+                } else {
+                    if (int_subscript >= string_size) {
+                        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "string index out of range");
+                        return NULL;
+                    }
+                }
+
+                unsigned char c = ((PyStringObject *)source)->ob_sval[int_subscript];
+                return STRING_FROM_CHAR(c);
+            }
+#else
+            else if (PyUnicode_CheckExact(source)) {
+                if (int_subscript < 0) {
+                    int_subscript += PyUnicode_GET_LENGTH(source);
+                }
+
+                return type->tp_as_sequence->sq_item(source, int_subscript);
+            }
+#endif
+        } else if (HAS_SEQUENCE_ITEM_SLOT(type)) {
+            return SEQUENCE_GET_ITEM_CONST(source, int_subscript);
+        }
+    }
+
+    ENFORCE_NILONG_OBJECT_VALUE(subscript);
+
+    return LOOKUP_SUBSCRIPT(tstate, source, subscript->python_value);
 #endif
 }
 
@@ -371,6 +519,50 @@ NUITKA_MAY_BE_UNUSED static bool SET_SUBSCRIPT(PyThreadState *tstate, PyObject *
     }
 
     return true;
+#endif
+}
+
+NUITKA_MAY_BE_UNUSED static bool SET_SUBSCRIPT_NILONG(PyThreadState *tstate, PyObject *target, nuitka_ilong *subscript,
+                                                      PyObject *value) {
+    CHECK_OBJECT(target);
+    CHECK_OBJECT(value);
+    assert(subscript->validity != NUITKA_ILONG_UNASSIGNED);
+
+#if _NUITKA_EXPERIMENTAL_DISABLE_SUBSCRIPT_OPT
+    ENFORCE_NILONG_OBJECT_VALUE(subscript);
+    return SET_SUBSCRIPT(tstate, target, subscript->python_value, value);
+#else
+    if (IS_NILONG_C_VALUE_VALID(subscript) && Py_TYPE(target) == &PyByteArray_Type &&
+        (PyLong_CheckExact(value) || value == Py_True || value == Py_False)) {
+        Py_ssize_t index = subscript->c_value;
+        Py_ssize_t size = PyByteArray_GET_SIZE(target);
+
+        if (index < 0) {
+            index += size;
+        }
+
+        if (index < 0 || index >= size) {
+            SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_IndexError, "bytearray index out of range");
+            return false;
+        }
+
+        long byte_value = PyLong_AsLong(value);
+
+        if (byte_value == -1 && HAS_ERROR_OCCURRED(tstate)) {
+            return false;
+        }
+
+        if (byte_value < 0 || byte_value > 255) {
+            SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_ValueError, "byte must be in range(0, 256)");
+            return false;
+        }
+
+        PyByteArray_AS_STRING(target)[index] = (char)byte_value;
+        return true;
+    }
+
+    ENFORCE_NILONG_OBJECT_VALUE(subscript);
+    return SET_SUBSCRIPT(tstate, target, subscript->python_value, value);
 #endif
 }
 

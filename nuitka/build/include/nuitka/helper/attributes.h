@@ -72,6 +72,114 @@ static inline bool Nuitka_Descr_IsData(PyObject *object) { return Py_TYPE(object
 #define Nuitka_Descr_IsData(object) PyDescr_IsData(object)
 #endif
 
+// A cache entry is deliberately only metadata. It never owns an attribute
+// value, so cached lookups cannot keep instances or descriptors alive.
+//
+// The layout assumptions are restricted to CPython 3.12 and 3.13 GIL builds.
+// Other interpreters and layouts use the normal attribute lookup path.
+#if PYTHON_VERSION >= 0x3c0 && PYTHON_VERSION < 0x3e0 && !defined(Py_GIL_DISABLED)
+
+typedef struct {
+    unsigned int type_version;
+    int offset;
+} Nuitka_AttributeCache;
+
+#define NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED 0u
+#define NUITKA_ATTRIBUTE_CACHE_UNCACHEABLE 0xFFFFFFFFu
+#define NUITKA_ATTRIBUTE_CACHE_CLASS_OFFSET -2
+#define NUITKA_ATTRIBUTE_CACHE_DICT_OFFSET -3
+#define NUITKA_DICT_VALUES_HEADER_SIZE ((int)sizeof(void *))
+
+static inline bool Nuitka_AttributeCache_UsesInlineValues(PyObject *object) {
+#if PYTHON_VERSION >= 0x3d0
+    // In 3.13, a non-NULL pre-header dictionary means that the instance has
+    // transitioned from inline values to a combined dictionary.
+    return *(PyObject **)((char *)object - 3 * (int)sizeof(PyObject *)) == NULL;
+#else
+    // In 3.12, the values pointer becomes NULL after that transition. The
+    // inline values must also be embedded immediately after the object.
+    PyTypeObject *type = Py_TYPE(object);
+    return *(void **)((char *)object - (int)sizeof(void *)) == (void *)((char *)object + type->tp_basicsize);
+#endif
+}
+
+static inline PyObject *Nuitka_AttributeCache_Get(Nuitka_AttributeCache *cache, PyObject *object) {
+    unsigned int type_version = cache->type_version;
+
+    if (type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED || type_version == NUITKA_ATTRIBUTE_CACHE_UNCACHEABLE) {
+        return NULL;
+    }
+
+    PyTypeObject *type = Py_TYPE(object);
+
+    if (type_version != (unsigned int)type->tp_version_tag) {
+        cache->type_version = NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED;
+        return NULL;
+    }
+
+    if (cache->offset == NUITKA_ATTRIBUTE_CACHE_CLASS_OFFSET) {
+        Py_INCREF(type);
+        return (PyObject *)type;
+    }
+
+    if (cache->offset == NUITKA_ATTRIBUTE_CACHE_DICT_OFFSET) {
+#if PYTHON_VERSION >= 0x3d0
+        PyObject *dict = *(PyObject **)((char *)object - 3 * sizeof(PyObject *));
+#else
+        PyObject *dict = *(PyObject **)((char *)object - 2 * sizeof(PyObject *));
+#endif
+        if (dict == NULL) {
+            return NULL;
+        }
+
+        Py_INCREF(dict);
+        return dict;
+    }
+
+    if (cache->offset < 0 || !Nuitka_AttributeCache_UsesInlineValues(object)) {
+        return NULL;
+    }
+
+    PyObject *value = *(PyObject **)((char *)object + (unsigned int)cache->offset);
+
+    if (value == NULL) {
+        return NULL;
+    }
+
+    Py_INCREF(value);
+    return value;
+}
+
+static inline int Nuitka_AttributeCache_Has(Nuitka_AttributeCache *cache, PyObject *object) {
+    unsigned int type_version = cache->type_version;
+
+    if (type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED || type_version == NUITKA_ATTRIBUTE_CACHE_UNCACHEABLE) {
+        return -1;
+    }
+
+    PyTypeObject *type = Py_TYPE(object);
+
+    if (type_version != (unsigned int)type->tp_version_tag) {
+        cache->type_version = NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED;
+        return -1;
+    }
+
+    if (cache->offset == NUITKA_ATTRIBUTE_CACHE_CLASS_OFFSET || cache->offset == NUITKA_ATTRIBUTE_CACHE_DICT_OFFSET) {
+        return 1;
+    }
+
+    if (cache->offset < 0 || !Nuitka_AttributeCache_UsesInlineValues(object)) {
+        return -1;
+    }
+
+    return *(PyObject **)((char *)object + (unsigned int)cache->offset) != NULL;
+}
+
+extern void Nuitka_AttributeCache_Fill(Nuitka_AttributeCache *cache, PyObject *object, PyObject *attribute_name,
+                                       PyObject *attribute_value);
+
+#endif
+
 #endif
 
 //     Part of "Nuitka", an optimizing Python compiler that is compatible and

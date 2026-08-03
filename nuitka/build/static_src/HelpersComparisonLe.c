@@ -48,6 +48,11 @@ static bool COMPARE_LE_CBOOL_INT_INT(PyObject *operand1, PyObject *operand2) {
 /* Code referring to "OBJECT" corresponds to any Python object and "OBJECT" to any Python object. */
 PyObject *RICH_COMPARE_LE_OBJECT_OBJECT_OBJECT(PyObject *operand1, PyObject *operand2) {
 
+#if PYTHON_VERSION >= 0x300
+    if (PyLong_CheckExact(operand1) && PyLong_CheckExact(operand2)) {
+        return RICH_COMPARE_LE_OBJECT_LONG_LONG(operand1, operand2);
+    }
+#endif
 #if PYTHON_VERSION < 0x300
     if (PyInt_CheckExact(operand1) && PyInt_CheckExact(operand2)) {
         return COMPARE_LE_OBJECT_INT_INT(operand1, operand2);

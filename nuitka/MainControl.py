@@ -10,6 +10,7 @@ a distribution folder.
 
 """
 
+import glob
 import os
 import sys
 
@@ -172,6 +173,7 @@ from nuitka.tree.ReformulationMultidist import createMultidistMainSourceCode
 from nuitka.utils.Distributions import getDistribution, getDistributionName
 from nuitka.utils.Execution import (
     executeCompiledBinary,
+    executeToolChecked,
     withEnvironmentVarOverridden,
     wrapCommandForDebuggerForExec,
 )
@@ -671,9 +673,45 @@ def _runCPgoBinary():
         "Running created binary to produce C level PGO information:", style="blue"
     )
 
-    if getSconsCompilerUsed(
+    compiler_used = getSconsCompilerUsed(
         OutputDirectories.getSourceDirectoryPath(onefile=False, create=False)
-    ) in ("MSVC", "ClangCL"):
+    )
+
+    if compiler_used == "Clang":
+        source_dir = OutputDirectories.getSourceDirectoryPath(
+            onefile=False, create=False
+        )
+        profile_pattern = getNormalizedPathJoin(source_dir, "nuitka-pgo-%p.profraw")
+        profile_data = getNormalizedPathJoin(source_dir, "nuitka-pgo.profdata")
+
+        with withEnvironmentVarOverridden("LLVM_PROFILE_FILE", profile_pattern):
+            exit_code_pgo = _runPgoBinary()
+
+        profile_files = sorted(glob.glob(profile_pattern.replace("%p", "*")))
+        if exit_code_pgo == 0 and profile_files:
+            llvm_profdata_command = (
+                ["xcrun", "llvm-profdata"] if isMacOS() else ["llvm-profdata"]
+            )
+            executeToolChecked(
+                logger=pgo_logger,
+                command=llvm_profdata_command
+                + [
+                    "merge",
+                    "-output",
+                    profile_data,
+                ]
+                + profile_files,
+                absence_message="Error, LLVM profile tool 'llvm-profdata' is not available.",
+                stderr_is_fatal=False,
+            )
+
+        pgo_data_collected = os.path.exists(profile_data)
+        if pgo_data_collected:
+            pgo_logger.info(
+                "Successfully collected C level PGO information.", style="blue"
+            )
+            return profile_data
+    elif compiler_used in ("MSVC", "ClangCL"):
         msvc_pgc_filename = _deleteMsvcPGOFiles(pgo_mode="generate")
 
         with withEnvironmentVarOverridden(
@@ -710,6 +748,7 @@ Error, no C PGO compiled program did not produce expected information, \
 did the created binary run at all?""")
 
     pgo_logger.info("Successfully collected C level PGO information.", style="blue")
+    return None
 
 
 def _runPythonPgoBinary():
@@ -947,7 +986,9 @@ def runSconsBackend():
 
             # Need to make it usable before executing it.
             executePostProcessing(scons_options["result_exe"])
-            _runCPgoBinary()
+            pgo_profile = _runCPgoBinary()
+            if pgo_profile is not None:
+                scons_options["pgo_profile"] = pgo_profile
             scons_options["pgo_mode"] = "use"
 
     applyPreprocessorSymbols(scons_options, onefile=False)

@@ -50,6 +50,33 @@ typedef struct {
     PyObject *it_seq;
 } seqiterobject;
 
+typedef struct {
+    PyObject_HEAD Py_ssize_t it_index;
+    PyObject *it_seq;
+} bytesiterobject;
+
+NUITKA_MAY_BE_UNUSED static PyObject *ITERATOR_NEXT_BYTES(PyObject *iterator) {
+    CHECK_OBJECT(iterator);
+    assert(Py_TYPE(iterator) == &PyBytesIter_Type);
+
+    bytesiterobject *bytes_iterator = (bytesiterobject *)iterator;
+    PyObject *sequence = bytes_iterator->it_seq;
+
+    if (sequence == NULL) {
+        return NULL;
+    }
+
+    Py_ssize_t index = bytes_iterator->it_index++;
+
+    if (index < PyBytes_GET_SIZE(sequence)) {
+        return PyLong_FromLong((unsigned char)PyBytes_AS_STRING(sequence)[index]);
+    }
+
+    Py_CLEAR(bytes_iterator->it_seq);
+
+    return NULL;
+}
+
 NUITKA_MAY_BE_UNUSED static PyObject *MAKE_ITERATOR_INFALLIBLE(PyObject *iterated) {
     CHECK_OBJECT(iterated);
 
@@ -175,6 +202,11 @@ NUITKA_MAY_BE_UNUSED static PyObject *MAKE_UNPACK_ITERATOR(PyObject *iterated) {
 
 NUITKA_MAY_BE_UNUSED static PyObject *ITERATOR_NEXT_ITERATOR(PyObject *iterator) {
     CHECK_OBJECT(iterator);
+
+    if (Py_TYPE(iterator) == &PyBytesIter_Type) {
+        return ITERATOR_NEXT_BYTES(iterator);
+    }
+
     iternextfunc iternext = Py_TYPE(iterator)->tp_iternext;
     assert(iternext != NULL);
 
@@ -189,6 +221,10 @@ NUITKA_MAY_BE_UNUSED static PyObject *ITERATOR_NEXT_ITERATOR(PyObject *iterator)
 
 NUITKA_MAY_BE_UNUSED static PyObject *ITERATOR_NEXT(PyObject *iterator) {
     CHECK_OBJECT(iterator);
+
+    if (Py_TYPE(iterator) == &PyBytesIter_Type) {
+        return ITERATOR_NEXT_BYTES(iterator);
+    }
 
 #if _NUITKA_EXPERIMENTAL_DISABLE_ITERATOR_OPT
     return PyIter_Next(iterator);

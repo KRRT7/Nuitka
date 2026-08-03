@@ -6,7 +6,10 @@
 Attribute lookup, setting.
 """
 
+from nuitka.PythonVersions import python_version
 from nuitka.States import states
+from nuitka.utils.CStrings import encodePythonIdentifierToC
+from nuitka.utils.Jinja2 import getTemplateC
 
 from .CodeHelpers import (
     decideConversionCheckNeeded,
@@ -91,18 +94,75 @@ def generateDelAttributeCode(statement, emit, context):
         )
 
 
+def _getAttributeLookupHelper(attribute_name, context):
+    helper_name = "LOOKUP_ATTRIBUTE_SPECIALIZED_%s" % encodePythonIdentifierToC(
+        attribute_name
+    )
+
+    if not context.hasHelperCode(helper_name):
+        template = getTemplateC("nuitka.code_generation", "HelperAttributeLookup.c.j2")
+        context.addHelperCode(
+            helper_name,
+            template.render(
+                helper_name=helper_name,
+                attribute_name_code=context.getConstantCode(attribute_name),
+            ),
+        )
+        context.addDeclaration(
+            helper_name,
+            "static PyObject *%s(PyThreadState *tstate, PyObject *source);"
+            % helper_name,
+        )
+
+    return helper_name
+
+
+def _getAttributeCheckHelper(attribute_name, can_raise, context):
+    helper_name = "HAS_ATTRIBUTE_SPECIALIZED_%s_%s" % (
+        encodePythonIdentifierToC(attribute_name),
+        "RAISING" if can_raise else "BOOL",
+    )
+
+    if not context.hasHelperCode(helper_name):
+        template = getTemplateC("nuitka.code_generation", "HelperAttributeCheck.c.j2")
+        context.addHelperCode(
+            helper_name,
+            template.render(
+                helper_name=helper_name,
+                attribute_name_code=context.getConstantCode(attribute_name),
+                can_raise=can_raise,
+            ),
+        )
+        context.addDeclaration(
+            helper_name,
+            "static int %s(PyThreadState *tstate, PyObject *source);" % helper_name,
+        )
+
+    return helper_name
+
+
 def getAttributeLookupCode(
     to_name, source_name, attribute_name, needs_check, emit, context
 ):
-    if attribute_name == "__dict__":
-        emit("%s = LOOKUP_ATTRIBUTE_DICT_SLOT(tstate, %s);" % (to_name, source_name))
-    elif attribute_name == "__class__":
-        emit("%s = LOOKUP_ATTRIBUTE_CLASS_SLOT(tstate, %s);" % (to_name, source_name))
-    else:
+    if python_version >= 0x3C0:
         emit(
-            "%s = LOOKUP_ATTRIBUTE(tstate, %s, %s);"
-            % (to_name, source_name, context.getConstantCode(attribute_name))
+            "%s = %s(tstate, %s);"
+            % (to_name, _getAttributeLookupHelper(attribute_name, context), source_name)
         )
+    else:
+        if attribute_name == "__dict__":
+            emit(
+                "%s = LOOKUP_ATTRIBUTE_DICT_SLOT(tstate, %s);" % (to_name, source_name)
+            )
+        elif attribute_name == "__class__":
+            emit(
+                "%s = LOOKUP_ATTRIBUTE_CLASS_SLOT(tstate, %s);" % (to_name, source_name)
+            )
+        else:
+            emit(
+                "%s = LOOKUP_ATTRIBUTE(tstate, %s, %s);"
+                % (to_name, source_name, context.getConstantCode(attribute_name))
+            )
 
     getErrorExitCode(
         check_name=to_name,
@@ -248,10 +308,25 @@ def generateBuiltinHasattrCode(to_name, expression, emit, context):
 
     res_name = context.getIntResName()
 
-    emit(
-        "%s = BUILTIN_HASATTR_BOOL(tstate, %s, %s);"
-        % (res_name, source_name, attr_name)
-    )
+    if (
+        python_version >= 0x3C0
+        and expression.subnode_name.isCompileTimeConstant()
+        and type(expression.subnode_name.getCompileTimeConstant()) is str
+    ):
+        attribute_name = expression.subnode_name.getCompileTimeConstant()
+        emit(
+            "%s = %s(tstate, %s);"
+            % (
+                res_name,
+                _getAttributeCheckHelper(attribute_name, True, context),
+                source_name,
+            )
+        )
+    else:
+        emit(
+            "%s = BUILTIN_HASATTR_BOOL(tstate, %s, %s);"
+            % (res_name, source_name, attr_name)
+        )
 
     getErrorExitBoolCode(
         condition="%s == -1" % res_name,
@@ -271,7 +346,32 @@ def generateAttributeCheckCode(to_name, expression, emit, context):
         expression=expression, emit=emit, context=context
     )
 
-    if expression.mayRaiseExceptionOperation():
+    if python_version >= 0x3C0:
+        can_raise = expression.mayRaiseExceptionOperation()
+        res_name = context.getIntResName()
+
+        emit(
+            "%s = %s(tstate, %s);"
+            % (
+                res_name,
+                _getAttributeCheckHelper(
+                    expression.getAttributeName(), can_raise, context
+                ),
+                source_name,
+            )
+        )
+
+        getErrorExitBoolCode(
+            condition="%s == -1" % res_name,
+            release_name=source_name,
+            emit=emit,
+            context=context,
+        )
+
+        to_name.getCType().emitAssignmentCodeFromBoolCondition(
+            to_name=to_name, condition="%s != 0" % res_name, emit=emit
+        )
+    elif expression.mayRaiseExceptionOperation():
         res_name = context.getIntResName()
 
         emit(

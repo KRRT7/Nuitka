@@ -92,6 +92,96 @@ static PyObject *LOOKUP_INSTANCE(PyThreadState *tstate, PyObject *source, PyObje
 }
 #endif
 
+#if PYTHON_VERSION >= 0x3c0 && PYTHON_VERSION < 0x3e0 && !defined(Py_GIL_DISABLED)
+void Nuitka_AttributeCache_Fill(Nuitka_AttributeCache *cache, PyObject *object, PyObject *attribute_name,
+                                PyObject *attribute_value) {
+    assert(cache->type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED);
+
+    PyTypeObject *type = Py_TYPE(object);
+    unsigned int type_version = (unsigned int)type->tp_version_tag;
+
+    if (type_version == 0 || type_version == NUITKA_ATTRIBUTE_CACHE_UNCACHEABLE ||
+        type->tp_getattro != PyObject_GenericGetAttr_resolved || !(type->tp_flags & Py_TPFLAGS_MANAGED_DICT) ||
+        !PyUnicode_CheckExact(attribute_name)) {
+        goto not_cacheable;
+    }
+
+    if (attribute_name == const_str_plain___class__ && attribute_value == (PyObject *)type) {
+        cache->offset = NUITKA_ATTRIBUTE_CACHE_CLASS_OFFSET;
+        cache->type_version = type_version;
+        return;
+    }
+
+#if PYTHON_VERSION >= 0x3d0
+    PyObject *dict = *(PyObject **)((char *)object - 3 * sizeof(PyObject *));
+#else
+    PyObject *dict = *(PyObject **)((char *)object - 2 * sizeof(PyObject *));
+#endif
+
+    if (attribute_name == const_str_plain___dict__ && dict != NULL && attribute_value == dict) {
+        cache->offset = NUITKA_ATTRIBUTE_CACHE_DICT_OFFSET;
+        cache->type_version = type_version;
+        return;
+    }
+
+    if (!Nuitka_AttributeCache_UsesInlineValues(object)) {
+        goto not_cacheable;
+    }
+
+    PyObject *descriptor = Nuitka_TypeLookup(type, attribute_name);
+    if (descriptor != NULL && NuitkaType_HasFeatureClass(Py_TYPE(descriptor)) &&
+        Py_TYPE(descriptor)->tp_descr_get != NULL && Nuitka_Descr_IsData(descriptor)) {
+        goto not_cacheable;
+    }
+
+    {
+        char *values_start = (char *)object + type->tp_basicsize;
+        uint8_t capacity = ((uint8_t *)values_start)[0];
+        PyObject **values = (PyObject **)(values_start + NUITKA_DICT_VALUES_HEADER_SIZE);
+        PyDictKeysObject *keys = ((PyHeapTypeObject *)type)->ht_cached_keys;
+
+        if (keys == NULL) {
+            goto not_cacheable;
+        }
+
+        Py_hash_t hash = Nuitka_Py_unicode_get_hash(attribute_name);
+        if (hash == -1) {
+            hash = PyObject_Hash(attribute_name);
+            if (hash == -1) {
+                goto not_cacheable;
+            }
+        }
+
+        Py_ssize_t found = Nuitka_Py_unicodekeys_lookup_unicode(keys, attribute_name, hash);
+        if (found < 0 || found >= (Py_ssize_t)capacity || values[found] != attribute_value) {
+            goto not_cacheable;
+        }
+
+        // If the same object occurs in another slot, the value alone does not
+        // identify the attribute and the cache must not guess.
+        for (uint8_t index = 0; index < capacity; index++) {
+            if (index != (uint8_t)found && values[index] == attribute_value) {
+                goto not_cacheable;
+            }
+        }
+
+        Py_ssize_t raw_offset =
+            type->tp_basicsize + NUITKA_DICT_VALUES_HEADER_SIZE + found * (Py_ssize_t)sizeof(PyObject *);
+        if (raw_offset > (Py_ssize_t)2147483647) {
+            goto not_cacheable;
+        }
+
+        cache->offset = (int)raw_offset;
+        cache->type_version = type_version;
+        return;
+    }
+
+not_cacheable:
+    cache->offset = -1;
+    cache->type_version = NUITKA_ATTRIBUTE_CACHE_UNCACHEABLE;
+}
+#endif
+
 PyObject *LOOKUP_ATTRIBUTE(PyThreadState *tstate, PyObject *source, PyObject *attr_name) {
     /* Note: There are 2 specializations of this function, that need to be
      * updated in line with this: LOOKUP_ATTRIBUTE_[DICT|CLASS]_SLOT
