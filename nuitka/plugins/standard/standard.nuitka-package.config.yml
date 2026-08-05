@@ -10107,3 +10107,15 @@
         '_skip_under_py2': "'(lambda test_method: None)'"
         '_skip_under_py3k': "'(lambda test_method: None)'"
       when: 'not use_unittest'
+
+- module-name: 'tesserocr'
+  implicit-imports:
+    - depends:
+        - 'tesserocr'
+
+- module-name: 'cysignals'
+  implicit-imports:
+    - depends:
+        - 'cysignals'
+        - 'cysignals.signals'
+        - 'cysignals.alarm'

@@ -292,7 +292,7 @@ if (%(test_code)s) {
 """
 
 template_module_variable_accessor_function = """\
-static PyObject *%(accessor_function_name)s(PyThreadState *tstate) {
+NUITKA_MAY_BE_UNUSED static inline PyObject *%(accessor_function_name)s(PyThreadState *tstate) {
 #if %(caching)s
     PyObject *result;
 

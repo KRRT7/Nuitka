@@ -23,6 +23,35 @@ from .shapes.BuiltinTypeShapes import tshape_bool, tshape_exception_class
 from .shapes.StandardShapes import tshape_unknown
 
 
+def tryFindTypeIdentityPattern(left, right):
+    """Detect 'type(x) is T' pattern.
+
+    Returns (type_node, other_node) if one side is ExpressionBuiltinType1
+    and the other side is a type constant, otherwise returns (None, None).
+    """
+    # Lazy import to avoid circular dependencies.
+    from .TypeNodes import isTypeConstantNode
+
+    type_node = None
+    other_node = None
+
+    if left.isExpressionBuiltinType1():
+        type_node = left
+        other_node = right
+    elif right.isExpressionBuiltinType1():
+        type_node = right
+        other_node = left
+
+    if type_node is None:
+        return None, None
+
+    # The other side must be a recognizable type constant.
+    if not isTypeConstantNode(other_node):
+        return None, None
+
+    return type_node, other_node
+
+
 class ExpressionComparisonBase(ChildrenHavingLeftRightMixin, ExpressionBase):
     named_children = ("left", "right")
 
@@ -354,6 +383,29 @@ class ExpressionComparisonIsIsNotBase(
     def computeExpression(self, trace_collection):
         left = self.subnode_left
         right = self.subnode_right
+
+        # Detect type(x) is T / type(x) is not T pattern and replace
+        # with ExpressionTypeIdentityCheck, which generates direct Py_TYPE()
+        # comparisons instead of BUILTIN_TYPE1 + PyObject_RichCompare.
+        type_node, other_node = tryFindTypeIdentityPattern(left, right)
+        if type_node is not None:
+            from .TypeNodes import ExpressionTypeIdentityCheck
+
+            value = type_node.subnode_value
+            type_identity = ExpressionTypeIdentityCheck(
+                left=value,
+                right=other_node,
+                negated=self.comparator == "IsNot",
+                source_ref=self.source_ref,
+            )
+            # The ExpressionTypeIdentityCheck inherits from
+            # SideEffectsFromChildrenMixin, so side effects from value and
+            # other_node are preserved through their children.
+            return (
+                type_identity,
+                "new_builtin",
+                "Replaced type() identity check with direct Py_TYPE comparison.",
+            )
 
         if trace_collection.mustAlias(left, right):
             result = makeConstantReplacementNode(

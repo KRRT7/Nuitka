@@ -26,6 +26,7 @@ from .ChildrenHavingMixins import (
     ChildrenExpressionTypeAliasMixin,
     ChildrenExpressionTypeMakeGenericMixin,
     ChildrenHavingInstanceClassesMixin,
+    ChildrenHavingLeftRightMixin,
 )
 from .ExpressionBases import ExpressionBase, ExpressionBuiltinSingleArgBase
 from .ExpressionBasesGenerated import (
@@ -40,7 +41,146 @@ from .NodeMakingHelpers import (
     makeConstantReplacementNode,
     wrapExpressionWithNodeSideEffects,
 )
-from .shapes.BuiltinTypeShapes import tshape_type
+from .ConstantRefNodes import makeConstantRefNode
+from .shapes.BuiltinTypeShapes import tshape_bool, tshape_type
+
+
+# Mapping from Python type objects to C API type pointer names.
+# Used by ExpressionTypeIdentityCheck to generate direct Py_TYPE() comparisons.
+TYPE_TO_C_NAME = {
+    bool: "PyBool_Type",
+    int: "PyLong_Type",
+    float: "PyFloat_Type",
+    complex: "PyComplex_Type",
+    str: "PyUnicode_Type",
+    bytes: "PyBytes_Type",
+    bytearray: "PyByteArray_Type",
+    memoryview: "PyMemoryView_Type",
+    tuple: "PyTuple_Type",
+    list: "PyList_Type",
+    dict: "PyDict_Type",
+    set: "PySet_Type",
+    frozenset: "PyFrozenSet_Type",
+    type: "PyType_Type",
+    type(None): "PyNone_Type",
+    type(Ellipsis): "PyEllipsis_Type",
+    type(NotImplemented): "PyNotImplemented_Type",
+}
+
+
+def getTypeConstantCName(type_constant):
+    """Return the C type pointer name for a given type constant node, or None.
+
+    The node must be a compile-time constant representing a type object
+    (e.g. ExpressionConstantTypeTupleRef for 'tuple'). Returns the C-level
+    name like 'PyTuple_Type' if the type is a known builtin, otherwise None.
+    """
+    type_obj = None
+
+    if type_constant.isExpressionConstantTypeRef():
+        type_obj = type_constant.getCompileTimeConstant()
+    elif type_constant.isExpressionBuiltinRef():
+        builtin_name = type_constant.builtin_name
+        try:
+            type_obj = __builtins__[builtin_name]
+        except KeyError:
+            return None
+        if not isinstance(type_obj, type):
+            return None
+    elif type_constant.isExpressionBuiltinAnonymousRef():
+        try:
+            type_obj = type_constant.getCompileTimeConstant()
+        except KeyError:
+            return None
+
+    return TYPE_TO_C_NAME.get(type_obj) if type_obj is not None else None
+
+
+# Types whose C pointer variables are private in CPython 3.13+ and must
+# be accessed at runtime via Py_TYPE() of the corresponding singleton.
+_PRIVATE_TYPE_C_NAMES = {
+    "PyNone_Type": "Py_TYPE(Py_None)",
+    "PyNotImplemented_Type": "Py_TYPE(Py_NotImplemented)",
+}
+
+
+def getTypeConstantCExpression(c_name):
+    """Return a C expression that evaluates to a pointer to the type object.
+
+    For public types like PyLong_Type, this returns '&PyLong_Type'.
+    For private types in CPython 3.13+ (PyNone_Type, PyNotImplemented_Type),
+    this returns the runtime expression 'Py_TYPE(Py_None)' etc.
+    """
+    if c_name in _PRIVATE_TYPE_C_NAMES:
+        return _PRIVATE_TYPE_C_NAMES[c_name]
+    return "&%s" % c_name
+
+
+def isTypeConstantNode(node):
+    """Check whether a node represents a compile-time constant type.
+
+    This covers ExpressionConstantTypeRef, ExpressionBuiltinRef (for type
+    names like int/float/str), and ExpressionBuiltinAnonymousRef (for
+    NoneType, ellipsis, etc.).
+    """
+    if node.isExpressionConstantTypeRef():
+        return True
+    if node.isExpressionBuiltinRef():
+        builtin_name = node.builtin_name
+        try:
+            obj = __builtins__[builtin_name]
+        except KeyError:
+            return False
+        return isinstance(obj, type)
+    if node.isExpressionBuiltinAnonymousRef():
+        try:
+            obj = node.getCompileTimeConstant()
+        except KeyError:
+            return False
+        return isinstance(obj, type)
+    return False
+
+
+def tryExtractTypeCNames(classes_node):
+    """Extract C type names from a compile-time type constant.
+
+    Handles both single types (e.g. ``isinstance(x, int)``) and tuples of
+    types (e.g. ``isinstance(x, (int, float))``). Returns a tuple of C type
+    pointer names (like ``('PyLong_Type', 'PyFloat_Type')``) if all types
+    are known builtins, otherwise returns None.
+    """
+    c_names = []
+
+    if classes_node.isExpressionConstantTypeRef():
+        c_name = getTypeConstantCName(classes_node)
+        if c_name is None:
+            return None
+        c_names.append(c_name)
+    elif classes_node.isExpressionConstantTupleRef():
+        # isinstance(x, (int, float, str, ...)) — tuple of types.
+        const_value = classes_node.getCompileTimeConstant()
+        for element in const_value:
+            elem_node = makeConstantRefNode(
+                constant=element, source_ref=classes_node.source_ref
+            )
+            c_name = getTypeConstantCName(elem_node)
+            if c_name is None:
+                return None
+            c_names.append(c_name)
+    elif classes_node.isExpressionBuiltinRef():
+        c_name = getTypeConstantCName(classes_node)
+        if c_name is None:
+            return None
+        c_names.append(c_name)
+    elif classes_node.isExpressionBuiltinAnonymousRef():
+        c_name = getTypeConstantCName(classes_node)
+        if c_name is None:
+            return None
+        c_names.append(c_name)
+    else:
+        return None
+
+    return tuple(c_names)
 
 
 class ExpressionBuiltinType1(ExpressionBuiltinSingleArgBase):
@@ -139,6 +279,79 @@ Removed type taking for unused result.""",
         return self.subnode_value.mayHaveSideEffects()
 
 
+class ExpressionTypeIdentityCheck(
+    ExpressionBoolShapeExactMixin,
+    SideEffectsFromChildrenMixin,
+    ChildrenHavingLeftRightMixin,
+    ExpressionBase,
+):
+    """Check if type(x) is T or type(x) is not T.
+
+    This replaces an ExpressionComparisonIs[Not] whose left is
+    ExpressionBuiltinType1(value) and whose right is a type constant.
+    It generates Py_TYPE(value) == (PyTypeObject *)&PyT_Type instead of
+    BUILTIN_TYPE1 + PyObject_RichCompare + Py_DECREF.
+
+    'left' child is the value expression (the argument to type()).
+    'right' child is the type constant expression being compared against.
+    """
+
+    kind = "EXPRESSION_TYPE_IDENTITY_CHECK"
+
+    named_children = ("left", "right")
+
+    __slots__ = ("negated",)
+
+    def __init__(self, left, right, negated, source_ref):
+        ChildrenHavingLeftRightMixin.__init__(self, left=left, right=right)
+
+        ExpressionBase.__init__(self, source_ref)
+
+        self.negated = negated
+
+    def computeExpression(self, trace_collection):
+        # Try to fold if both the value and the type constant are
+        # compile-time constants.
+        value = self.subnode_left
+        type_constant = self.subnode_right
+
+        if value.isCompileTimeConstant() and type_constant.isCompileTimeConstant():
+            value_const = value.getCompileTimeConstant()
+            type_const = type_constant.getCompileTimeConstant()
+
+            result = type(value_const) is type_const
+            if self.negated:
+                result = not result
+
+            new_node = makeConstantRefNode(
+                constant=result, source_ref=self.source_ref
+            )
+
+            return (
+                new_node,
+                "new_builtin",
+                "Replaced type identity check with compile time constant.",
+            )
+
+        return self, None, None
+
+    @staticmethod
+    def getTypeShape():
+        return tshape_bool
+
+    def mayRaiseException(self, exception_type):
+        return self.subnode_left.mayRaiseException(exception_type)
+
+    def mayHaveSideEffects(self):
+        return self.subnode_left.mayHaveSideEffects()
+
+    def mayReturnValue(self):
+        return True
+
+    def mayReturnUserspaceValue(self):
+        return True
+
+
 class ExpressionBuiltinSuper1(ChildrenExpressionBuiltinSuper1Mixin, ExpressionBase):
     """Two arguments form of super."""
 
@@ -212,6 +425,8 @@ class ExpressionBuiltinIsinstance(ChildrenHavingInstanceClassesMixin, Expression
 
     named_children = ("instance", "classes")
 
+    __slots__ = ("type_c_names",)
+
     def __init__(self, instance, classes, source_ref):
         ChildrenHavingInstanceClassesMixin.__init__(
             self,
@@ -221,19 +436,36 @@ class ExpressionBuiltinIsinstance(ChildrenHavingInstanceClassesMixin, Expression
 
         ExpressionBase.__init__(self, source_ref)
 
+        self.type_c_names = None
+
     def computeExpression(self, trace_collection):
         # TODO: Quite some cases should be possible to predict.
 
         instance = self.subnode_instance
 
-        # TODO: Should be possible to query run time type instead, but we don't
-        # have that method yet. Later this will be essential.
+        classes = self.subnode_classes
+
+        # Try to optimize with direct type checks when classes is a
+        # compile-time constant of known builtin types.  We set the
+        # type_c_names attribute on this node (rather than replacing the
+        # node) so that the code generator can emit direct type checks.
+        if classes.isCompileTimeConstant():
+            type_c_names = tryExtractTypeCNames(classes)
+            if type_c_names is not None:
+                self.type_c_names = type_c_names
+
+                if not instance.isCompileTimeConstant():
+                    trace_collection.onExceptionRaiseExit(BaseException)
+
+                # Return (self, None, None) — we are not replacing the node,
+                # just annotating it for the code generator.  Using a change
+                # tag would cause an infinite optimization loop.
+                return self, None, None
+
         if not instance.isCompileTimeConstant():
             trace_collection.onExceptionRaiseExit(BaseException)
 
             return self, None, None
-
-        classes = self.subnode_classes
 
         if not classes.isCompileTimeConstant():
             trace_collection.onExceptionRaiseExit(BaseException)

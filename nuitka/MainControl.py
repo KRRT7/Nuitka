@@ -682,7 +682,9 @@ def _runCPgoBinary():
             onefile=False, create=False
         )
         profile_pattern = getNormalizedPathJoin(source_dir, "nuitka-pgo-%p.profraw")
-        profile_data = getNormalizedPathJoin(source_dir, "nuitka-pgo.profdata")
+        profile_data = getExternalUsePath(
+            getNormalizedPathJoin(source_dir, "nuitka-pgo.profdata")
+        )
 
         with withEnvironmentVarOverridden("LLVM_PROFILE_FILE", profile_pattern):
             exit_code_pgo = _runPgoBinary()

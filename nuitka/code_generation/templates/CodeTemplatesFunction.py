@@ -8,7 +8,7 @@ static PyObject *MAKE_FUNCTION_%(function_identifier)s(%(function_creation_args)
 """
 
 template_function_direct_declaration = """\
-%(file_scope)s PyObject *impl_%(function_identifier)s(PyThreadState *tstate, %(direct_call_arg_spec)s);
+NUITKA_MAY_BE_UNUSED %(file_scope)s PyObject *impl_%(function_identifier)s(PyThreadState *tstate, %(direct_call_arg_spec)s);
 """
 
 template_maker_function_body = """
@@ -82,7 +82,7 @@ function_return_exit:
    return tmp_return_value;"""
 
 function_direct_body_template = """\
-%(file_scope)s PyObject *impl_%(function_identifier)s(PyThreadState *tstate, %(direct_call_arg_spec)s) {
+NUITKA_MAY_BE_UNUSED %(file_scope)s PyObject *impl_%(function_identifier)s(PyThreadState *tstate, %(direct_call_arg_spec)s) {
 #ifndef __NUITKA_NO_ASSERT__
     NUITKA_MAY_BE_UNUSED bool had_error = HAS_ERROR_OCCURRED(tstate);
     assert(!had_error); // Do not enter inlined functions with error set.

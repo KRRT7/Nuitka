@@ -29,6 +29,7 @@ from nuitka.nodes.SubscriptNodes import (
     ExpressionMatchSubscriptCheck,
     ExpressionSubscriptLookup,
 )
+from nuitka.nodes.SwitchNodes import StatementSwitch
 from nuitka.nodes.TypeMatchNodes import (
     ExpressionMatchTypeCheckMapping,
     ExpressionMatchTypeCheckSequence,
@@ -41,6 +42,7 @@ from nuitka.nodes.VariableNameNodes import (
 )
 from nuitka.nodes.VariableRefNodes import ExpressionTempVariableRef
 from nuitka.nodes.VariableReleaseNodes import makeStatementReleaseVariable
+from nuitka.PythonVersions import isPythonValidCLongValue
 
 from .ReformulationBooleanExpressions import makeAndNode, makeOrNode
 from .ReformulationTryFinallyStatements import makeTryFinallyReleaseStatement
@@ -655,6 +657,61 @@ def _buildCase(provider, case, tmp_subject, source_ref):
     return (conditions, assignments, guard, branch_code)
 
 
+def _getSwitchPatternValues(pattern):
+    """Return C-switchable integer values for a capture-free pattern."""
+
+    if pattern.__class__ is ast.MatchOr:
+        result = []
+
+        for or_pattern in pattern.patterns:
+            values = _getSwitchPatternValues(or_pattern)
+            if values is None:
+                return None
+
+            result.extend(values)
+
+        return tuple(result)
+
+    if pattern.__class__ is not ast.MatchValue:
+        return None
+
+    value = pattern.value
+    sign = 1
+
+    if value.__class__ is ast.UnaryOp and value.op.__class__ in (
+        ast.UAdd,
+        ast.USub,
+    ):
+        sign = -1 if value.op.__class__ is ast.USub else 1
+        value = value.operand
+
+    if value.__class__ is not ast.Constant or type(value.value) is not int:
+        return None
+
+    return (sign * value.value,)
+
+
+def _getSwitchCaseValues(ast_cases):
+    result = []
+    seen = set()
+
+    for case in ast_cases:
+        values = _getSwitchPatternValues(case.pattern)
+        if values is None or case.guard is not None:
+            return None
+
+        if not values or any(not isPythonValidCLongValue(value) for value in values):
+            return None
+
+        result.append(values)
+        seen.update(values)
+
+    if len(seen) < 2:
+        return None
+
+    return tuple(result)
+
+
 def buildMatchNode(provider, node, source_ref):
     """Python3.10 or higher, match statements."""
 
@@ -682,6 +739,51 @@ def buildMatchNode(provider, node, source_ref):
                 tmp_subject=tmp_subject,
                 source_ref=source_ref,
             )
+        )
+
+    switch_case_values = _getSwitchCaseValues(node.cases)
+    if (
+        switch_case_values is not None
+        and all(
+            assignments is None
+            for _conditions, assignments, _guard, _branch_code in cases
+        )
+        and all(
+            branch_code is not None
+            for _conditions, _assignments, _guard, branch_code in cases
+        )
+    ):
+        switch_conditions = tuple(
+            makeAndNode(values=conditions, source_ref=source_ref)
+            for conditions, _assignments, _guard, _branch_code in cases
+        )
+        switch_branches = tuple(
+            branch_code for _conditions, _assignments, _guard, branch_code in cases
+        )
+
+        return makeStatementsSequence(
+            statements=(
+                makeStatementAssignmentVariable(
+                    variable=tmp_subject,
+                    source=subject_node,
+                    source_ref=subject_node.getSourceReference(),
+                ),
+                makeTryFinallyReleaseStatement(
+                    provider=provider,
+                    tried=StatementSwitch(
+                        subject=ExpressionTempVariableRef(
+                            variable=tmp_subject, source_ref=source_ref
+                        ),
+                        conditions=switch_conditions,
+                        branches=switch_branches,
+                        case_values=switch_case_values,
+                        source_ref=source_ref,
+                    ),
+                    variables=(tmp_subject,),
+                    source_ref=source_ref,
+                ),
+            ),
+            source_ref=source_ref,
         )
 
     case_statements = []

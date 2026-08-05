@@ -13,6 +13,10 @@ from nuitka.nodes.shapes.BuiltinTypeShapes import (
     tshape_set,
 )
 from nuitka.nodes.shapes.StandardShapes import tshape_unknown
+from nuitka.nodes.TypeNodes import (
+    getTypeConstantCExpression,
+    getTypeConstantCName,
+)
 from nuitka.PythonOperators import (
     comparison_inversions,
     rich_comparison_arg_swaps,
@@ -383,7 +387,6 @@ def generateRichComparisonExpressionCode(to_name, expression, emit, context):
 
 def generateBuiltinIsinstanceCode(to_name, expression, emit, context):
     inst_name = context.allocateTempName("isinstance_inst")
-    cls_name = context.allocateTempName("isinstance_cls")
 
     generateExpressionCode(
         to_name=inst_name,
@@ -391,14 +394,38 @@ def generateBuiltinIsinstanceCode(to_name, expression, emit, context):
         emit=emit,
         context=context,
     )
+
+    context.setCurrentSourceCodeReference(expression.getCompatibleSourceReference())
+
+    # If the classes are known builtin types, generate direct type checks
+    # instead of calling Nuitka_Object_IsInstance at runtime.
+    if expression.type_c_names is not None:
+        conditions = []
+        for c_name in expression.type_c_names:
+            conditions.append(
+                "Nuitka_PyObject_TypeCheck(%s, %s)" % (inst_name, getTypeConstantCExpression(c_name))
+            )
+        condition_str = " || ".join(conditions)
+
+        to_name.getCType().emitAssignmentCodeFromBoolCondition(
+            to_name=to_name, condition=condition_str, emit=emit
+        )
+
+        getReleaseCode(
+            release_name=inst_name,
+            emit=emit,
+            context=context,
+        )
+        return
+
+    # Fall back to the general Nuitka_Object_IsInstance call.
+    cls_name = context.allocateTempName("isinstance_cls")
     generateExpressionCode(
         to_name=cls_name,
         expression=expression.subnode_classes,
         emit=emit,
         context=context,
     )
-
-    context.setCurrentSourceCodeReference(expression.getCompatibleSourceReference())
 
     res_name = context.getIntResName()
 
@@ -503,6 +530,56 @@ def generateSubtypeCheckCode(to_name, expression, emit, context):
 
     to_name.getCType().emitAssignmentCodeFromBoolCondition(
         to_name=to_name, condition=res_name, emit=emit
+    )
+
+
+def generateTypeIdentityCheckCode(to_name, expression, emit, context):
+    # The 'left' child is the value whose type we're checking.
+    # The 'right' child is the type constant we're comparing against.
+    value_name = context.allocateTempName("type_id_value")
+
+    generateExpressionCode(
+        to_name=value_name,
+        expression=expression.subnode_left,
+        emit=emit,
+        context=context,
+    )
+
+    context.setCurrentSourceCodeReference(
+        expression.getCompatibleSourceReference()
+    )
+
+    type_c_name = getTypeConstantCName(expression.subnode_right)
+
+    if type_c_name is not None:
+        # Builtin type: use the direct C type pointer, no temp needed for type.
+        type_expr = getTypeConstantCExpression(type_c_name)
+        release_names = (value_name,)
+    else:
+        # Non-builtin type constant: generate code for the type constant.
+        type_name = context.allocateTempName("type_id_type")
+        generateExpressionCode(
+            to_name=type_name,
+            expression=expression.subnode_right,
+            emit=emit,
+            context=context,
+        )
+        type_expr = type_name
+        release_names = (value_name, type_name)
+
+    comparison_op = "!=" if expression.negated else "=="
+
+    to_name.getCType().emitAssignmentCodeFromBoolCondition(
+        to_name=to_name,
+        condition="Py_TYPE(%s) %s (PyTypeObject *)%s"
+        % (value_name, comparison_op, type_expr),
+        emit=emit,
+    )
+
+    getReleaseCodes(
+        release_names=release_names,
+        emit=emit,
+        context=context,
     )
 
 

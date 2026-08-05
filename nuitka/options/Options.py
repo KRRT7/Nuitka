@@ -2372,7 +2372,7 @@ def getExperimentalIndications():
 def shallUseDirectConstantBlobs():
     """Decide if direct per-blob constants access shall be used."""
 
-    return isExperimental("direct-constant-blobs")
+    return isStandaloneMode() or isExperimental("direct-constant-blobs")
 
 
 def shallNotFallbackBytecodeToCompiled(module_name, function_qualname, source_ref):

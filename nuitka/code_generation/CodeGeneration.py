@@ -89,6 +89,7 @@ from .ComparisonCodes import (
     generateRichComparisonExpressionCode,
     generateSubtypeCheckCode,
     generateTypeCheckCode,
+    generateTypeIdentityCheckCode,
 )
 from .ConditionalCodes import (
     generateConditionalAndOrCode,
@@ -364,6 +365,7 @@ from .SubscriptCodes import (
     generateMatchSubscriptCheckCode,
     generateSubscriptLookupCode,
 )
+from .SwitchCodes import generateSwitchCode
 from .TensorflowCodes import generateTensorflowFunctionCallCode
 from .TryCodes import generateTryCode
 from .TupleCodes import generateBuiltinTupleCode, generateTupleCreationCode
@@ -726,6 +728,7 @@ addExpressionDispatchDict(
         "EXPRESSION_BUILTIN_ISINSTANCE": generateBuiltinIsinstanceCode,
         "EXPRESSION_BUILTIN_ISSUBCLASS": generateBuiltinIssubclassCode,
         "EXPRESSION_TYPE_CHECK": generateTypeCheckCode,
+        "EXPRESSION_TYPE_IDENTITY_CHECK": generateTypeIdentityCheckCode,
         "EXPRESSION_SUBTYPE_CHECK": generateSubtypeCheckCode,
         "EXPRESSION_MATCH_ARGS": generateMatchArgsCode,
         "EXPRESSION_MATCH_TYPE_CHECK_SEQUENCE": generateMatchTypeCheckSequenceCode,
@@ -1105,6 +1108,7 @@ setStatementDispatchDict(
         "STATEMENT_GENERATOR_RETURN": generateGeneratorReturnValueCode,
         "STATEMENT_GENERATOR_RETURN_NONE": generateGeneratorReturnNoneCode,
         "STATEMENT_CONDITIONAL": generateBranchCode,
+        "STATEMENT_SWITCH": generateSwitchCode,
         "STATEMENT_TRY": generateTryCode,
         "STATEMENT_PRINT_VALUE": generatePrintValueCode,
         "STATEMENT_PRINT_NEWLINE": generatePrintNewlineCode,

@@ -479,6 +479,24 @@ def _generateConditionalSource(statement, indent):
         )
 
 
+def _generateSwitchSource(statement, indent):
+    result = []
+
+    for condition, branch in zip(
+        statement.subnode_conditions, statement.subnode_branches
+    ):
+        result.append(
+            "%sif %s:\n%s"
+            % (
+                indent,
+                generateExpressionSource(condition),
+                generateStatementSequenceSource(branch, indent=indent + "    "),
+            )
+        )
+
+    return "\n".join(result) if result else indent + "pass"
+
+
 def _generateRaiseExceptionSource(statement, indent):
     exception_type = generateExpressionSource(statement.subnode_exception_type)
     return "%sraise %s" % (indent, exception_type)
@@ -643,6 +661,7 @@ _expression_source_dispatch = {
 
 _statement_source_dispatch = {
     "STATEMENT_CONDITIONAL": _generateConditionalSource,
+    "STATEMENT_SWITCH": _generateSwitchSource,
     "STATEMENT_RAISE_EXCEPTION": _generateRaiseExceptionSource,
     "STATEMENT_RETURN": _generateReturnSource,
     "STATEMENT_RETURN_CONSTANT": _generateReturnSource,
