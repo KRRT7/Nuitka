@@ -100,9 +100,10 @@ void Nuitka_AttributeCache_Fill(Nuitka_AttributeCache *cache, PyObject *object, 
     PyTypeObject *type = Py_TYPE(object);
     unsigned int type_version = (unsigned int)type->tp_version_tag;
 
+    cache->is_slot = false;
+
     if (type_version == 0 || type_version == NUITKA_ATTRIBUTE_CACHE_UNCACHEABLE ||
-        type->tp_getattro != PyObject_GenericGetAttr_resolved || !(type->tp_flags & Py_TPFLAGS_MANAGED_DICT) ||
-        !PyUnicode_CheckExact(attribute_name)) {
+        type->tp_getattro != PyObject_GenericGetAttr_resolved || !PyUnicode_CheckExact(attribute_name)) {
         goto not_cacheable;
     }
 
@@ -110,6 +111,35 @@ void Nuitka_AttributeCache_Fill(Nuitka_AttributeCache *cache, PyObject *object, 
         cache->offset = NUITKA_ATTRIBUTE_CACHE_CLASS_OFFSET;
         cache->type_version = type_version;
         return;
+    }
+
+    // A "__slots__" entry is a member descriptor with a fixed offset in the
+    // object. Being a data descriptor, it wins over an instance dictionary, so
+    // unlike inline values, nothing about the instance has to be checked. Only
+    // the plain object members can be used, as the other ones convert the value
+    // from raw memory, rather than holding a reference to it.
+    {
+        PyObject *slot_descriptor = Nuitka_TypeLookup(type, attribute_name);
+
+        if (slot_descriptor != NULL && Py_TYPE(slot_descriptor) == &PyMemberDescr_Type) {
+            PyMemberDef *member = ((PyMemberDescrObject *)slot_descriptor)->d_member;
+
+            // Auditing must not be skipped, so those are left to the slow path.
+            if (member->type == Py_T_OBJECT_EX && (member->flags & Py_AUDIT_READ) == 0 && member->offset > 0 &&
+                member->offset <= (Py_ssize_t)2147483647 &&
+                *(PyObject **)((char *)object + member->offset) == attribute_value) {
+                cache->offset = (int)member->offset;
+                cache->is_slot = true;
+                cache->type_version = type_version;
+                return;
+            }
+
+            goto not_cacheable;
+        }
+    }
+
+    if (!(type->tp_flags & Py_TPFLAGS_MANAGED_DICT)) {
+        goto not_cacheable;
     }
 
 #if PYTHON_VERSION >= 0x3d0
@@ -123,6 +153,16 @@ void Nuitka_AttributeCache_Fill(Nuitka_AttributeCache *cache, PyObject *object, 
         cache->type_version = type_version;
         return;
     }
+
+#if PYTHON_VERSION >= 0x3d0
+    // Since 3.13, a managed dictionary no longer implies that there are inline
+    // values, and without those, the values would be read from memory that the
+    // object does not have. For cache hits, the type version guards this, as
+    // the flag cannot change without the type being changed as well.
+    if (!Nuitka_PyType_HasInlineValues(type)) {
+        goto not_cacheable;
+    }
+#endif
 
     if (!Nuitka_AttributeCache_UsesInlineValues(object)) {
         goto not_cacheable;
@@ -174,6 +214,44 @@ void Nuitka_AttributeCache_Fill(Nuitka_AttributeCache *cache, PyObject *object, 
         cache->offset = (int)raw_offset;
         cache->type_version = type_version;
         return;
+    }
+
+not_cacheable:
+    cache->offset = -1;
+    cache->type_version = NUITKA_ATTRIBUTE_CACHE_UNCACHEABLE;
+}
+
+void Nuitka_AttributeCache_FillSlotSet(Nuitka_AttributeCache *cache, PyObject *object, PyObject *attribute_name,
+                                       PyObject *attribute_value) {
+    assert(cache->type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED);
+
+    PyTypeObject *type = Py_TYPE(object);
+    unsigned int type_version = (unsigned int)type->tp_version_tag;
+
+    cache->is_slot = false;
+
+    if (type_version == 0 || type_version == NUITKA_ATTRIBUTE_CACHE_UNCACHEABLE ||
+        type->tp_setattro != PyObject_GenericSetAttr_resolved || !PyUnicode_CheckExact(attribute_name)) {
+        goto not_cacheable;
+    }
+
+    {
+        PyObject *slot_descriptor = Nuitka_TypeLookup(type, attribute_name);
+
+        // A read only member raises, and the other member types write to raw
+        // memory rather than storing the reference, so both are left alone.
+        if (slot_descriptor != NULL && Py_TYPE(slot_descriptor) == &PyMemberDescr_Type) {
+            PyMemberDef *member = ((PyMemberDescrObject *)slot_descriptor)->d_member;
+
+            if (member->type == Py_T_OBJECT_EX && (member->flags & Py_READONLY) == 0 && member->offset > 0 &&
+                member->offset <= (Py_ssize_t)2147483647 &&
+                *(PyObject **)((char *)object + member->offset) == attribute_value) {
+                cache->offset = (int)member->offset;
+                cache->is_slot = true;
+                cache->type_version = type_version;
+                return;
+            }
+        }
     }
 
 not_cacheable:

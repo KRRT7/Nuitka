@@ -286,6 +286,10 @@ def _getBinaryOperationCode(
                 context=context,
             )
 
+            # The helper gives a new value with a reference owned by us, which
+            # the assignment below then takes over.
+            context.addCleanupTempName(result_name)
+
             to_name.getCType().emitAssignConversionCode(
                 to_name=to_name,
                 value_name=result_name,

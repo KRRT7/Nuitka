@@ -75,13 +75,21 @@ static inline bool Nuitka_Descr_IsData(PyObject *object) { return Py_TYPE(object
 // A cache entry is deliberately only metadata. It never owns an attribute
 // value, so cached lookups cannot keep instances or descriptors alive.
 //
-// The layout assumptions are restricted to CPython 3.12 and 3.13 GIL builds.
-// Other interpreters and layouts use the normal attribute lookup path.
-#if PYTHON_VERSION >= 0x3c0 && PYTHON_VERSION < 0x3e0 && !defined(Py_GIL_DISABLED)
-
+// One of these is allocated per attribute lookup in the code, rather than per
+// attribute name, because a name is often used with more than one type in the
+// same module, and a shared entry would then be refilled all of the time,
+// which costs more than not caching at all.
+//
+// The type is defined for all versions, so that the helper functions have the
+// same signature everywhere, but only CPython 3.12 and 3.13 GIL builds have
+// the layout knowledge to ever fill one. Other interpreters and layouts use
+// the normal attribute lookup path.
 typedef struct {
     unsigned int type_version;
     int offset;
+    // For a "__slots__" member, the offset is in the object itself, and no
+    // instance dictionary can shadow it, so it is read without further checks.
+    bool is_slot;
 } Nuitka_AttributeCache;
 
 #define NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED 0u
@@ -89,6 +97,52 @@ typedef struct {
 #define NUITKA_ATTRIBUTE_CACHE_CLASS_OFFSET -2
 #define NUITKA_ATTRIBUTE_CACHE_DICT_OFFSET -3
 #define NUITKA_DICT_VALUES_HEADER_SIZE ((int)sizeof(void *))
+
+// Assigning to a "__slots__" member is a store at a fixed offset, since the
+// member descriptor is a data descriptor and therefore wins over an instance
+// dictionary for the assignment too. Only slots are done here, as storing into
+// inline values has to deal with the insertion order and with materializing a
+// dictionary, which is not a fast path anymore.
+//
+// This is used from the assignment directly, so that the uncached case does not
+// get a function call added to it, and it needs no layout knowledge of its own,
+// as nothing fills a cache where that is missing.
+static inline bool Nuitka_AttributeCache_SetSlot(Nuitka_AttributeCache *cache, PyObject *object, PyObject *value) {
+    // Tested first, because an assignment that can never use this leaves it
+    // false, and then it is the only thing looked at for those.
+    if (!cache->is_slot) {
+        return false;
+    }
+
+    unsigned int type_version = cache->type_version;
+
+    // The unfilled state must not be taken for a type without a version tag
+    // assigned, both of which are zero.
+    if (type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED) {
+        return false;
+    }
+
+    PyTypeObject *type = Py_TYPE(object);
+
+    if (type_version != (unsigned int)type->tp_version_tag) {
+        cache->type_version = NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED;
+        return false;
+    }
+
+    PyObject **slot = (PyObject **)((char *)object + (unsigned int)cache->offset);
+    PyObject *old = *slot;
+
+    Py_INCREF(value);
+    *slot = value;
+
+    // Release only after the store, so that a deallocation running Python code
+    // cannot observe the slot with the old value still in it.
+    Py_XDECREF(old);
+
+    return true;
+}
+
+#if PYTHON_VERSION >= 0x3c0 && PYTHON_VERSION < 0x3e0 && !defined(Py_GIL_DISABLED)
 
 static inline bool Nuitka_AttributeCache_UsesInlineValues(PyObject *object) {
 #if PYTHON_VERSION >= 0x3d0
@@ -115,6 +169,18 @@ static inline PyObject *Nuitka_AttributeCache_Get(Nuitka_AttributeCache *cache, 
     if (type_version != (unsigned int)type->tp_version_tag) {
         cache->type_version = NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED;
         return NULL;
+    }
+
+    if (cache->is_slot) {
+        PyObject *value = *(PyObject **)((char *)object + (unsigned int)cache->offset);
+
+        // An unassigned slot needs the attribute error from the slow path.
+        if (value == NULL) {
+            return NULL;
+        }
+
+        Py_INCREF(value);
+        return value;
     }
 
     if (cache->offset == NUITKA_ATTRIBUTE_CACHE_CLASS_OFFSET) {
@@ -164,6 +230,10 @@ static inline int Nuitka_AttributeCache_Has(Nuitka_AttributeCache *cache, PyObje
         return -1;
     }
 
+    if (cache->is_slot) {
+        return *(PyObject **)((char *)object + (unsigned int)cache->offset) != NULL;
+    }
+
     if (cache->offset == NUITKA_ATTRIBUTE_CACHE_CLASS_OFFSET || cache->offset == NUITKA_ATTRIBUTE_CACHE_DICT_OFFSET) {
         return 1;
     }
@@ -178,7 +248,30 @@ static inline int Nuitka_AttributeCache_Has(Nuitka_AttributeCache *cache, PyObje
 extern void Nuitka_AttributeCache_Fill(Nuitka_AttributeCache *cache, PyObject *object, PyObject *attribute_name,
                                        PyObject *attribute_value);
 
+extern void Nuitka_AttributeCache_FillSlotSet(Nuitka_AttributeCache *cache, PyObject *object, PyObject *attribute_name,
+                                              PyObject *attribute_value);
+
 #endif
+
+// Attribute assignment with a cache for the "__slots__" members. This is inline
+// on purpose, so that the store that hits is not a call, and so that the one
+// that can never be cached keeps doing just what it did before.
+static inline bool Nuitka_SetAttributeCached(PyThreadState *tstate, Nuitka_AttributeCache *cache, PyObject *target,
+                                             PyObject *attribute_name, PyObject *value) {
+    if (Nuitka_AttributeCache_SetSlot(cache, target, value)) {
+        return true;
+    }
+
+    bool result = SET_ATTRIBUTE(tstate, target, attribute_name, value);
+
+#if PYTHON_VERSION >= 0x3c0 && PYTHON_VERSION < 0x3e0 && !defined(Py_GIL_DISABLED)
+    if (result && cache->type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED) {
+        Nuitka_AttributeCache_FillSlotSet(cache, target, attribute_name, value);
+    }
+#endif
+
+    return result;
+}
 
 #endif
 

@@ -63,7 +63,7 @@ def generateAssignmentAttributeCode(statement, emit, context):
             getAttributeAssignmentCode(
                 target_name=target_name,
                 value_name=value_name,
-                attribute_name=context.getConstantCode(constant=attribute_name),
+                attribute_name=attribute_name,
                 emit=emit,
                 context=context,
             )
@@ -110,11 +110,31 @@ def _getAttributeLookupHelper(attribute_name, context):
         )
         context.addDeclaration(
             helper_name,
-            "static PyObject *%s(PyThreadState *tstate, PyObject *source);"
+            "static PyObject *%s(PyThreadState *tstate, PyObject *source, Nuitka_AttributeCache *cache);"
             % helper_name,
         )
 
     return helper_name
+
+
+def _getAttributeCacheName(attribute_name, context):
+    """Allocate storage for one attribute cache, for a single lookup in the code.
+
+    An attribute name is often used with more than one type in the same module,
+    and sharing an entry between those makes it get refilled all of the time,
+    which is slower than not caching at all.
+    """
+
+    cache_name = "attribute_cache_%s_%d" % (
+        encodePythonIdentifierToC(attribute_name),
+        context.allocateAttributeCacheNumber(),
+    )
+
+    context.addDeclaration(
+        cache_name, "static Nuitka_AttributeCache %s = {0, 0, false};" % cache_name
+    )
+
+    return cache_name
 
 
 def _getAttributeCheckHelper(attribute_name, can_raise, context):
@@ -135,7 +155,8 @@ def _getAttributeCheckHelper(attribute_name, can_raise, context):
         )
         context.addDeclaration(
             helper_name,
-            "static int %s(PyThreadState *tstate, PyObject *source);" % helper_name,
+            "static int %s(PyThreadState *tstate, PyObject *source, Nuitka_AttributeCache *cache);"
+            % helper_name,
         )
 
     return helper_name
@@ -146,8 +167,13 @@ def getAttributeLookupCode(
 ):
     if python_version >= 0x3C0:
         emit(
-            "%s = %s(tstate, %s);"
-            % (to_name, _getAttributeLookupHelper(attribute_name, context), source_name)
+            "%s = %s(tstate, %s, &%s);"
+            % (
+                to_name,
+                _getAttributeLookupHelper(attribute_name, context),
+                source_name,
+                _getAttributeCacheName(attribute_name, context),
+            )
         )
     else:
         if attribute_name == "__dict__":
@@ -204,14 +230,28 @@ def generateAttributeLookupCode(to_name, expression, emit, context):
 def getAttributeAssignmentCode(target_name, attribute_name, value_name, emit, context):
     res_name = context.getBoolResName()
 
-    emit(
-        "%s = SET_ATTRIBUTE(tstate, %s, %s, %s);"
-        % (res_name, target_name, attribute_name, value_name)
-    )
+    attribute_name_code = context.getConstantCode(constant=attribute_name)
+
+    if python_version >= 0x3C0:
+        emit(
+            "%s = Nuitka_SetAttributeCached(tstate, &%s, %s, %s, %s);"
+            % (
+                res_name,
+                _getAttributeCacheName(attribute_name, context),
+                target_name,
+                attribute_name_code,
+                value_name,
+            )
+        )
+    else:
+        emit(
+            "%s = SET_ATTRIBUTE(tstate, %s, %s, %s);"
+            % (res_name, target_name, attribute_name_code, value_name)
+        )
 
     getErrorExitBoolCode(
         condition="%s == false" % res_name,
-        release_names=(value_name, target_name, attribute_name),
+        release_names=(value_name, target_name, attribute_name_code),
         emit=emit,
         context=context,
     )
@@ -315,11 +355,12 @@ def generateBuiltinHasattrCode(to_name, expression, emit, context):
     ):
         attribute_name = expression.subnode_name.getCompileTimeConstant()
         emit(
-            "%s = %s(tstate, %s);"
+            "%s = %s(tstate, %s, &%s);"
             % (
                 res_name,
                 _getAttributeCheckHelper(attribute_name, True, context),
                 source_name,
+                _getAttributeCacheName(attribute_name, context),
             )
         )
     else:
@@ -351,13 +392,14 @@ def generateAttributeCheckCode(to_name, expression, emit, context):
         res_name = context.getIntResName()
 
         emit(
-            "%s = %s(tstate, %s);"
+            "%s = %s(tstate, %s, &%s);"
             % (
                 res_name,
                 _getAttributeCheckHelper(
                     expression.getAttributeName(), can_raise, context
                 ),
                 source_name,
+                _getAttributeCacheName(expression.getAttributeName(), context),
             )
         )
 

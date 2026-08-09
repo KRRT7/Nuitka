@@ -650,6 +650,56 @@ class ExpressionComparisonInNotInBase(
         return other_comparison_functions[self.comparator]
 
     def computeExpression(self, trace_collection):
+        # Lower the exact builtin type tuple idiom used by numeric parsers,
+        # e.g. ``type(value) in (int, float)``. This preserves exact-type
+        # semantics (unlike isinstance) and avoids PySequence_Contains.
+        if self.comparator == "In":
+            left = self.subnode_left
+            right = self.subnode_right
+
+            if left.isExpressionBuiltinType1() and right.isCompileTimeConstant():
+                value = left.subnode_value
+                type_values = right.getCompileTimeConstant()
+
+                if (
+                    not value.mayHaveSideEffects()
+                    and not value.mayRaiseException(BaseException)
+                    and type(type_values) is tuple
+                    and type_values
+                    and all(type(item) is type for item in type_values)
+                    and all(item in (int, float, bytes, str) for item in type_values)
+                ):
+                    from .BuiltinRefNodes import makeExpressionBuiltinTypeRef
+                    from .TypeNodes import ExpressionTypeIdentityCheck
+
+                    checks = tuple(
+                        ExpressionTypeIdentityCheck(
+                            left=value.makeClone(),
+                            right=makeExpressionBuiltinTypeRef(
+                                builtin_name=item.__name__,
+                                source_ref=self.source_ref,
+                            ),
+                            negated=False,
+                            source_ref=self.source_ref,
+                        )
+                        for item in type_values
+                    )
+
+                    if len(checks) == 1:
+                        result = checks[0]
+                    else:
+                        from nuitka.tree.ReformulationBooleanExpressions import (
+                            makeOrNode,
+                        )
+
+                        result = makeOrNode(values=checks, source_ref=self.source_ref)
+
+                    return (
+                        result,
+                        "new_builtin",
+                        "Replaced exact builtin type tuple membership with identity checks.",
+                    )
+
         if not self.left_available:
             (
                 self.left_available,

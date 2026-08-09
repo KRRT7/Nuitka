@@ -26,6 +26,7 @@ from nuitka.nodes.VariableAssignNodes import makeStatementAssignmentVariable
 from nuitka.nodes.VariableRefNodes import ExpressionTempVariableRef
 from nuitka.nodes.YieldNodes import ExpressionYieldFromAwaitable
 
+from .BoundNameState import isNameBoundInModule
 from .ReformulationAssignmentStatements import buildAssignmentStatements
 from .ReformulationTryExceptStatements import makeTryExceptSingleHandlerNode
 from .ReformulationTryFinallyStatements import makeTryFinallyReleaseStatement
@@ -48,9 +49,19 @@ def _buildRangeLoopSource(provider, node, source_ref):
     if getattr(node.iter.func, "id", None) != "range":
         return None
 
+    # Only the built-in "range" gives this, a module that binds that name
+    # anywhere may well be using its own at this point.
+    if isNameBoundInModule("range"):
+        return None
+
     range_args = node.iter.args
 
     if any(isinstance(argument, ast.Starred) for argument in range_args):
+        return None
+
+    # Keyword arguments are an error for this built-in, leave making that
+    # error to the normal path.
+    if node.iter.keywords:
         return None
 
     if len(range_args) == 1:

@@ -286,8 +286,15 @@ def getPickedCType(variable, context):
                 shape for shape in shapes if shape.getTypeName() in ("int", "long")
             ]
 
-            if int_like_shapes and all(
-                shape.getTypeName() in ("int", "long", None) for shape in shapes
+            if (
+                int_like_shapes
+                # Variables used from another scope are passed to direct calls
+                # as a reference, which this C type cannot do, even where they
+                # are not technically shared, so they have to stay objects.
+                and not variable.shared_users
+                and all(
+                    shape.getTypeName() in ("int", "long", None) for shape in shapes
+                )
             ):
                 result = CTypeNuitkaIntOrLongStruct
             elif len(shapes) != 1:

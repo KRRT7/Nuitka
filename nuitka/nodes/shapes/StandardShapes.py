@@ -122,7 +122,7 @@ class ShapeBase(getMetaClassBase("Shape", require_slots=True)):
                 return right_shape.getOperationBinaryAddLShape(self)
 
             if right_shape_type is ShapeLoopInitialAlternative:
-                return operation_result_unknown
+                return right_shape.getOperationBinaryAddLShape(self)
 
             onMissingOperation("Add", self, right_shape)
 
@@ -664,6 +664,11 @@ class ShapeLoopInitialAlternative(ShapeBase):
         result = set()
 
         for type_shape in self.type_shapes:
+            # Using a value that was not assigned yet raises before the
+            # operation is ever done, so it contributes no result shape.
+            if type_shape is tshape_uninitialized:
+                continue
+
             try:
                 entry, _description = operation(type_shape)
             except TypeError:
@@ -673,6 +678,9 @@ class ShapeLoopInitialAlternative(ShapeBase):
                 return tshape_unknown
 
             result.add(entry)
+
+        if not result:
+            return tshape_unknown
 
         return ShapeLoopInitialAlternative(result)
 
@@ -688,6 +696,16 @@ class ShapeLoopInitialAlternative(ShapeBase):
                 ),
                 ControlFlowDescriptionFullEscape,
             )
+
+    # Special method to be called by other shapes encountering this type on
+    # the right side.
+    def getOperationBinaryAddLShape(self, left_shape):
+        assert left_shape is not tshape_unknown
+
+        return (
+            self._collectInitialShape(operation=left_shape.getOperationBinaryAddShape),
+            ControlFlowDescriptionFullEscape,
+        )
 
     def getOperationInplaceAddShape(self, right_shape):
         if right_shape is tshape_unknown:

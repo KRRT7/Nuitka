@@ -1,21 +1,22 @@
 {#- Copyright 2026, Kay Hayen, mailto:kay.hayen@gmail.com find license text at end of file -#}
 
-static PyObject *{{ helper_name }}(PyThreadState *tstate, PyObject *source) {
+static PyObject *{{ helper_name }}(PyThreadState *tstate, PyObject *source, Nuitka_AttributeCache *cache) {
 #if PYTHON_VERSION >= 0x3c0 && PYTHON_VERSION < 0x3e0 && !defined(Py_GIL_DISABLED)
-    static Nuitka_AttributeCache cache = {0, 0};
-    PyObject *result = Nuitka_AttributeCache_Get(&cache, source);
+    PyObject *result = Nuitka_AttributeCache_Get(cache, source);
 
     if (likely(result != NULL)) {
         return result;
     }
 
     result = LOOKUP_ATTRIBUTE(tstate, source, {{ attribute_name_code }});
-    if (result != NULL && cache.type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED) {
-        Nuitka_AttributeCache_Fill(&cache, source, {{ attribute_name_code }}, result);
+    if (result != NULL && cache->type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED) {
+        Nuitka_AttributeCache_Fill(cache, source, {{ attribute_name_code }}, result);
     }
 
     return result;
 #else
+    (void)cache;
+
     return LOOKUP_ATTRIBUTE(tstate, source, {{ attribute_name_code }});
 #endif
 }

@@ -181,6 +181,40 @@ def generateBuiltinSum2Code(to_name, expression, emit, context):
     )
 
 
+def generateBuiltinMin2Code(to_name, expression, emit, context):
+    generateCAPIObjectCode(
+        to_name=to_name,
+        capi="BUILTIN_MIN2",
+        tstate=False,
+        arg_desc=(
+            ("min_left", expression.subnode_left),
+            ("min_right", expression.subnode_right),
+        ),
+        may_raise=expression.mayRaiseException(BaseException),
+        conversion_check=decideConversionCheckNeeded(to_name, expression),
+        source_ref=expression.getCompatibleSourceReference(),
+        emit=emit,
+        context=context,
+    )
+
+
+def generateBuiltinMax2Code(to_name, expression, emit, context):
+    generateCAPIObjectCode(
+        to_name=to_name,
+        capi="BUILTIN_MAX2",
+        tstate=False,
+        arg_desc=(
+            ("max_left", expression.subnode_left),
+            ("max_right", expression.subnode_right),
+        ),
+        may_raise=expression.mayRaiseException(BaseException),
+        conversion_check=decideConversionCheckNeeded(to_name, expression),
+        source_ref=expression.getCompatibleSourceReference(),
+        emit=emit,
+        context=context,
+    )
+
+
 def generateBuiltinRange1Code(to_name, expression, emit, context):
     generateCAPIObjectCode(
         to_name=to_name,

@@ -565,6 +565,9 @@ class PythonChildContextBase(PythonContextBase):
     def addDeclaration(self, key, code):
         self.parent.addDeclaration(key, code)
 
+    def allocateAttributeCacheNumber(self):
+        return self.parent.allocateAttributeCacheNumber()
+
     def pushFrameVariables(self, frame_variables):
         return self.parent.pushFrameVariables(frame_variables)
 
@@ -792,6 +795,7 @@ class PythonModuleContext(
         "code_name",
         "declaration_codes",
         "helper_codes",
+        "attribute_cache_count",
         "frame_handle",
         "variable_storage",
         "function_table_entries",
@@ -846,6 +850,7 @@ class PythonModuleContext(
 
         self.declaration_codes = {}
         self.helper_codes = {}
+        self.attribute_cache_count = 0
 
         self.frame_handle = None
 
@@ -918,6 +923,11 @@ class PythonModuleContext(
         assert key not in self.declaration_codes
 
         self.declaration_codes[key] = code
+
+    def allocateAttributeCacheNumber(self):
+        self.attribute_cache_count += 1
+
+        return self.attribute_cache_count
 
     def getDeclarations(self):
         return self.declaration_codes

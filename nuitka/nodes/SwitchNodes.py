@@ -15,11 +15,24 @@ class StatementSwitch(StatementBase):
 
     kind = "STATEMENT_SWITCH"
 
-    named_children = ("subject", "conditions|tuple+setter", "branches|tuple+setter")
+    named_children = (
+        "subject",
+        "conditions|tuple+setter",
+        "branches|tuple+setter",
+        "default_branch|statements_or_none+setter",
+    )
 
     __slots__ = ("case_values",)
 
-    def __init__(self, subject, conditions, branches, case_values, source_ref):
+    def __init__(
+        self,
+        subject,
+        conditions,
+        branches,
+        case_values,
+        source_ref,
+        default_branch=None,
+    ):
         assert type(conditions) is tuple
         assert type(branches) is tuple
         assert len(conditions) == len(branches) == len(case_values)
@@ -30,10 +43,13 @@ class StatementSwitch(StatementBase):
             condition.parent = self
         for branch in branches:
             branch.parent = self
+        if default_branch is not None:
+            default_branch.parent = self
 
         self.subnode_subject = subject
         self.subnode_conditions = conditions
         self.subnode_branches = branches
+        self.subnode_default_branch = default_branch
         self.case_values = case_values
 
         StatementBase.__init__(self, source_ref)
@@ -45,13 +61,19 @@ class StatementSwitch(StatementBase):
         self.subnode_conditions = value
 
     def getVisitableNodes(self):
-        return (self.subnode_subject,) + self.subnode_conditions + self.subnode_branches
+        return (
+            (self.subnode_subject,)
+            + self.subnode_conditions
+            + self.subnode_branches
+            + ((self.subnode_default_branch,) if self.subnode_default_branch else ())
+        )
 
     def getVisitableNodesNamed(self):
         return (
             ("subject", self.subnode_subject),
             ("conditions", self.subnode_conditions),
             ("branches", self.subnode_branches),
+            ("default_branch", self.subnode_default_branch),
         )
 
     def replaceChild(self, old_node, new_node):
@@ -72,6 +94,10 @@ class StatementSwitch(StatementBase):
             self.setChildBranches(tuple(branches))
             return
 
+        if old_node is self.subnode_default_branch:
+            self.setChildDefaultBranch(new_node)
+            return
+
         raise AssertionError("Didn't find child", old_node, "in", self)
 
     def setChildBranches(self, value):
@@ -79,6 +105,11 @@ class StatementSwitch(StatementBase):
         for branch in value:
             branch.parent = self
         self.subnode_branches = value
+
+    def setChildDefaultBranch(self, value):
+        if value is not None:
+            value.parent = self
+        self.subnode_default_branch = value
 
     def getDetailsForDisplay(self):
         return {"case_values": self.case_values}
@@ -113,34 +144,68 @@ class StatementSwitch(StatementBase):
         self.setChildConditions(tuple(conditions))
         self.setChildBranches(tuple(branches))
 
+        default_branch = self.subnode_default_branch
+        if default_branch is not None:
+            branch_collection = TraceCollectionBranch(
+                parent=trace_collection, name="switch default branch"
+            )
+            default_branch = branch_collection.computeBranch(branch=default_branch)
+            if default_branch is not None and default_branch.isStatementAborting():
+                branch_collection = None
+            if branch_collection is not None:
+                branch_collections.append(branch_collection)
+        self.setChildDefaultBranch(default_branch)
+
         if len(branch_collections) > 1:
             trace_collection.mergeMultipleBranches(branch_collections)
 
         return self, None, None
 
     def mayReturn(self):
-        return any(branch.mayReturn() for branch in self.subnode_branches)
+        return any(branch.mayReturn() for branch in self.subnode_branches) or (
+            self.subnode_default_branch is not None
+            and self.subnode_default_branch.mayReturn()
+        )
 
     def mayBreak(self):
-        return any(branch.mayBreak() for branch in self.subnode_branches)
+        return any(branch.mayBreak() for branch in self.subnode_branches) or (
+            self.subnode_default_branch is not None
+            and self.subnode_default_branch.mayBreak()
+        )
 
     def mayContinue(self):
-        return any(branch.mayContinue() for branch in self.subnode_branches)
+        return any(branch.mayContinue() for branch in self.subnode_branches) or (
+            self.subnode_default_branch is not None
+            and self.subnode_default_branch.mayContinue()
+        )
 
     def isStatementAborting(self):
-        # There is always an implicit no-match path.
-        return False
+        return (
+            self.subnode_default_branch is not None
+            and self.subnode_default_branch.isStatementAborting()
+        )
 
     def mayRaiseException(self, exception_type):
-        return any(
-            condition.mayRaiseException(exception_type)
-            for condition in self.subnode_conditions
-        ) or any(
-            branch.mayRaiseException(exception_type) for branch in self.subnode_branches
+        return (
+            any(
+                condition.mayRaiseException(exception_type)
+                for condition in self.subnode_conditions
+            )
+            or any(
+                branch.mayRaiseException(exception_type)
+                for branch in self.subnode_branches
+            )
+            or (
+                self.subnode_default_branch is not None
+                and self.subnode_default_branch.mayRaiseException(exception_type)
+            )
         )
 
     def needsFrame(self):
-        return any(branch.needsFrame() for branch in self.subnode_branches)
+        return any(branch.needsFrame() for branch in self.subnode_branches) or (
+            self.subnode_default_branch is not None
+            and self.subnode_default_branch.needsFrame()
+        )
 
     def collectVariableAccesses(self, emit_variable):
         self.subnode_subject.collectVariableAccesses(emit_variable)
@@ -148,6 +213,8 @@ class StatementSwitch(StatementBase):
             condition.collectVariableAccesses(emit_variable)
         for branch in self.subnode_branches:
             branch.collectVariableAccesses(emit_variable)
+        if self.subnode_default_branch is not None:
+            self.subnode_default_branch.collectVariableAccesses(emit_variable)
 
     def getCloneArgs(self):
         return {
@@ -157,6 +224,11 @@ class StatementSwitch(StatementBase):
             ),
             "branches": tuple(branch.makeClone() for branch in self.subnode_branches),
             "case_values": self.case_values,
+            "default_branch": (
+                self.subnode_default_branch.makeClone()
+                if self.subnode_default_branch is not None
+                else None
+            ),
             "source_ref": self.source_ref,
         }
 
@@ -170,4 +242,7 @@ class StatementSwitch(StatementBase):
         for branch in self.subnode_branches:
             branch.finalize()
         del self.subnode_branches
+        if self.subnode_default_branch is not None:
+            self.subnode_default_branch.finalize()
+        del self.subnode_default_branch
         del self.case_values

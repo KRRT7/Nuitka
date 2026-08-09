@@ -38,7 +38,6 @@ PyObject *RICH_COMPARE_LT_OBJECT_NILONG_NILONG(nuitka_ilong *operand1, nuitka_il
         bool r;
         if (left_c_usable) {
             r = COMPARE_GT_CBOOL_LONG_CLONG(operand2->python_value, operand1->c_value);
-            r = !r;
         } else {
             r = COMPARE_LT_CBOOL_LONG_CLONG(operand1->python_value, operand2->c_value);
         }
@@ -79,7 +78,6 @@ bool RICH_COMPARE_LT_CBOOL_NILONG_NILONG(nuitka_ilong *operand1, nuitka_ilong *o
         bool r;
         if (left_c_usable) {
             r = COMPARE_GT_CBOOL_LONG_CLONG(operand2->python_value, operand1->c_value);
-            r = !r;
         } else {
             r = COMPARE_LT_CBOOL_LONG_CLONG(operand1->python_value, operand2->c_value);
         }

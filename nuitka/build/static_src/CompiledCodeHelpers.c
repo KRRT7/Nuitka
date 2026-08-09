@@ -1829,6 +1829,41 @@ PyObject *BUILTIN_SUM1(PyThreadState *tstate, PyObject *sequence) {
     return result;
 }
 
+// The two value form of "min" and "max". Both keep the first of equal values,
+// as the built-ins do, since those only replace the current value when the
+// comparison is true for the later one.
+PyObject *BUILTIN_MIN2(PyObject *left, PyObject *right) {
+    CHECK_OBJECT(left);
+    CHECK_OBJECT(right);
+
+    nuitka_bool result = RICH_COMPARE_LT_NBOOL_OBJECT_OBJECT(right, left);
+
+    if (unlikely(result == NUITKA_BOOL_EXCEPTION)) {
+        return NULL;
+    }
+
+    PyObject *value = (result == NUITKA_BOOL_TRUE) ? right : left;
+
+    Py_INCREF(value);
+    return value;
+}
+
+PyObject *BUILTIN_MAX2(PyObject *left, PyObject *right) {
+    CHECK_OBJECT(left);
+    CHECK_OBJECT(right);
+
+    nuitka_bool result = RICH_COMPARE_GT_NBOOL_OBJECT_OBJECT(right, left);
+
+    if (unlikely(result == NUITKA_BOOL_EXCEPTION)) {
+        return NULL;
+    }
+
+    PyObject *value = (result == NUITKA_BOOL_TRUE) ? right : left;
+
+    Py_INCREF(value);
+    return value;
+}
+
 NUITKA_DEFINE_BUILTIN(sum);
 
 PyObject *BUILTIN_SUM2(PyThreadState *tstate, PyObject *sequence, PyObject *start) {

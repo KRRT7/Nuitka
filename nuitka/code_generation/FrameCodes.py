@@ -190,7 +190,10 @@ def getTypeSizeOf(type_indicator):
     elif type_indicator == "b":
         return "sizeof(nuitka_bool)"
     elif type_indicator == "L":
-        return "sizeof(nuitka_ilong)"
+        # Only the object value of a dual int is put into frame locals storage,
+        # "Nuitka_Frame_AttachLocals" enforces it to be present, and all frame
+        # walkers step over it by that size too.
+        return "sizeof(PyObject *)"
     else:
         assert False, type_indicator
 

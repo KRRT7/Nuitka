@@ -159,6 +159,22 @@ def checkSequence(filename, statements):
         if kind in ("ReturnNone", "ReturnConstant"):
             continue
 
+        # Conditions are retained in optimization reports when their branches
+        # still contain constant statements.  Validate those branches as part
+        # of the same sequence rather than treating the conditional itself as
+        # an unexpected side effect.
+        if kind == "Conditional":
+            yes_branch = getRole(statement, "yes_branch")
+            no_branch = getRole(statement, "no_branch")
+
+            if yes_branch is not None:
+                checkSequence(filename, getRole(yes_branch[0], "statements"))
+
+            if no_branch is not None and len(no_branch):
+                checkSequence(filename, getRole(no_branch[0], "statements"))
+
+            continue
+
         print(convertXmlToString(statement))
         search_mode.onErrorDetected(
             "Error, non-print statement of unknown kind '%s'." % kind

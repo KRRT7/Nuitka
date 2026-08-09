@@ -37,25 +37,29 @@ class ExpressionBuiltinNext1(ExpressionBuiltinSingleArgBase):
     def mayRaiseException(self, exception_type):
         return self.may_raise or self.subnode_value.mayRaiseException(exception_type)
 
-    def getIterationValue(self, element_index):
+    # Note: These must not be given as the elements of this value. What this
+    # produces is one element of the iterated value, and the elements of that
+    # element are not the elements of the iterator, so answering with those
+    # describes an entirely different sequence, and picking operations from it
+    # then generates code for the wrong type.
+
+    def _getIteratedValue(self, element_index):
+        """Value or shape of an element of the iterated value, or None."""
+
         if hasattr(self.subnode_value, "getIterationValue"):
-            return self.subnode_value.getIterationValue(element_index)
+            result = self.subnode_value.getIterationValue(element_index)
 
-        return None
+            if result is not None:
+                return result.getTypeShape()
 
-    def getIterationValueShape(self, element_index):
         if hasattr(self.subnode_value, "getIterationValueShape"):
             return self.subnode_value.getIterationValueShape(element_index)
 
         return None
 
     def getTypeShape(self):
-        result = self.getIterationValue(0)
-
-        if result is not None:
-            return result.getTypeShape()
-
-        result = self.getIterationValueShape(0)
+        # What "next" gives is the first element of what is iterated.
+        result = self._getIteratedValue(0)
 
         if result is None:
             return tshape_unknown
@@ -92,6 +96,26 @@ class ExpressionSpecialUnpack(ExpressionBuiltinNext1):
 
     def getStarred(self):
         return self.starred
+
+    def getTypeShape(self):
+        # Unpacking takes the elements of the value being unpacked, which the
+        # iterator over it is asked for, and it can only answer when that value
+        # is known by itself.
+        element_index = self.count - 1
+        iteration_length = self.subnode_value.getIterationLength()
+
+        if iteration_length is not None and element_index >= iteration_length:
+            return tshape_unknown
+
+        try:
+            result = self._getIteratedValue(element_index)
+        except (AssertionError, IndexError):
+            result = None
+
+        if result is None:
+            return tshape_unknown
+
+        return result
 
 
 class ExpressionBuiltinNext2(ChildrenHavingIteratorDefaultMixin, ExpressionBase):

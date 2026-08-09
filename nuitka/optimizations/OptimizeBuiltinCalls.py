@@ -73,6 +73,10 @@ from nuitka.nodes.BuiltinRefNodes import (
     ExpressionBuiltinAnonymousRef,
     makeExpressionBuiltinTypeRef,
 )
+from nuitka.nodes.BuiltinMinMaxNodes import (
+    ExpressionBuiltinMax2,
+    ExpressionBuiltinMin2,
+)
 from nuitka.nodes.BuiltinSumNodes import (
     ExpressionBuiltinSum1,
     ExpressionBuiltinSum2,
@@ -321,6 +325,40 @@ def zip_extractor(node):
         builtin_class=ExpressionBuiltinZip,
         builtin_spec=BuiltinParameterSpecs.builtin_zip_spec,
     )
+
+
+def isMinMaxTwoValueForm(node):
+    """Is this a "min" or "max" call with exactly two values given.
+
+    Only that form is handled, as the one with an iterable needs a loop, and
+    the ones given "key" or "default" have different semantics.
+    """
+
+    if node.subnode_kwargs is not None:
+        return False
+
+    args = node.subnode_args
+
+    if args is None or not args.canPredictIterationValues():
+        return False
+
+    return len(args.getIterationValues()) == 2
+
+
+def _minmax_extractor(node, builtin_class):
+    values = node.subnode_args.getIterationValues()
+
+    return builtin_class(
+        left=values[0], right=values[1], source_ref=node.getSourceReference()
+    )
+
+
+def min_extractor(node):
+    return _minmax_extractor(node, ExpressionBuiltinMin2)
+
+
+def max_extractor(node):
+    return _minmax_extractor(node, ExpressionBuiltinMax2)
 
 
 def sum_extractor(node):
@@ -1458,6 +1496,8 @@ _dispatch_dict = {
     "iter": iter_extractor,
     "next": next_extractor,
     "sum": sum_extractor,
+    "min": min_extractor,
+    "max": max_extractor,
     "tuple": tuple_extractor,
     "list": list_extractor,
     "dict": dict_extractor,
@@ -1578,6 +1618,9 @@ def computeBuiltinCall(builtin_name, call_node, trace_collection):
     # There is some dispatching for how to output various types of changes,
     # with lots of cases.
     if builtin_name == "zip" and call_node.subnode_kwargs is not None:
+        return call_node, None, None
+
+    if builtin_name in ("min", "max") and not isMinMaxTwoValueForm(call_node):
         return call_node, None, None
 
     if builtin_name in _dispatch_dict:

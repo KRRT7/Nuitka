@@ -187,7 +187,10 @@ static PyObject *_Nuitka_Frame_get_locals(PyObject *self, void *data) {
         while (*w != 0) {
             switch (*w) {
             case NUITKA_TYPE_DESCRIPTION_OBJECT:
-            case NUITKA_TYPE_DESCRIPTION_OBJECT_PTR: {
+            case NUITKA_TYPE_DESCRIPTION_OBJECT_PTR:
+            // The dual int value is stored as its object value only, see
+            // "Nuitka_Frame_AttachLocals" which enforces it to be present.
+            case NUITKA_TYPE_DESCRIPTION_NILONG: {
                 PyObject *value = *(PyObject **)t;
                 CHECK_OBJECT_X(value);
 
@@ -573,6 +576,15 @@ static int Nuitka_Frame_tp_traverse(struct Nuitka_FrameObject *frame, visitproc 
         switch (*w) {
         case NUITKA_TYPE_DESCRIPTION_OBJECT:
         case NUITKA_TYPE_DESCRIPTION_OBJECT_PTR: {
+            PyObject *value = *(PyObject **)t;
+            CHECK_OBJECT_X(value);
+
+            Py_VISIT(value);
+            t += sizeof(PyObject *);
+
+            break;
+        }
+        case NUITKA_TYPE_DESCRIPTION_NILONG: {
             PyObject *value = *(PyObject **)t;
             CHECK_OBJECT_X(value);
 

@@ -32,6 +32,19 @@ class ExpressionAttributeLookup(ExpressionAttributeLookupBase):
             trace_collection=trace_collection,
         )
 
+
+    def computeExpressionCall(self, call_node, call_args, call_kw, trace_collection):
+        # Calling what was looked up passes the object as "self" to it, so it
+        # can be changed by whatever that is, and what is known about its value
+        # must not be relied upon anymore. Methods that get recognized replace
+        # this node before it matters, so this is for the calls that stay
+        # unknown, including the ones only recognized in a later pass.
+        trace_collection.removeKnowledge(self.subnode_expression)
+
+        return ExpressionBase.computeExpressionCall(
+            self, call_node, call_args, call_kw, trace_collection
+        )
+
     def mayRaiseException(self, exception_type):
         return self.subnode_expression.mayRaiseException(
             exception_type
@@ -92,6 +105,19 @@ class ExpressionAttributeLookupFixedBase(ChildHavingExpressionMixin, ExpressionB
             lookup_node=self,
             attribute_name=self.attribute_name,
             trace_collection=trace_collection,
+        )
+
+
+    def computeExpressionCall(self, call_node, call_args, call_kw, trace_collection):
+        # Calling what was looked up passes the object as "self" to it, so it
+        # can be changed by whatever that is, and what is known about its value
+        # must not be relied upon anymore. Methods that get recognized replace
+        # this node before it matters, so this is for the calls that stay
+        # unknown, including the ones only recognized in a later pass.
+        trace_collection.removeKnowledge(self.subnode_expression)
+
+        return ExpressionBase.computeExpressionCall(
+            self, call_node, call_args, call_kw, trace_collection
         )
 
     def mayRaiseException(self, exception_type):

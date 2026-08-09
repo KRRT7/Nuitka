@@ -49,8 +49,9 @@ COMPARE_{{op_code}}_{{target.getHelperCodeName()}}_{{left.getDualType(left_choic
 {% if left.isDualType() and right.isDualType() %}
         bool r;
         if (left_c_usable) {
+            {#- Swapping the operands is what the reversed operation is for, so
+                the result is the one asked for and must not be negated. -#}
             r = COMPARE_{{reversed_args_op_code}}_CBOOL_{{right.getDualType("Python").getHelperCodeName()}}_{{left.getDualType("C").getHelperCodeName()}}({{right.getDualTypeAccessCode("Python", "operand2")}}, {{left.getDualTypeAccessCode("C", "operand1")}});
-            r = !r;
         } else {
            r = COMPARE_{{op_code}}_CBOOL_{{left.getDualType("Python").getHelperCodeName()}}_{{right.getDualType("C").getHelperCodeName()}}({{left.getDualTypeAccessCode("Python", "operand1")}}, {{left.getDualTypeAccessCode("C", "operand2")}});
         }

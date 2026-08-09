@@ -1,9 +1,8 @@
 {#- Copyright 2026, Kay Hayen, mailto:kay.hayen@gmail.com find license text at end of file -#}
 
-static int {{ helper_name }}(PyThreadState *tstate, PyObject *source) {
+static int {{ helper_name }}(PyThreadState *tstate, PyObject *source, Nuitka_AttributeCache *cache) {
 #if PYTHON_VERSION >= 0x3c0 && PYTHON_VERSION < 0x3e0 && !defined(Py_GIL_DISABLED)
-    static Nuitka_AttributeCache cache = {0, 0};
-    int hit = Nuitka_AttributeCache_Has(&cache, source);
+    int hit = Nuitka_AttributeCache_Has(cache, source);
 
     if (likely(hit != -1)) {
         return hit;
@@ -23,13 +22,15 @@ static int {{ helper_name }}(PyThreadState *tstate, PyObject *source) {
 {% endif %}
     }
 
-    if (cache.type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED) {
-        Nuitka_AttributeCache_Fill(&cache, source, {{ attribute_name_code }}, result);
+    if (cache->type_version == NUITKA_ATTRIBUTE_CACHE_UNINITIALIZED) {
+        Nuitka_AttributeCache_Fill(cache, source, {{ attribute_name_code }}, result);
     }
 
     Py_DECREF(result);
     return 1;
 #else
+    (void)cache;
+
     return BUILTIN_HASATTR_BOOL(tstate, source, {{ attribute_name_code }});
 #endif
 }

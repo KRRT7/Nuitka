@@ -16,6 +16,7 @@ from .ChildrenHavingMixins import (
     ChildrenHavingConditionExpressionYesExpressionNoMixin,
     ChildrenHavingLeftRightMixin,
 )
+from .ComparisonNodes import makeComparisonExpression
 from .ExpressionBases import ExpressionBase
 from .NodeMakingHelpers import (
     makeConstantReplacementNode,
@@ -29,6 +30,150 @@ from .shapes.BuiltinTypeShapes import tshape_bool
 from .shapes.StandardShapes import tshape_unknown
 from .StatementBasesGenerated import StatementConditionalBase
 from .StatementNodes import StatementsSequence
+from .SwitchNodes import StatementSwitch
+
+
+def _makeIntegerEqualitySwitch(statement):
+    """Make a switch for a simple, repeated variable equality chain."""
+
+    conditions = []
+    branches = []
+    case_values = []
+    seen = set()
+    current = statement
+    subject = None
+
+    while isinstance(current, StatementConditional):
+        condition = current.subnode_condition
+        if not condition.isExpressionComparison() or condition.getComparator() != "Eq":
+            return None
+
+        left = condition.subnode_left
+        right = condition.subnode_right
+
+        if left.isExpressionVariableRef() and right.isCompileTimeConstant():
+            subject_node = left
+            value_node = right
+        elif right.isExpressionVariableRef() and left.isCompileTimeConstant():
+            subject_node = right
+            value_node = left
+        else:
+            return None
+
+        value = value_node.getCompileTimeConstant()
+        if type(value) is not int or value in seen:
+            return None
+
+        if subject is None:
+            subject = subject_node
+        elif subject_node.getVariable() is not subject.getVariable():
+            return None
+
+        if subject_node.mayHaveSideEffects():
+            return None
+
+        conditions.append(
+            makeComparisonExpression(
+                left=left.makeClone(),
+                right=right.makeClone(),
+                comparator=condition.getComparator(),
+                source_ref=condition.source_ref,
+            )
+        )
+        branches.append(current.subnode_yes_branch)
+        case_values.append((value,))
+        seen.add(value)
+
+        no_branch = current.subnode_no_branch
+        if no_branch is None or not isinstance(no_branch, StatementConditional):
+            default_branch = no_branch
+            break
+        current = no_branch
+    else:
+        return None
+
+    if len(conditions) < 2:
+        return None
+
+    return StatementSwitch(
+        subject=subject.makeClone(),
+        conditions=tuple(conditions),
+        branches=tuple(branches),
+        case_values=tuple(case_values),
+        default_branch=default_branch,
+        source_ref=statement.source_ref,
+    )
+
+
+def _makeStringEqualitySwitch(statement):
+    """Make a switch for a simple, repeated exact string equality chain."""
+
+    conditions = []
+    branches = []
+    case_values = []
+    seen = set()
+    current = statement
+    subject = None
+
+    while isinstance(current, StatementConditional):
+        condition = current.subnode_condition
+        if not condition.isExpressionComparison() or condition.getComparator() != "Eq":
+            return None
+
+        left = condition.subnode_left
+        right = condition.subnode_right
+        if left.isExpressionVariableRef() and right.isCompileTimeConstant():
+            subject_node = left
+            value_node = right
+        elif right.isExpressionVariableRef() and left.isCompileTimeConstant():
+            subject_node = right
+            value_node = left
+        else:
+            return None
+
+        value = value_node.getCompileTimeConstant()
+        if type(value) is not str or value in seen:
+            return None
+
+        if subject is None:
+            subject = subject_node
+        elif subject_node.getVariable() is not subject.getVariable():
+            return None
+
+        if subject_node.mayHaveSideEffects():
+            return None
+
+        conditions.append(
+            makeComparisonExpression(
+                left=left.makeClone(),
+                right=right.makeClone(),
+                comparator=condition.getComparator(),
+                source_ref=condition.source_ref,
+            )
+        )
+        branches.append(current.subnode_yes_branch)
+        case_values.append((value,))
+        seen.add(value)
+
+        no_branch = current.subnode_no_branch
+        if no_branch is None or not isinstance(no_branch, StatementConditional):
+            default_branch = no_branch
+            break
+        current = no_branch
+    else:
+        return None
+
+    if len(conditions) < 2:
+        return None
+
+    return StatementSwitch(
+        subject=subject.makeClone(),
+        conditions=tuple(conditions),
+        branches=tuple(branches),
+        case_values=tuple(case_values),
+        default_branch=default_branch,
+        source_ref=statement.source_ref,
+    )
 
 
 class ConditionalValueComputeMixin(object):
@@ -572,6 +717,18 @@ class StatementConditional(ConditionalValueComputeMixin, StatementConditionalBas
 
     def computeStatement(self, trace_collection):
         # This is rather complex stuff, pylint: disable=too-many-branches,too-many-statements
+
+        integer_switch = _makeIntegerEqualitySwitch(self)
+        string_switch = _makeStringEqualitySwitch(self)
+        if integer_switch is not None or string_switch is not None:
+            selected_switch = (
+                integer_switch if integer_switch is not None else string_switch
+            )
+            return (
+                selected_switch,
+                "new_statements",
+                "Specialize equality if/elif chain into a switch.",
+            )
 
         condition = trace_collection.onExpression(self.subnode_condition)
 

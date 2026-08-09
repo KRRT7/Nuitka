@@ -117,6 +117,12 @@ class ExpressionBuiltinIter1(ExpressionBuiltinSingleArgBase):
 
         return None
 
+    def getIterationValueShape(self, element_index):
+        if hasattr(self.subnode_value, "getIterationValueShape"):
+            return self.subnode_value.getIterationValueShape(element_index)
+
+        return None
+
     def getIterationHandle(self):
         return self.subnode_value.getIterationHandle()
 
@@ -321,6 +327,15 @@ class ExpressionBuiltinEnumerate2(
         )
 
         ExpressionBase.__init__(self, source_ref)
+
+    def getEnumerateStartInteger(self):
+        if self.subnode_start.isCompileTimeConstant():
+            start = self.subnode_start.getCompileTimeConstant()
+
+            if type(start) is int:
+                return start
+
+        return None
 
     def mayRaiseException(self, exception_type):
         if ExpressionBuiltinEnumerateMixin.mayRaiseException(self, exception_type):

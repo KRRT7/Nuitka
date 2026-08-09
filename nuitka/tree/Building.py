@@ -145,6 +145,7 @@ from nuitka.utils.ModuleNames import ModuleName
 from nuitka.utils.Utils import withNoSyntaxWarning
 
 from . import SyntaxErrors
+from .BoundNameState import popBoundNames, pushBoundNames
 from .FutureSpecState import getFutureSpec, popFutureSpec, pushFutureSpec
 from .ReformulationAssertStatements import buildAssertNode
 from .ReformulationAssignmentStatements import (
@@ -868,6 +869,10 @@ def buildParseTree(provider, ast_tree, source_ref, is_main):
     pushFutureSpec(provider.getFullName())
     provider.setFutureSpec(getFutureSpec())
 
+    # Which names this module binds anywhere is needed while building, to tell
+    # if a name can only be the built-in of that name.
+    pushBoundNames(ast_tree)
+
     body, doc = extractDocFromBody(ast_tree)
 
     if is_main and 0x360 <= python_version < 0x3E0:
@@ -1044,6 +1049,7 @@ def buildParseTree(provider, ast_tree, source_ref, is_main):
         module=provider, statements=statements, source_ref=source_ref
     )
 
+    popBoundNames()
     popFutureSpec()
 
     return result

@@ -703,10 +703,13 @@ def _getSwitchCaseValues(ast_cases):
         if not values or any(not isPythonValidCLongValue(value) for value in values):
             return None
 
+        if any(value in seen for value in values):
+            return None
+
         result.append(values)
         seen.update(values)
 
-    if len(seen) < 2:
+    if not seen:
         return None
 
     return tuple(result)
