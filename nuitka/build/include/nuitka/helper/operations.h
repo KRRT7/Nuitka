@@ -67,6 +67,11 @@ NUITKA_MAY_BE_UNUSED static PyObject *UNARY_OPERATION(unary_api api, PyObject *o
 #include "nuitka/helper/operations_binary_dual_sub.h"
 #include "nuitka/helper/operations_binary_dual_mult.h"
 #include "nuitka/helper/operations_binary_dual_mod.h"
+#include "nuitka/helper/operations_binary_dual_bitand.h"
+#include "nuitka/helper/operations_binary_dual_bitor.h"
+#include "nuitka/helper/operations_binary_dual_bitxor.h"
+#include "nuitka/helper/operations_binary_dual_lshift.h"
+#include "nuitka/helper/operations_binary_dual_rshift.h"
 
 #include "nuitka/helper/operations_inplace_add.h"
 #include "nuitka/helper/operations_inplace_bitand.h"

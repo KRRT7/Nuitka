@@ -1622,6 +1622,11 @@ def main():
     makeHelpersBinaryDualOperation("-", "SUB")
     makeHelpersBinaryDualOperation("*", "MULT")
     makeHelpersBinaryDualOperation("%", "MOD")
+    makeHelpersBinaryDualOperation("&", "BITAND")
+    makeHelpersBinaryDualOperation("|", "BITOR")
+    makeHelpersBinaryDualOperation("^", "BITXOR")
+    makeHelpersBinaryDualOperation("<<", "LSHIFT")
+    makeHelpersBinaryDualOperation(">>", "RSHIFT")
 
     makeDictCopyHelperCodes()
 

@@ -876,7 +876,7 @@ return %(return_value)s;""" % {
                 "result": result,
                 "const_name": const_name,
             }
-        elif cls.type_name in ("nbool", "float"):
+        elif cls.type_name in ("nbool", "float") or cls.isDualType():
             return cls.getAssignFromLongExpressionCode(result, value)
         else:
             assert False, (cls, cls.type_name)
@@ -921,7 +921,11 @@ Py_INCREF(%(result)s);""" % {
 
             return code
 
-        if cls is left:
+        if cls.isDualType():
+            return cls.getAssignFromLongExpressionCode(
+                result, left.getAsLongValueExpression(value)
+            )
+        elif cls is left:
             return _getObjectObject()
         else:
             if cls.type_name in ("object", "float"):

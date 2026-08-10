@@ -1587,6 +1587,106 @@ bool INPLACE_OPERATION_LSHIFT_OBJECT_OBJECT(PyObject **operand1, PyObject *opera
     return _INPLACE_OPERATION_LSHIFT_OBJECT_OBJECT(operand1, operand2);
 }
 
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "DIGIT" to C platform digit value for long
+ * Python objects. */
+static inline bool _INPLACE_OPERATION_LSHIFT_LONG_DIGIT(PyObject **operand1, long operand2) {
+    assert(operand1); // Pointer must be non-null.
+
+    CHECK_OBJECT(*operand1);
+    assert(PyLong_CheckExact(*operand1));
+    assert(Py_ABS(operand2) < (1 << PyLong_SHIFT));
+
+    // Not every code path will make use of all possible results.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4101)
+#endif
+    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
+    NUITKA_MAY_BE_UNUSED long clong_result;
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+    PyObject *operand1_object = *operand1;
+    PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_lshift(operand1_object, operand2_object);
+    assert(x != Py_NotImplemented);
+
+    Py_DECREF(operand2_object);
+
+    obj_result = x;
+    goto exit_result_object;
+
+exit_result_object:
+    if (unlikely(obj_result == NULL)) {
+        goto exit_result_exception;
+    }
+    // We got an object handed, that we have to release.
+    Py_DECREF(*operand1);
+    *operand1 = obj_result;
+    goto exit_result_ok;
+
+exit_result_ok:
+    return true;
+
+exit_result_exception:
+    return false;
+}
+
+bool INPLACE_OPERATION_LSHIFT_LONG_DIGIT(PyObject **operand1, long operand2) {
+    return _INPLACE_OPERATION_LSHIFT_LONG_DIGIT(operand1, operand2);
+}
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "CLONG" to C platform long value. */
+static inline bool _INPLACE_OPERATION_LSHIFT_LONG_CLONG(PyObject **operand1, long operand2) {
+    assert(operand1); // Pointer must be non-null.
+
+    CHECK_OBJECT(*operand1);
+    assert(PyLong_CheckExact(*operand1));
+
+    // Not every code path will make use of all possible results.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4101)
+#endif
+    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
+    NUITKA_MAY_BE_UNUSED long clong_result;
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+    PyObject *operand1_object = *operand1;
+    PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_lshift(operand1_object, operand2_object);
+    assert(x != Py_NotImplemented);
+
+    Py_DECREF(operand2_object);
+
+    obj_result = x;
+    goto exit_result_object;
+
+exit_result_object:
+    if (unlikely(obj_result == NULL)) {
+        goto exit_result_exception;
+    }
+    // We got an object handed, that we have to release.
+    Py_DECREF(*operand1);
+    *operand1 = obj_result;
+    goto exit_result_ok;
+
+exit_result_ok:
+    return true;
+
+exit_result_exception:
+    return false;
+}
+
+bool INPLACE_OPERATION_LSHIFT_LONG_CLONG(PyObject **operand1, long operand2) {
+    return _INPLACE_OPERATION_LSHIFT_LONG_CLONG(operand1, operand2);
+}
+
 //     Part of "Nuitka", an optimizing Python compiler that is compatible and
 //     integrates with CPython, but also works on its own.
 //

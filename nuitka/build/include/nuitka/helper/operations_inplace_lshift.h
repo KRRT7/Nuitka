@@ -46,6 +46,13 @@ extern bool INPLACE_OPERATION_LSHIFT_INT_LONG(PyObject **operand1, PyObject *ope
 /* Code referring to "OBJECT" corresponds to any Python object and "OBJECT" to any Python object. */
 extern bool INPLACE_OPERATION_LSHIFT_OBJECT_OBJECT(PyObject **operand1, PyObject *operand2);
 
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "DIGIT" to C platform digit value for long
+ * Python objects. */
+extern bool INPLACE_OPERATION_LSHIFT_LONG_DIGIT(PyObject **operand1, long operand2);
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "CLONG" to C platform long value. */
+extern bool INPLACE_OPERATION_LSHIFT_LONG_CLONG(PyObject **operand1, long operand2);
+
 //     Part of "Nuitka", an optimizing Python compiler that is compatible and
 //     integrates with CPython, but also works on its own.
 //

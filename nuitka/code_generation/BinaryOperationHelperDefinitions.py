@@ -51,6 +51,11 @@ def deriveInplaceFromBinaryOperations(operations_set):
         )
         for helper_name in operations_set
         if parseTypesFromHelper(helper_name)[0] == "OBJECT"
+        # The in-place target ("self") must be a real, mutable object; a C
+        # literal type (CLONG/DIGIT/CFLOAT) can never be the left-hand side
+        # of an augmented assignment, so skip those rather than deriving a
+        # nonsensical (and non-compiling) in-place helper for them.
+        and parseTypesFromHelper(helper_name)[1] not in _no_inplace_target_types
     )
 
 
@@ -222,6 +227,23 @@ def _makeNumberOps(op_code, result_types):
             if op_code in ("ADD", "SUB", "MULT", "MOD") and result_types is not None
             else ()
         ),
+    )
+
+
+def _makeNilongDualBitOps(op_code, result_types):
+    if result_types is None:
+        return ()
+
+    # NBOOL is deliberately excluded: the dual template's "result" is an
+    # out-parameter, which relies on the target's C type being a pointer
+    # (true for NILONG). NBoolDesc's type_decl is a plain "nuitka_bool" by
+    # value, so writes to it would silently vanish. NILONG-result callers
+    # already get the boxing win; a truth test on the result pays one extra
+    # (cheap) materialize-then-check instead of a fused boolean compute.
+    return _makeFriendOps(
+        op_code,
+        friend_type_names=("NILONG", "NILONG", "DIGIT"),
+        result_types=("NILONG",),
     )
 
 
@@ -486,6 +508,23 @@ def _makeBitOps(op_name, in_place):
         _makeDefaultOps(
             op_name, result_types=None if in_place else standard_result_types
         ),
+        (
+            ()
+            if in_place
+            else buildOrderedSet(
+                _makeFriendOps(
+                    op_name,
+                    friend_type_names=("LONG", "DIGIT"),
+                    result_types=standard_result_types,
+                ),
+                _makeFriendOps(
+                    op_name,
+                    friend_type_names=("LONG", "CLONG"),
+                    result_types=standard_result_types,
+                ),
+                _makeNilongDualBitOps(op_name, result_types=standard_result_types),
+            )
+        ),
     )
 
 
@@ -525,6 +564,23 @@ def _makeShiftOps(op_name, in_place):
         ),
         _makeDefaultOps(
             op_name, result_types=None if in_place else standard_result_types
+        ),
+        (
+            ()
+            if in_place
+            else buildOrderedSet(
+                _makeFriendOps(
+                    op_name,
+                    friend_type_names=("LONG", "DIGIT"),
+                    result_types=standard_result_types,
+                ),
+                _makeFriendOps(
+                    op_name,
+                    friend_type_names=("LONG", "CLONG"),
+                    result_types=standard_result_types,
+                ),
+                _makeNilongDualBitOps(op_name, result_types=standard_result_types),
+            )
         ),
     )
 

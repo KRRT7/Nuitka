@@ -43,14 +43,39 @@ bool BINARY_OPERATION_{{op_code}}_{{target.getHelperCodeName()}}_{{left.getHelpe
         {{ target.getAssignFromObjectExpressionCode("result", "obj_result") }}
         return true;
 
-{% else %}
-        {{ 0/0 }}
 {% endif %}
 {% endif %}
 
 {% if "exit_result_ok_clong" in props["exits"] %}
 exit_result_ok_clong:
         {{target.getAssignFromLongExpressionCode("result", "clong_result")}}
+        return true;
+{% endif %}
+
+{% if "exit_result_ok_left" in props["exits"] %}
+exit_result_ok_left:
+        {{ target.getAssignConversionCode("result", left, "operand1") }}
+        return true;
+{% endif %}
+
+{% if "exit_result_object" in props["exits"] %}
+exit_result_object:
+        if (unlikely(obj_result == NULL)) {
+            return false;
+        }
+        {{ target.getAssignFromObjectExpressionCode("result", "obj_result") }}
+        return true;
+{% endif %}
+
+{% if "exit_result_ok_const_int_0" in props["exits"] %}
+exit_result_ok_const_int_0:
+        {{ target.getAssignFromIntConstantCode("result", 0) }}
+        return true;
+{% endif %}
+
+{% if "exit_result_ok_const_int_neg_1" in props["exits"] %}
+exit_result_ok_const_int_neg_1:
+        {{ target.getAssignFromIntConstantCode("result", -1) }}
         return true;
 {% endif %}
 
@@ -67,7 +92,11 @@ exit_result_exception:
             return false;
         }
 
+{% if target.isDualType() %}
         {{ target.getSetDualValueCode("Python", "result", "python_result") }}
+{% else %}
+        {{ target.getAssignFromObjectExpressionCode("result", "python_result") }}
+{% endif %}
         return true;
 {% endif %}
 {% if right.isDualType() %}
@@ -82,7 +111,11 @@ exit_result_exception:
             return false;
         }
 
+{% if target.isDualType() %}
         {{ target.getSetDualValueCode("Python", "result", "python_result") }}
+{% else %}
+        {{ target.getAssignFromObjectExpressionCode("result", "python_result") }}
+{% endif %}
 
         return true;
 {% endif %}
@@ -94,7 +127,11 @@ exit_result_exception:
             return false;
         }
 
+{% if target.isDualType() %}
         {{ target.getSetDualValueCode("Python", "result", "python_result") }}
+{% else %}
+        {{ target.getAssignFromObjectExpressionCode("result", "python_result") }}
+{% endif %}
 
         return true;
 {% else %}

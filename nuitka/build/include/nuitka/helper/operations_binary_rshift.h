@@ -83,6 +83,34 @@ extern PyObject *BINARY_OPERATION_RSHIFT_OBJECT_OBJECT_OBJECT(PyObject *operand1
 /* Code referring to "OBJECT" corresponds to any Python object and "OBJECT" to any Python object. */
 extern nuitka_bool BINARY_OPERATION_RSHIFT_NBOOL_OBJECT_OBJECT(PyObject *operand1, PyObject *operand2);
 
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "DIGIT" to C platform digit value for long
+ * Python objects. */
+extern PyObject *BINARY_OPERATION_RSHIFT_OBJECT_LONG_DIGIT(PyObject *operand1, long operand2);
+
+/* Code referring to "DIGIT" corresponds to C platform digit value for long Python objects and "LONG" to Python2 'long',
+ * Python3 'int'. */
+extern PyObject *BINARY_OPERATION_RSHIFT_OBJECT_DIGIT_LONG(long operand1, PyObject *operand2);
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "DIGIT" to C platform digit value for long
+ * Python objects. */
+extern nuitka_bool BINARY_OPERATION_RSHIFT_NBOOL_LONG_DIGIT(PyObject *operand1, long operand2);
+
+/* Code referring to "DIGIT" corresponds to C platform digit value for long Python objects and "LONG" to Python2 'long',
+ * Python3 'int'. */
+extern nuitka_bool BINARY_OPERATION_RSHIFT_NBOOL_DIGIT_LONG(long operand1, PyObject *operand2);
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "CLONG" to C platform long value. */
+extern PyObject *BINARY_OPERATION_RSHIFT_OBJECT_LONG_CLONG(PyObject *operand1, long operand2);
+
+/* Code referring to "CLONG" corresponds to C platform long value and "LONG" to Python2 'long', Python3 'int'. */
+extern PyObject *BINARY_OPERATION_RSHIFT_OBJECT_CLONG_LONG(long operand1, PyObject *operand2);
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "CLONG" to C platform long value. */
+extern nuitka_bool BINARY_OPERATION_RSHIFT_NBOOL_LONG_CLONG(PyObject *operand1, long operand2);
+
+/* Code referring to "CLONG" corresponds to C platform long value and "LONG" to Python2 'long', Python3 'int'. */
+extern nuitka_bool BINARY_OPERATION_RSHIFT_NBOOL_CLONG_LONG(long operand1, PyObject *operand2);
+
 //     Part of "Nuitka", an optimizing Python compiler that is compatible and
 //     integrates with CPython, but also works on its own.
 //
