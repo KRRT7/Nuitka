@@ -1620,6 +1620,8 @@ def main():
 
     makeHelpersBinaryDualOperation("+", "ADD")
     makeHelpersBinaryDualOperation("-", "SUB")
+    makeHelpersBinaryDualOperation("*", "MULT")
+    makeHelpersBinaryDualOperation("%", "MOD")
 
     makeDictCopyHelperCodes()
 

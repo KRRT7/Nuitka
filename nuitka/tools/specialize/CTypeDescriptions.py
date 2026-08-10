@@ -1418,6 +1418,15 @@ class LongDesc(ConcreteNonSequenceTypeBase):
     def getLongValueMediumValueExpression(operand):
         return "MEDIUM_VALUE(%s_long_object)" % (operand)
 
+    @staticmethod
+    def getAsObjectValueExpression(operand):
+        return operand
+
+    @staticmethod
+    def releaseAsObjectValueStatement(operand):
+        # Virtual method, pylint: disable=unused-argument
+        return ""
+
 
 long_desc = LongDesc()
 

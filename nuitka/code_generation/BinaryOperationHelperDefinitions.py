@@ -200,14 +200,14 @@ def _makeNumberOps(op_code, result_types):
             _makeFriendOps(
                 op_code, friend_type_names=("LONG", "DIGIT"), result_types=result_types
             )
-            if op_code in ("ADD", "SUB")  # TODO: Add more
+            if op_code in ("ADD", "SUB", "MULT", "MOD")  # TODO: Add more
             else ()
         ),
         (
             _makeFriendOps(
                 op_code, friend_type_names=("LONG", "CLONG"), result_types=result_types
             )
-            if op_code in ("ADD", "SUB")  # TODO: Add more
+            if op_code in ("ADD", "SUB", "MULT", "MOD")  # TODO: Add more
             else ()
         ),
         _makeFriendOps(
@@ -219,7 +219,7 @@ def _makeNumberOps(op_code, result_types):
                 friend_type_names=("NILONG", "NILONG", "DIGIT"),
                 result_types=("NILONG",),
             )
-            if op_code in ("ADD", "SUB") and result_types is not None
+            if op_code in ("ADD", "SUB", "MULT", "MOD") and result_types is not None
             else ()
         ),
     )

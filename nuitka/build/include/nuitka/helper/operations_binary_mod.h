@@ -147,6 +147,34 @@ extern nuitka_bool BINARY_OPERATION_MOD_NBOOL_INT_CLONG(PyObject *operand1, long
 extern nuitka_bool BINARY_OPERATION_MOD_NBOOL_CLONG_INT(long operand1, PyObject *operand2);
 #endif
 
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "DIGIT" to C platform digit value for long
+ * Python objects. */
+extern PyObject *BINARY_OPERATION_MOD_OBJECT_LONG_DIGIT(PyObject *operand1, long operand2);
+
+/* Code referring to "DIGIT" corresponds to C platform digit value for long Python objects and "LONG" to Python2 'long',
+ * Python3 'int'. */
+extern PyObject *BINARY_OPERATION_MOD_OBJECT_DIGIT_LONG(long operand1, PyObject *operand2);
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "DIGIT" to C platform digit value for long
+ * Python objects. */
+extern nuitka_bool BINARY_OPERATION_MOD_NBOOL_LONG_DIGIT(PyObject *operand1, long operand2);
+
+/* Code referring to "DIGIT" corresponds to C platform digit value for long Python objects and "LONG" to Python2 'long',
+ * Python3 'int'. */
+extern nuitka_bool BINARY_OPERATION_MOD_NBOOL_DIGIT_LONG(long operand1, PyObject *operand2);
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "CLONG" to C platform long value. */
+extern PyObject *BINARY_OPERATION_MOD_OBJECT_LONG_CLONG(PyObject *operand1, long operand2);
+
+/* Code referring to "CLONG" corresponds to C platform long value and "LONG" to Python2 'long', Python3 'int'. */
+extern PyObject *BINARY_OPERATION_MOD_OBJECT_CLONG_LONG(long operand1, PyObject *operand2);
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "CLONG" to C platform long value. */
+extern nuitka_bool BINARY_OPERATION_MOD_NBOOL_LONG_CLONG(PyObject *operand1, long operand2);
+
+/* Code referring to "CLONG" corresponds to C platform long value and "LONG" to Python2 'long', Python3 'int'. */
+extern nuitka_bool BINARY_OPERATION_MOD_NBOOL_CLONG_LONG(long operand1, PyObject *operand2);
+
 /* Code referring to "FLOAT" corresponds to Python 'float' and "CFLOAT" to C platform float value. */
 extern PyObject *BINARY_OPERATION_MOD_OBJECT_FLOAT_CFLOAT(PyObject *operand1, double operand2);
 

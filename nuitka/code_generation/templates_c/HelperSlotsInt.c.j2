@@ -100,6 +100,13 @@
     }
 {% endif %}
 {% elif operator=="%" %}
+    if (unlikely(b == 0)) {
+        PyThreadState *tstate = PyThreadState_GET();
+
+        SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        {{ goto_exit(props, exit_result_exception) }}
+    }
+
     /* TODO: Isn't this a very specific value only, of which we could
      * hardcode the constant result. Not sure how well the C compiler
      * optimizes UNARY_NEG_WOULD_OVERFLOW to this, but dividing by

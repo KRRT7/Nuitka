@@ -1187,7 +1187,10 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_LONG_LONG(PyObject *operand1, PyO
 #pragma warning(pop)
 #endif
 
-    PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1, operand2);
+    PyObject *operand1_object = operand1;
+    PyObject *operand2_object = operand2;
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
     assert(x != Py_NotImplemented);
 
     obj_result = x;
@@ -1385,7 +1388,10 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_OBJECT_LONG(PyObject *operand1, P
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1, operand2);
+        PyObject *operand1_object = operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
         assert(x != Py_NotImplemented);
 
         obj_result = x;
@@ -1601,7 +1607,10 @@ static PyObject *_BINARY_OPERATION_MULT_OBJECT_LONG_OBJECT(PyObject *operand1, P
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1, operand2);
+        PyObject *operand1_object = operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
         assert(x != Py_NotImplemented);
 
         obj_result = x;
@@ -1648,7 +1657,10 @@ static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_LONG_LONG(PyObject *operand1, Py
 #pragma warning(pop)
 #endif
 
-    PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1, operand2);
+    PyObject *operand1_object = operand1;
+    PyObject *operand2_object = operand2;
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
     assert(x != Py_NotImplemented);
 
     obj_result = x;
@@ -1855,7 +1867,10 @@ static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_OBJECT_LONG(PyObject *operand1, 
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1, operand2);
+        PyObject *operand1_object = operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
         assert(x != Py_NotImplemented);
 
         obj_result = x;
@@ -2080,7 +2095,10 @@ static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_LONG_OBJECT(PyObject *operand1, 
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1, operand2);
+        PyObject *operand1_object = operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
         assert(x != Py_NotImplemented);
 
         obj_result = x;
@@ -3556,6 +3574,200 @@ nuitka_bool BINARY_OPERATION_MULT_NBOOL_INT_CLONG(PyObject *operand1, long opera
     return _BINARY_OPERATION_MULT_NBOOL_INT_CLONG(operand1, operand2);
 }
 #endif
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "DIGIT" to C platform digit value for long
+ * Python objects. */
+static PyObject *_BINARY_OPERATION_MULT_OBJECT_LONG_DIGIT(PyObject *operand1, long operand2) {
+    CHECK_OBJECT(operand1);
+    assert(PyLong_CheckExact(operand1));
+    assert(Py_ABS(operand2) < (1 << PyLong_SHIFT));
+
+    PyObject *result;
+
+    // Not every code path will make use of all possible results.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4101)
+#endif
+    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
+    NUITKA_MAY_BE_UNUSED long clong_result;
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+    PyObject *operand1_object = operand1;
+    PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
+    assert(x != Py_NotImplemented);
+
+    Py_DECREF(operand2_object);
+
+    obj_result = x;
+    goto exit_result_object;
+
+exit_result_object:
+    if (unlikely(obj_result == NULL)) {
+        goto exit_result_exception;
+    }
+    result = obj_result;
+    goto exit_result_ok;
+
+exit_result_ok:
+    return result;
+
+exit_result_exception:
+    return NULL;
+}
+
+PyObject *BINARY_OPERATION_MULT_OBJECT_LONG_DIGIT(PyObject *operand1, long operand2) {
+    return _BINARY_OPERATION_MULT_OBJECT_LONG_DIGIT(operand1, operand2);
+}
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "DIGIT" to C platform digit value for long
+ * Python objects. */
+static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_LONG_DIGIT(PyObject *operand1, long operand2) {
+    CHECK_OBJECT(operand1);
+    assert(PyLong_CheckExact(operand1));
+    assert(Py_ABS(operand2) < (1 << PyLong_SHIFT));
+
+    nuitka_bool result;
+
+    // Not every code path will make use of all possible results.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4101)
+#endif
+    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
+    NUITKA_MAY_BE_UNUSED long clong_result;
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+    PyObject *operand1_object = operand1;
+    PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
+    assert(x != Py_NotImplemented);
+
+    Py_DECREF(operand2_object);
+
+    obj_result = x;
+    goto exit_result_object;
+
+exit_result_object:
+    if (unlikely(obj_result == NULL)) {
+        goto exit_result_exception;
+    }
+    result = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+    Py_DECREF(obj_result);
+    goto exit_result_ok;
+
+exit_result_ok:
+    return result;
+
+exit_result_exception:
+    return NUITKA_BOOL_EXCEPTION;
+}
+
+nuitka_bool BINARY_OPERATION_MULT_NBOOL_LONG_DIGIT(PyObject *operand1, long operand2) {
+    return _BINARY_OPERATION_MULT_NBOOL_LONG_DIGIT(operand1, operand2);
+}
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "CLONG" to C platform long value. */
+static PyObject *_BINARY_OPERATION_MULT_OBJECT_LONG_CLONG(PyObject *operand1, long operand2) {
+    CHECK_OBJECT(operand1);
+    assert(PyLong_CheckExact(operand1));
+
+    PyObject *result;
+
+    // Not every code path will make use of all possible results.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4101)
+#endif
+    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
+    NUITKA_MAY_BE_UNUSED long clong_result;
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+    PyObject *operand1_object = operand1;
+    PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
+    assert(x != Py_NotImplemented);
+
+    Py_DECREF(operand2_object);
+
+    obj_result = x;
+    goto exit_result_object;
+
+exit_result_object:
+    if (unlikely(obj_result == NULL)) {
+        goto exit_result_exception;
+    }
+    result = obj_result;
+    goto exit_result_ok;
+
+exit_result_ok:
+    return result;
+
+exit_result_exception:
+    return NULL;
+}
+
+PyObject *BINARY_OPERATION_MULT_OBJECT_LONG_CLONG(PyObject *operand1, long operand2) {
+    return _BINARY_OPERATION_MULT_OBJECT_LONG_CLONG(operand1, operand2);
+}
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "CLONG" to C platform long value. */
+static nuitka_bool _BINARY_OPERATION_MULT_NBOOL_LONG_CLONG(PyObject *operand1, long operand2) {
+    CHECK_OBJECT(operand1);
+    assert(PyLong_CheckExact(operand1));
+
+    nuitka_bool result;
+
+    // Not every code path will make use of all possible results.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4101)
+#endif
+    NUITKA_MAY_BE_UNUSED PyObject *obj_result;
+    NUITKA_MAY_BE_UNUSED long clong_result;
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+    PyObject *operand1_object = operand1;
+    PyObject *operand2_object = Nuitka_PyLong_FromLong(operand2);
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_multiply(operand1_object, operand2_object);
+    assert(x != Py_NotImplemented);
+
+    Py_DECREF(operand2_object);
+
+    obj_result = x;
+    goto exit_result_object;
+
+exit_result_object:
+    if (unlikely(obj_result == NULL)) {
+        goto exit_result_exception;
+    }
+    result = CHECK_IF_TRUE(obj_result) ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE;
+    Py_DECREF(obj_result);
+    goto exit_result_ok;
+
+exit_result_ok:
+    return result;
+
+exit_result_exception:
+    return NUITKA_BOOL_EXCEPTION;
+}
+
+nuitka_bool BINARY_OPERATION_MULT_NBOOL_LONG_CLONG(PyObject *operand1, long operand2) {
+    return _BINARY_OPERATION_MULT_NBOOL_LONG_CLONG(operand1, operand2);
+}
 
 /* Code referring to "FLOAT" corresponds to Python 'float' and "CFLOAT" to C platform float value. */
 static PyObject *_BINARY_OPERATION_MULT_OBJECT_FLOAT_CFLOAT(PyObject *operand1, double operand2) {

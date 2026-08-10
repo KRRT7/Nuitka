@@ -170,8 +170,14 @@
     }
 {% else %}
     {# TODO: Could and should in-line and specialize this for more operators #}
-    PyObject *x = {{ left.getSlotCallExpression(nb_slot, "PyLong_Type.tp_as_number->" + nb_slot, operand1, operand2) }};
+    PyObject *operand1_object = {{ left.getAsObjectValueExpression(operand1) }};
+    PyObject *operand2_object = {{ right.getAsObjectValueExpression(operand2) }};
+
+    PyObject *x = {{ left.getSlotCallExpression(nb_slot, "PyLong_Type.tp_as_number->" + nb_slot, "operand1_object", "operand2_object") }};
     assert(x != Py_NotImplemented);
+
+    {{ left.releaseAsObjectValueStatement("operand1_object") }}
+    {{ right.releaseAsObjectValueStatement("operand2_object") }}
 
     {{ goto_exit(props, "exit_result_object", "x") }}
 {% endif %}

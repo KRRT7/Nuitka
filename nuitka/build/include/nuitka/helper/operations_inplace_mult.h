@@ -73,6 +73,13 @@ extern bool INPLACE_OPERATION_MULT_INT_LONG(PyObject **operand1, PyObject *opera
 extern bool INPLACE_OPERATION_MULT_INT_CLONG(PyObject **operand1, long operand2);
 #endif
 
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "DIGIT" to C platform digit value for long
+ * Python objects. */
+extern bool INPLACE_OPERATION_MULT_LONG_DIGIT(PyObject **operand1, long operand2);
+
+/* Code referring to "LONG" corresponds to Python2 'long', Python3 'int' and "CLONG" to C platform long value. */
+extern bool INPLACE_OPERATION_MULT_LONG_CLONG(PyObject **operand1, long operand2);
+
 /* Code referring to "FLOAT" corresponds to Python 'float' and "CFLOAT" to C platform float value. */
 extern bool INPLACE_OPERATION_MULT_FLOAT_CFLOAT(PyObject **operand1, double operand2);
 

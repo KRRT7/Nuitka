@@ -635,7 +635,10 @@ static PyObject *_BINARY_OPERATION_TRUEDIV_OBJECT_LONG_LONG(PyObject *operand1, 
 #pragma warning(pop)
 #endif
 
-    PyObject *x = PyLong_Type.tp_as_number->nb_true_divide(operand1, operand2);
+    PyObject *operand1_object = operand1;
+    PyObject *operand2_object = operand2;
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_true_divide(operand1_object, operand2_object);
     assert(x != Py_NotImplemented);
 
     obj_result = x;
@@ -820,7 +823,10 @@ static PyObject *_BINARY_OPERATION_TRUEDIV_OBJECT_OBJECT_LONG(PyObject *operand1
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_true_divide(operand1, operand2);
+        PyObject *operand1_object = operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_true_divide(operand1_object, operand2_object);
         assert(x != Py_NotImplemented);
 
         obj_result = x;
@@ -1022,7 +1028,10 @@ static PyObject *_BINARY_OPERATION_TRUEDIV_OBJECT_LONG_OBJECT(PyObject *operand1
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_true_divide(operand1, operand2);
+        PyObject *operand1_object = operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_true_divide(operand1_object, operand2_object);
         assert(x != Py_NotImplemented);
 
         obj_result = x;

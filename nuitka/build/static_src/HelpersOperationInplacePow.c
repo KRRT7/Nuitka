@@ -891,7 +891,10 @@ static inline bool _INPLACE_OPERATION_POW_LONG_LONG(PyObject **operand1, PyObjec
 #pragma warning(pop)
 #endif
 
-    PyObject *x = PyLong_Type.tp_as_number->nb_power(*operand1, operand2, Py_None);
+    PyObject *operand1_object = *operand1;
+    PyObject *operand2_object = operand2;
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_power(operand1_object, operand2_object, Py_None);
     assert(x != Py_NotImplemented);
 
     obj_result = x;
@@ -1104,7 +1107,10 @@ static inline bool _INPLACE_OPERATION_POW_OBJECT_LONG(PyObject **operand1, PyObj
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_power(*operand1, operand2, Py_None);
+        PyObject *operand1_object = *operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_power(operand1_object, operand2_object, Py_None);
         assert(x != Py_NotImplemented);
 
         obj_result = x;
@@ -1322,7 +1328,10 @@ static inline bool _INPLACE_OPERATION_POW_LONG_OBJECT(PyObject **operand1, PyObj
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_power(*operand1, operand2, Py_None);
+        PyObject *operand1_object = *operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_power(operand1_object, operand2_object, Py_None);
         assert(x != Py_NotImplemented);
 
         obj_result = x;

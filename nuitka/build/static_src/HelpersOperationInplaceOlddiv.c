@@ -664,7 +664,10 @@ static inline bool _INPLACE_OPERATION_OLDDIV_LONG_LONG(PyObject **operand1, PyOb
 #pragma warning(pop)
 #endif
 
-    PyObject *x = PyLong_Type.tp_as_number->nb_divide(*operand1, operand2);
+    PyObject *operand1_object = *operand1;
+    PyObject *operand2_object = operand2;
+
+    PyObject *x = PyLong_Type.tp_as_number->nb_divide(operand1_object, operand2_object);
     assert(x != Py_NotImplemented);
 
     obj_result = x;
@@ -879,7 +882,10 @@ static inline bool _INPLACE_OPERATION_OLDDIV_OBJECT_LONG(PyObject **operand1, Py
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_divide(*operand1, operand2);
+        PyObject *operand1_object = *operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_divide(operand1_object, operand2_object);
         assert(x != Py_NotImplemented);
 
         obj_result = x;
@@ -1099,7 +1105,10 @@ static inline bool _INPLACE_OPERATION_OLDDIV_LONG_OBJECT(PyObject **operand1, Py
 #pragma warning(pop)
 #endif
 
-        PyObject *x = PyLong_Type.tp_as_number->nb_divide(*operand1, operand2);
+        PyObject *operand1_object = *operand1;
+        PyObject *operand2_object = operand2;
+
+        PyObject *x = PyLong_Type.tp_as_number->nb_divide(operand1_object, operand2_object);
         assert(x != Py_NotImplemented);
 
         obj_result = x;

@@ -54,6 +54,11 @@ exit_result_ok_clong:
         return true;
 {% endif %}
 
+{% if "exit_result_exception" in props["exits"] %}
+exit_result_exception:
+        return false;
+{% endif %}
+
 {% if left.isDualType() %}
     } else if (left_c_usable == false && right_c_usable) {
         PyObject *python_result = BINARY_OPERATION_{{op_code}}_OBJECT_{{left.getDualType("Python").getHelperCodeName()}}_{{right.getDualType("C").getHelperCodeName()}}({{left.getDualTypeAccessCode("Python", "operand1")}}, {{right.getDualTypeAccessCode("C", "operand2")}});
