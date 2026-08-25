@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         ca-certificates \
         sudo \
+        openssh-server \
         less \
         procps \
         pkg-config \
@@ -33,6 +34,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         chrpath \
     && rm -rf /var/lib/apt/lists/*
 
+# NOTE: this layer intentionally leaves /var/lib/apt/lists populated. Dev
+# container features append layers that run `apt-get install` without their own
+# `apt-get update`, and fail with "Unable to locate package" against empty lists.
+#
 # Build dependencies for CPython. Deliberately NOT purged afterwards: apt would
 # auto-remove the runtime libs they pulled in (libssl3, libsqlite3-0, liblzma5,
 # readline), and since our source-built CPython is not a dpkg package apt cannot
@@ -70,8 +75,7 @@ RUN set -eux; \
     make install; \
     ldconfig; \
     cd /; \
-    rm -rf /tmp/python-src /tmp/python.tgz; \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /tmp/python-src /tmp/python.tgz
 
 RUN ln -sf /usr/local/bin/python3.12 /usr/local/bin/python3 \
     && ln -sf /usr/local/bin/python3.12 /usr/local/bin/python \
