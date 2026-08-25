@@ -33,7 +33,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         chrpath \
     && rm -rf /var/lib/apt/lists/*
 
-# Build dependencies for CPython, dropped again after the build below.
+# Build dependencies for CPython. Deliberately NOT purged afterwards: apt would
+# auto-remove the runtime libs they pulled in (libssl3, libsqlite3-0, liblzma5,
+# readline), and since our source-built CPython is not a dpkg package apt cannot
+# see that it links against them -- import ssl/sqlite3/lzma would break. They are
+# useful for building C extensions in here anyway.
 ARG PY_BUILD_DEPS="libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev libffi-dev liblzma-dev uuid-dev tk-dev xz-utils"
 
 # CPython 3.12 from source. The distro ships 3.13; 3.12 keeps parity with the
@@ -67,7 +71,6 @@ RUN set -eux; \
     ldconfig; \
     cd /; \
     rm -rf /tmp/python-src /tmp/python.tgz; \
-    apt-get purge -y --auto-remove ${PY_BUILD_DEPS}; \
     rm -rf /var/lib/apt/lists/*
 
 RUN ln -sf /usr/local/bin/python3.12 /usr/local/bin/python3 \
