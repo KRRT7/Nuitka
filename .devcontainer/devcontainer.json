@@ -1,12 +1,32 @@
 {
   "name": "Nuitka Dev Container",
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.12",
-  "features": {
-    "ghcr.io/devcontainers-community/features/llvm:latest": {}
+  "build": {
+    "dockerfile": "Dockerfile"
   },
+  // clang/lld come from Debian's own repos (see Dockerfile) rather than the
+  // devcontainers llvm feature: that feature pulls from apt.llvm.org, which is
+  // unpinned and drifts, and it also assumes apt lists are present.
+  // Valgrind needs ptrace, and Docker's default seccomp profile blocks
+  // syscalls its synchronization uses -- without these, runs fail mid-flight
+  // with confusing errors.
+  "capAdd": [
+    "SYS_PTRACE"
+  ],
+  "securityOpt": [
+    "seccomp=unconfined"
+  ],
+  // Requests a 4-core Codespaces machine.
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+  "remoteUser": "vscode",
   "customizations": {
     "vscode": {
-      "settings": {},
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python3.12"
+      },
       "extensions": [
         "ms-python.python",
         "lextudio.restructuredtext",
