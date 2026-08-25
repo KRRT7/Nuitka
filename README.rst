@@ -7,6 +7,9 @@
 .. image:: https://img.shields.io/badge/Contributor%20Covenant-v1.4%20adopted-ff69b4.svg
    :target: CODE_OF_CONDUCT.md
 
+.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
+   :target: https://app.codspeed.io/KRRT7/Nuitka?utm_source=badge
+
 ####################
  Nuitka User Manual
 ####################

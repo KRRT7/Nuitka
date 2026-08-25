@@ -1,0 +1,45 @@
+name: CodSpeed benchmarks
+# makes little sense, spell-checker: disable
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+  # Allows CodSpeed to trigger a backtest performance analysis.
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # For OpenID Connect authentication with CodSpeed.
+  id-token: write
+
+env:
+  NUITKA_UPDATE_CHECK: "never"
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-24.04
+    name: Compiler benchmarks
+    steps:
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Use Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 🧳 Install benchmark dependencies
+        run: |
+          python -m pip install --no-python-version-warning --disable-pip-version-check pytest-codspeed
+
+      - name: ⏱️ Run benchmarks
+        uses: CodSpeedHQ/action@v5
+        with:
+          mode: simulation
+          run: python -m pytest benchmarks --codspeed
