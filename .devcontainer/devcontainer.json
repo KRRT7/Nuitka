@@ -3,6 +3,11 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  // Plain Debian has no sshd, which `gh codespace ssh` and remote tooling
+  // require; the MS devcontainer images bundle one, this base does not.
+  "features": {
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
   // clang/lld come from Debian's own repos (see Dockerfile) rather than the
   // devcontainers llvm feature: that feature pulls from apt.llvm.org, which is
   // unpinned and drifts, and it also assumes apt lists are present.
