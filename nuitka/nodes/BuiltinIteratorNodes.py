@@ -353,6 +353,22 @@ class ExpressionBuiltinZip310(
 class ExpressionBuiltinIterForUnpack(ExpressionBuiltinIter1):
     kind = "EXPRESSION_BUILTIN_ITER_FOR_UNPACK"
 
+    __slots__ = ("count",)
+
+    def __init__(self, value, source_ref, count=None):
+        ExpressionBuiltinIter1.__init__(self, value=value, source_ref=source_ref)
+
+        # Number of values unpacked, if all of them are, i.e. there is no
+        # starred target. Allows the C code to unpack a tuple of that size
+        # directly, without creating an iterator.
+        self.count = count
+
+    def getDetails(self):
+        return {"count": self.count}
+
+    def getCount(self):
+        return self.count
+
     def computeExpression(self, trace_collection):
         result = self.subnode_value.computeExpressionIter1(
             iter_node=self, trace_collection=trace_collection

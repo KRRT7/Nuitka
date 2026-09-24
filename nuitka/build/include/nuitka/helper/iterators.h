@@ -173,6 +173,20 @@ NUITKA_MAY_BE_UNUSED static PyObject *MAKE_UNPACK_ITERATOR(PyObject *iterated) {
     }
 }
 
+// For unpacking all of "count" values: a tuple of exactly that size is its own
+// "iterator", which "UNPACK_NEXT" and "UNPACK_ITERATOR_CHECK" read by index. No
+// real iterator is an exact tuple, so the two cannot be confused.
+NUITKA_MAY_BE_UNUSED static PyObject *MAKE_UNPACK_ITERATOR_SIZED(PyObject *iterated, Py_ssize_t count) {
+    CHECK_OBJECT(iterated);
+
+    if (PyTuple_CheckExact(iterated) && PyTuple_GET_SIZE(iterated) == count) {
+        Py_INCREF(iterated);
+        return iterated;
+    }
+
+    return MAKE_UNPACK_ITERATOR(iterated);
+}
+
 #endif
 
 NUITKA_MAY_BE_UNUSED static PyObject *ITERATOR_NEXT_ITERATOR(PyObject *iterator) {
@@ -240,8 +254,15 @@ NUITKA_MAY_BE_UNUSED static PyObject *BUILTIN_NEXT2(PyThreadState *tstate, PyObj
 }
 
 // For cases, where no exception raising is needed, because we know it at compile time.
-NUITKA_MAY_BE_UNUSED static PyObject *UNPACK_NEXT_INFALLIBLE(PyObject *iterator) {
+NUITKA_MAY_BE_UNUSED static PyObject *UNPACK_NEXT_INFALLIBLE(PyObject *iterator, Py_ssize_t index) {
     CHECK_OBJECT(iterator);
+
+    if (PyTuple_CheckExact(iterator)) {
+        PyObject *result = PyTuple_GET_ITEM(iterator, index);
+        Py_INCREF(result);
+        return result;
+    }
+
     assert(HAS_ITERNEXT(iterator));
 
     PyObject *result = (*Py_TYPE(iterator)->tp_iternext)(iterator);
@@ -260,6 +281,14 @@ NUITKA_MAY_BE_UNUSED static PyObject *UNPACK_NEXT(PyThreadState *tstate,
 #endif
 {
     CHECK_OBJECT(iterator);
+
+    // A tuple of the unpacked size, see "MAKE_UNPACK_ITERATOR_SIZED".
+    if (PyTuple_CheckExact(iterator)) {
+        PyObject *result = PyTuple_GET_ITEM(iterator, seq_size_so_far);
+        Py_INCREF(result);
+        return result;
+    }
+
     assert(HAS_ITERNEXT(iterator));
 
     PyObject *result = (*Py_TYPE(iterator)->tp_iternext)(iterator);
@@ -378,6 +407,11 @@ SET_UNPACK_TOO_MANY_VALUES_ERROR(PyThreadState *tstate, struct Nuitka_ExceptionP
 NUITKA_MAY_BE_UNUSED static bool UNPACK_ITERATOR_CHECK(PyThreadState *tstate,
                                                        struct Nuitka_ExceptionPreservationItem *exception_state,
                                                        PyObject *iterator, int expected) {
+    // A tuple of the unpacked size, see "MAKE_UNPACK_ITERATOR_SIZED".
+    if (PyTuple_CheckExact(iterator)) {
+        return true;
+    }
+
     PyObject *attempt = (*(Py_TYPE(iterator)->tp_iternext))(iterator);
 
     if (likely(attempt == NULL)) {

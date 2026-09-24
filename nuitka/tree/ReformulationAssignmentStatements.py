@@ -329,14 +329,18 @@ not enough values to unpack (expected at least %d, got %%d)""" % (len(statements
             )
 
         if python_version >= 0x370:
-            iter_creation_class = ExpressionBuiltinIterForUnpack
+            iter_creation = ExpressionBuiltinIterForUnpack(
+                value=source,
+                count=len(detail) if starred_list_var is None else None,
+                source_ref=source_ref,
+            )
         else:
-            iter_creation_class = ExpressionBuiltinIter1
+            iter_creation = ExpressionBuiltinIter1(value=source, source_ref=source_ref)
 
         statements = [
             makeStatementAssignmentVariable(
                 variable=source_iter_var,
-                source=iter_creation_class(value=source, source_ref=source_ref),
+                source=iter_creation,
                 source_ref=source_ref,
             ),
             makeTryFinallyReleaseStatement(

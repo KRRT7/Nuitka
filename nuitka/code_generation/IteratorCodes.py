@@ -230,7 +230,10 @@ def generateSpecialUnpackCode(to_name, expression, emit, context):
         needs_check = expression.mayRaiseExceptionOperation()
 
         if not needs_check:
-            emit("%s = UNPACK_NEXT_INFALLIBLE(%s);" % (result_name, value_name))
+            emit(
+                "%s = UNPACK_NEXT_INFALLIBLE(%s, %d);"
+                % (result_name, value_name, expression.getCount() - 1)
+            )
         elif python_version < 0x350:
             (
                 exception_state_name,
@@ -465,6 +468,43 @@ def generateBuiltinIter1Code(to_name, expression, emit, context):
 
 def generateBuiltinIterForUnpackCode(to_name, expression, emit, context):
     may_raise = expression.mayRaiseExceptionOperation()
+    count = expression.getCount()
+
+    if may_raise and count is not None:
+        # All values are unpacked, so a tuple of the right size can be used
+        # directly instead of an iterator, which "UNPACK_NEXT" and the unpack
+        # check recognize.
+        value_name = context.allocateTempName("unpack_iterated")
+
+        generateExpressionCode(
+            to_name=value_name,
+            expression=expression.subnode_value,
+            emit=emit,
+            context=context,
+        )
+
+        with withObjectCodeTemporaryAssignment(
+            to_name, "unpack_iterator", expression, emit, context
+        ) as result_name:
+            context.setCurrentSourceCodeReference(
+                expression.getCompatibleSourceReference()
+            )
+
+            emit(
+                "%s = MAKE_UNPACK_ITERATOR_SIZED(%s, %d);"
+                % (result_name, value_name, count)
+            )
+
+            getErrorExitCode(
+                check_name=result_name,
+                release_name=value_name,
+                emit=emit,
+                context=context,
+            )
+
+            context.addCleanupTempName(result_name)
+
+        return
 
     generateCAPIObjectCode(
         to_name=to_name,
