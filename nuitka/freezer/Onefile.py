@@ -52,6 +52,7 @@ from nuitka.utils.Execution import withEnvironmentVarsOverridden
 from nuitka.utils.FileOperations import (
     areSamePaths,
     getExternalUsePath,
+    getFileContentsHash,
     getFileSize,
     makeContainingPath,
     removeDirectory,
@@ -91,7 +92,11 @@ def packDistFolderToOnefile(dist_dir):
 
 
 def _runOnefileScons(
-    onefile_compression, onefile_archive, backend_resource_mode, onefile_payload_size
+    onefile_compression,
+    onefile_archive,
+    backend_resource_mode,
+    onefile_payload_size,
+    onefile_payload_hash,
 ):
     scons_options, env_values = getCommonSconsOptions()
 
@@ -116,6 +121,10 @@ def _runOnefileScons(
     env_values["_NUITKA_ONEFILE_ARCHIVE_BOOL"] = "1" if onefile_archive else "0"
     env_values["_NUITKA_ONEFILE_HAS_PAYLOAD_BOOL"] = "1" if hasOnefilePayload() else "0"
     env_values["_NUITKA_ONEFILE_PAYLOAD_SIZE_INT"] = str(onefile_payload_size)
+
+    # Identifies the payload for the cached mode unpacking manifest.
+    if onefile_payload_hash is not None:
+        env_values["_NUITKA_ONEFILE_PAYLOAD_HASH"] = onefile_payload_hash
 
     main_filename_in_payload = hasOnefilePayloadMainEntry()
 
@@ -281,6 +290,7 @@ def packDistFolderToOnefileBootstrap(onefile_output_filename, dist_dir, start_bi
     # We might not even have a payload due to commercial file embedding.
     has_payload = hasOnefilePayload()
     onefile_payload_size = 0
+    onefile_payload_hash = None
 
     if has_payload:
         expected_files = []
@@ -304,12 +314,16 @@ def packDistFolderToOnefileBootstrap(onefile_output_filename, dist_dir, start_bi
 
         onefile_payload_size = getFileSize(onefile_payload_filename)
 
+        if not isOnefileTempDirMode():
+            onefile_payload_hash = getFileContentsHash(onefile_payload_filename)
+
     # Create the bootstrap binary for unpacking.
     _runOnefileScons(
         onefile_compression=compressor_python is not None,
         onefile_archive=shallOnefileAsArchive(),
         backend_resource_mode=backend_resource_mode,
         onefile_payload_size=onefile_payload_size,
+        onefile_payload_hash=onefile_payload_hash,
     )
 
     if isWin32Windows():
