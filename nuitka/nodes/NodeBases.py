@@ -398,6 +398,10 @@ class NodeBase(NodeMetaClassBase):
         return False
 
     @staticmethod
+    def isExpressionAttributeLookupFixed():
+        return False
+
+    @staticmethod
     def isExpressionConstantBoolRef():
         return False
 

@@ -12218,7 +12218,21 @@ PyObject *CALL_METHOD_NO_ARGS(PyThreadState *tstate, PyObject *source, PyObject 
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[1];
+                method_args[0] = source;
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 1, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -12444,7 +12458,22 @@ PyObject *CALL_METHOD_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *source, P
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[2];
+                method_args[0] = source;
+                method_args[1] = args[0];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 2, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -12669,7 +12698,23 @@ PyObject *CALL_METHOD_WITH_ARGS2(PyThreadState *tstate, PyObject *source, PyObje
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[3];
+                method_args[0] = source;
+                method_args[1] = args[0];
+                method_args[2] = args[1];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 3, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -12894,7 +12939,24 @@ PyObject *CALL_METHOD_WITH_ARGS3(PyThreadState *tstate, PyObject *source, PyObje
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[4];
+                method_args[0] = source;
+                method_args[1] = args[0];
+                method_args[2] = args[1];
+                method_args[3] = args[2];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 4, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -13119,7 +13181,25 @@ PyObject *CALL_METHOD_WITH_ARGS4(PyThreadState *tstate, PyObject *source, PyObje
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[5];
+                method_args[0] = source;
+                method_args[1] = args[0];
+                method_args[2] = args[1];
+                method_args[3] = args[2];
+                method_args[4] = args[3];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 5, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -13344,7 +13424,26 @@ PyObject *CALL_METHOD_WITH_ARGS5(PyThreadState *tstate, PyObject *source, PyObje
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[6];
+                method_args[0] = source;
+                method_args[1] = args[0];
+                method_args[2] = args[1];
+                method_args[3] = args[2];
+                method_args[4] = args[3];
+                method_args[5] = args[4];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 6, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -13569,7 +13668,27 @@ PyObject *CALL_METHOD_WITH_ARGS6(PyThreadState *tstate, PyObject *source, PyObje
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[7];
+                method_args[0] = source;
+                method_args[1] = args[0];
+                method_args[2] = args[1];
+                method_args[3] = args[2];
+                method_args[4] = args[3];
+                method_args[5] = args[4];
+                method_args[6] = args[5];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 7, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -13794,7 +13913,28 @@ PyObject *CALL_METHOD_WITH_ARGS7(PyThreadState *tstate, PyObject *source, PyObje
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[8];
+                method_args[0] = source;
+                method_args[1] = args[0];
+                method_args[2] = args[1];
+                method_args[3] = args[2];
+                method_args[4] = args[3];
+                method_args[5] = args[4];
+                method_args[6] = args[5];
+                method_args[7] = args[6];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 8, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -14019,7 +14159,29 @@ PyObject *CALL_METHOD_WITH_ARGS8(PyThreadState *tstate, PyObject *source, PyObje
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[9];
+                method_args[0] = source;
+                method_args[1] = args[0];
+                method_args[2] = args[1];
+                method_args[3] = args[2];
+                method_args[4] = args[3];
+                method_args[5] = args[4];
+                method_args[6] = args[5];
+                method_args[7] = args[6];
+                method_args[8] = args[7];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 9, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -14244,7 +14406,30 @@ PyObject *CALL_METHOD_WITH_ARGS9(PyThreadState *tstate, PyObject *source, PyObje
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[10];
+                method_args[0] = source;
+                method_args[1] = args[0];
+                method_args[2] = args[1];
+                method_args[3] = args[2];
+                method_args[4] = args[3];
+                method_args[5] = args[4];
+                method_args[6] = args[5];
+                method_args[7] = args[6];
+                method_args[8] = args[7];
+                method_args[9] = args[8];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 10, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
@@ -14469,7 +14654,31 @@ PyObject *CALL_METHOD_WITH_ARGS10(PyThreadState *tstate, PyObject *source, PyObj
                 Py_DECREF(descr);
 
                 return result;
-            } else {
+            }
+#if PYTHON_VERSION >= 0x390
+            else if (Py_TYPE(descr) == &PyMethodDescr_Type) {
+                // A method of a built-in type, e.g. "dict.get", takes the object
+                // as its first argument, avoiding to create a bound method.
+                PyObject *method_args[11];
+                method_args[0] = source;
+                method_args[1] = args[0];
+                method_args[2] = args[1];
+                method_args[3] = args[2];
+                method_args[4] = args[3];
+                method_args[5] = args[4];
+                method_args[6] = args[5];
+                method_args[7] = args[6];
+                method_args[8] = args[7];
+                method_args[9] = args[8];
+                method_args[10] = args[9];
+
+                PyObject *result = PyObject_Vectorcall(descr, method_args, 11, NULL);
+                Py_DECREF(descr);
+
+                return result;
+            }
+#endif
+            else {
                 PyObject *called_object = func(descr, source, (PyObject *)type);
                 CHECK_OBJECT(called_object);
 
