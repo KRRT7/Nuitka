@@ -379,9 +379,16 @@ def generateCallCode(to_name, expression, emit, context):
     # TODO: Make this work for all cases. Currently, the method calls that do
     # a combined lookup and call, do a re-ordering of things, and therefore it
     # must be disabled until this is solved.
+    # Lookups of well known method names, e.g. "get" or "append", on values
+    # of unknown type are method calls just the same.
     if (
-        called.isExpressionAttributeLookup()
-        and not called.isExpressionAttributeLookupSpecial()
+        (
+            (
+                called.isExpressionAttributeLookup()
+                and not called.isExpressionAttributeLookupSpecial()
+            )
+            or called.isExpressionAttributeLookupFixed()
+        )
         and called.getAttributeName() not in ("__class__", "__dict__")
         and (
             call_args is None

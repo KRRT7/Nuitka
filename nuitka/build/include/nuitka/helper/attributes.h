@@ -52,8 +52,13 @@ extern getattrofunc PyObject_GenericGetAttr_resolved;
 // we can just try and do the same in slightly faster ways.
 static inline bool hasTypeGenericGetAttr(PyTypeObject *type) {
 #if PYTHON_VERSION >= 0x3b0
-    // TODO: Big performance loss here
-    return false;
+    // TODO: Big performance loss here, for types with an instance dictionary,
+    // since the one managed by Python 3.11 or higher is not supported. Without
+    // any, e.g. "dict", "list", "str" or classes with "__slots__", the generic
+    // lookup never needs it, and method calls can avoid creating bound methods,
+    // like CPython does with "LOAD_ATTR_METHOD_NO_DICT".
+    return type->tp_getattro == PyObject_GenericGetAttr_resolved && type->tp_dictoffset == 0 &&
+           (type->tp_flags & Py_TPFLAGS_MANAGED_DICT) == 0;
 #else
     return type->tp_getattro == PyObject_GenericGetAttr_resolved;
 #endif

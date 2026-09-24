@@ -84,6 +84,10 @@ class ExpressionAttributeLookupFixedBase(ChildHavingExpressionMixin, ExpressionB
         return self.attribute_name
 
     @staticmethod
+    def isExpressionAttributeLookupFixed():
+        return True
+
+    @staticmethod
     def getDetails():
         return {}
 
