@@ -79,18 +79,24 @@ def _generateAnnotateFunctionMaker(function_body, function_identifier, context):
     qualname = function_body.getFunctionQualname()
     qualname_obj = context.getConstantCode(constant=qualname)
 
+    # The code object is immutable, so it is unmarshalled once and shared by
+    # every function created from it, as CPython does. That matters for a
+    # definition that is executed repeatedly, e.g. a nested function. Racing
+    # threads can at worst each unmarshal it, and keep one.
     maker_code = """\
 static PyObject *%(maker)s(PyThreadState *tstate) {
-    PyObject *result;
-    PyObject *code = PyMarshal_ReadObjectFromString(
-        %(marshalled)s,
-        %(marshalled_size)d);
-    if (unlikely(code == NULL)) {
-        return NULL;
+    static PyObject *code_cache = NULL;
+    PyObject *code = code_cache;
+    if (code == NULL) {
+        code = PyMarshal_ReadObjectFromString(
+            %(marshalled)s,
+            %(marshalled_size)d);
+        if (unlikely(code == NULL)) {
+            return NULL;
+        }
+        code_cache = code;
     }
-    result = PyFunction_NewWithQualName(code, %(module_dict)s, %(qualname)s);
-    Py_DECREF(code);
-    return result;
+    return PyFunction_NewWithQualName(code, %(module_dict)s, %(qualname)s);
 }
 """ % {
         "maker": maker_identifier,
