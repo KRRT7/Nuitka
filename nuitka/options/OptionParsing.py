@@ -1556,8 +1556,8 @@ pgo_group.add_option(
     help="""\
 Enables C level profile guided optimization (PGO), by executing a dedicated build first
 for a profiling run, and then using the result to feedback into the C compilation.
-Note: This is experimental and not working with standalone modes of Nuitka yet.
-Defaults to off.""",
+In standalone and onefile modes, the profiling run is done in the created
+distribution folder. Supported with gcc, clang, and MSVC. Defaults to off.""",
 )
 
 pgo_group.add_option(

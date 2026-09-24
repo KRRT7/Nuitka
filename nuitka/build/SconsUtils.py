@@ -788,6 +788,16 @@ def getSconsCompilerUsed(source_dir):
     return "Unknown"
 
 
+def getLlvmProfileDirectory(source_dir):
+    """Directory where the LLVM instrumented binary writes raw profiles."""
+    return getNormalizedPathJoin(source_dir, "pgo-profiles")
+
+
+def getLlvmProfileDataFilename(source_dir):
+    """Merged LLVM profile that the C level PGO "use" pass compiles with."""
+    return getNormalizedPathJoin(source_dir, "pgo.profdata")
+
+
 def readSconsErrorReport(source_dir):
     if source_dir not in _scons_error_reports:
         scons_error_report = OrderedDict()

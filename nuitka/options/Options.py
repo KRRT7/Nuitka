@@ -1323,11 +1323,6 @@ make sure that is intended."""
         )
 
     if isCPgoMode():
-        if isStandaloneMode():
-            optimization_logger.warning("""\
-Using C level PGO with standalone/onefile mode is not \
-currently working. Expect errors.""")
-
         if shallMakeModule():
             optimization_logger.warning("""\
 Using C level PGO with module mode is not currently \

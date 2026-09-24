@@ -20,8 +20,11 @@ from nuitka.build.SconsInterface import (
     provideStaticSourceFilesBackend,
 )
 from nuitka.build.SconsUtils import (
+    getLlvmProfileDataFilename,
+    getLlvmProfileDirectory,
     getSconsCompilerUsed,
     getSconsReportValue,
+    getSconsReportValueBool,
     readSconsErrorReport,
     readSconsObjectSizes,
     readSconsReport,
@@ -173,6 +176,9 @@ from nuitka.tree.ReformulationMultidist import createMultidistMainSourceCode
 from nuitka.utils.Distributions import getDistribution, getDistributionName
 from nuitka.utils.Execution import (
     executeCompiledBinary,
+    executeProcess,
+    executeToolChecked,
+    getExecutablePath,
     withEnvironmentVarOverridden,
     wrapCommandForDebuggerForExec,
 )
@@ -183,6 +189,7 @@ from nuitka.utils.FileOperations import (
     getNormalizedPathJoin,
     getReportPath,
     isFilesystemEncodable,
+    listDir,
     openTextFile,
     removeDirectory,
 )
@@ -663,6 +670,89 @@ def _deleteMsvcPGOFiles(pgo_mode):
     return msvc_pgc_filename
 
 
+def _isLlvmProfileCompiler(source_dir):
+    """Does the compiler used write LLVM profiles, i.e. is it clang."""
+    return getSconsReportValueBool(
+        source_dir, "clang_mode"
+    ) and not getSconsReportValueBool(source_dir, "msvc_mode")
+
+
+def _getLlvmProfdataPath(source_dir):
+    """Find the "llvm-profdata" matching the LLVM version that compiled.
+
+    The merged profile format changes with LLVM versions, so the tool of
+    the compiler is preferred over any other one found.
+    """
+    compiler = getSconsReportValue(source_dir, "the_compiler")
+
+    if not os.path.isabs(compiler):
+        compiler = getExecutablePath(compiler)
+
+    tool_name = "llvm-profdata" + (".exe" if isWin32Windows() else "")
+
+    if compiler is not None:
+        # LLVM installations have the tool next to "clang", even when it is
+        # a symlink, e.g. "/usr/bin/clang-19" on Debian or Homebrew LLVM.
+        candidate = getNormalizedPathJoin(
+            os.path.dirname(os.path.realpath(compiler)), tool_name
+        )
+
+        if os.path.isfile(candidate):
+            return candidate
+
+        # Versioned names, e.g. "clang-19" comes with "llvm-profdata-19".
+        compiler_name = os.path.splitext(os.path.basename(compiler))[0]
+        if compiler_name.startswith("clang-"):
+            candidate = getExecutablePath(
+                "llvm-profdata-" + compiler_name[len("clang-") :]
+            )
+
+            if candidate is not None:
+                return candidate
+
+    if isMacOS():
+        # Apple clang ships the tool matching it with Xcode only.
+        process_result = executeProcess(command=("xcrun", "-f", "llvm-profdata"))
+
+        if process_result.exit_code == 0 and process_result.stdout.strip():
+            return process_result.stdout.strip().decode("utf8")
+
+    return getExecutablePath("llvm-profdata")
+
+
+def _mergeLlvmProfiles(source_dir):
+    profile_dir = getLlvmProfileDirectory(source_dir)
+
+    if not os.path.isdir(profile_dir):
+        return False
+
+    raw_profiles = [
+        filename
+        for filename, _basename in listDir(profile_dir)
+        if filename.endswith(".profraw")
+    ]
+
+    if not raw_profiles:
+        return False
+
+    llvm_profdata = _getLlvmProfdataPath(source_dir)
+
+    if llvm_profdata is None:
+        return pgo_logger.sysexit("""\
+Error, C level PGO with clang needs 'llvm-profdata' of the same LLVM \
+version as the compiler, install it or put it in PATH.""")
+
+    executeToolChecked(
+        logger=pgo_logger,
+        command=[llvm_profdata, "merge", "-o", getLlvmProfileDataFilename(source_dir)]
+        + raw_profiles,
+        absence_message="needs 'llvm-profdata' to merge C level PGO information",
+        stderr_is_fatal=False,
+    )
+
+    return True
+
+
 def _runCPgoBinary():
     # Note: For exit codes, we do not insist on anything yet, maybe we could point it out
     # or ask people to make scripts that buffer these kinds of errors, and take an error
@@ -672,30 +762,43 @@ def _runCPgoBinary():
         "Running created binary to produce C level PGO information:", style="blue"
     )
 
-    if getSconsCompilerUsed(
-        OutputDirectories.getSourceDirectoryPath(onefile=False, create=False)
-    ) in ("MSVC", "ClangCL"):
+    source_dir = OutputDirectories.getSourceDirectoryPath(onefile=False, create=False)
+
+    if getSconsCompilerUsed(source_dir) in ("MSVC", "ClangCL"):
         msvc_pgc_filename = _deleteMsvcPGOFiles(pgo_mode="generate")
 
         with withEnvironmentVarOverridden(
             "PATH",
-            getSconsReportValue(
-                source_dir=OutputDirectories.getSourceDirectoryPath(
-                    onefile=False, create=False
-                ),
-                key="PATH",
-            ),
+            getSconsReportValue(source_dir=source_dir, key="PATH"),
         ):
             exit_code_pgo = _runPgoBinary()
 
         pgo_data_collected = os.path.exists(msvc_pgc_filename)
+    elif _isLlvmProfileCompiler(source_dir):
+        profile_dir = getLlvmProfileDirectory(source_dir)
+
+        removeDirectory(
+            path=profile_dir,
+            logger=pgo_logger,
+            ignore_errors=False,
+            extra_recommendation=None,
+        )
+
+        # Every process writes its own profile, so programs that run copies
+        # of themselves, e.g. with "multiprocessing", do not overwrite them.
+        with withEnvironmentVarOverridden(
+            "LLVM_PROFILE_FILE",
+            getNormalizedPathJoin(profile_dir, "default-%p.profraw"),
+        ):
+            exit_code_pgo = _runPgoBinary()
+
+        pgo_data_collected = _mergeLlvmProfiles(source_dir)
     else:
         exit_code_pgo = _runPgoBinary()
 
         # gcc file suffix, spell-checker: ignore gcda
         gcc_constants_pgo_filename = getNormalizedPathJoin(
-            OutputDirectories.getSourceDirectoryPath(onefile=False, create=False),
-            "__constants.gcda",
+            source_dir, "__constants.gcda"
         )
 
         pgo_data_collected = os.path.exists(gcc_constants_pgo_filename)
@@ -929,9 +1032,7 @@ def runSconsBackend():
 
         # Need to restart compilation from scratch here.
     if isCPgoMode():
-        # For C level PGO, we have a 2 pass system. TODO: Make it more global for onefile
-        # and standalone mode proper support, which might need data files to be
-        # there, which currently are not yet there, so it won't run.
+        # For C level PGO, we have a 2 pass system.
         if isCPgoMode():
             scons_options["pgo_mode"] = "generate"
 
@@ -950,7 +1051,17 @@ def runSconsBackend():
 
             # Need to make it usable before executing it.
             executePostProcessing(scons_options["result_exe"])
-            _runCPgoBinary()
+
+            if isStandaloneMode():
+                # The program needs its DLLs and data files to run, so train
+                # it in a complete distribution, that is created again for
+                # the final binary afterwards.
+                _createStandaloneDistribution(scons_options)
+                _runCPgoBinary()
+                OutputDirectories.initStandaloneDirectory(logger=pgo_logger)
+            else:
+                _runCPgoBinary()
+
             scons_options["pgo_mode"] = "use"
 
     applyPreprocessorSymbols(scons_options, onefile=False)
@@ -1201,8 +1312,19 @@ def _detectEarlyDLLs():
     )
 
 
+_late_dlls_detected = False
+
+
 def _detectLateDLLs(scons_options):
     assert isStandaloneMode()
+
+    # With C level PGO, the distribution is created for the training and then
+    # again for the final binary, which uses the same DLLs.
+    global _late_dlls_detected  # singleton, pylint: disable=global-statement
+    if _late_dlls_detected:
+        return
+    _late_dlls_detected = True
+
     binary_filename = scons_options["result_exe"]
 
     detectUsedDLLs(
@@ -1211,6 +1333,34 @@ def _detectLateDLLs(scons_options):
             onefile=False, create=False
         ),
     )
+
+
+def _createStandaloneDistribution(scons_options):
+    _detectLateDLLs(scons_options)
+
+    dist_dir = OutputDirectories.getStandaloneDirectoryPath(bundle=True, real=False)
+
+    if not shallOnlyExecCCompilerCall():
+        main_standalone_entry_point, copy_standalone_entry_points = copyDllsUsed(
+            dist_dir=dist_dir,
+            standalone_entry_points=getStandaloneEntryPoints(),
+        )
+
+        data_file_paths = copyDataFiles(
+            standalone_entry_points=getStandaloneEntryPoints()
+        )
+
+        if isMacOS():
+            signDistributionMacOS(
+                dist_dir=dist_dir,
+                data_file_paths=data_file_paths,
+                main_standalone_entry_point=main_standalone_entry_point,
+                copy_standalone_entry_points=copy_standalone_entry_points,
+            )
+
+        dist_dir = OutputDirectories.renameStandaloneDirectory(dist_dir)
+
+    return dist_dir
 
 
 def _main():
@@ -1321,29 +1471,7 @@ def _main():
     executePostProcessing(scons_options["result_exe"])
 
     if isStandaloneMode():
-        _detectLateDLLs(scons_options)
-
-        dist_dir = OutputDirectories.getStandaloneDirectoryPath(bundle=True, real=False)
-
-        if not shallOnlyExecCCompilerCall():
-            main_standalone_entry_point, copy_standalone_entry_points = copyDllsUsed(
-                dist_dir=dist_dir,
-                standalone_entry_points=getStandaloneEntryPoints(),
-            )
-
-            data_file_paths = copyDataFiles(
-                standalone_entry_points=getStandaloneEntryPoints()
-            )
-
-            if isMacOS():
-                signDistributionMacOS(
-                    dist_dir=dist_dir,
-                    data_file_paths=data_file_paths,
-                    main_standalone_entry_point=main_standalone_entry_point,
-                    copy_standalone_entry_points=copy_standalone_entry_points,
-                )
-
-            dist_dir = OutputDirectories.renameStandaloneDirectory(dist_dir)
+        dist_dir = _createStandaloneDistribution(scons_options)
 
         onStandaloneDistributionFinished(
             dist_dir=dist_dir,
