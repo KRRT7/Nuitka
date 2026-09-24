@@ -253,9 +253,7 @@ static PyObject *Nuitka_typing_type_new(PyTypeObject *type, PyObject *args, PyOb
     return result;
 }
 
-static void patchTypingType(char const *attribute_name) {
-    PyObject *typing_module = IMPORT_HARD_TYPING();
-
+static void patchTypingType(PyObject *typing_module, char const *attribute_name) {
     PyObject *typing_type = PyObject_GetAttrString(typing_module, attribute_name);
 
     CHECK_OBJECT(typing_type);
@@ -277,11 +275,211 @@ static void patchTypingType(char const *attribute_name) {
 }
 
 static void patchTypingModule(void) {
-    patchTypingType("TypeVar");
-    patchTypingType("ParamSpec");
-    patchTypingType("TypeVarTuple");
+    // These types live in the built-in "_typing" module, which unlike "typing"
+    // is cheap to import.
+    PyObject *typing_module = PyImport_ImportModule("_typing");
+    CHECK_OBJECT(typing_module);
+
+    patchTypingType(typing_module, "TypeVar");
+    patchTypingType(typing_module, "ParamSpec");
+    patchTypingType(typing_module, "TypeVarTuple");
+
+    Py_DECREF(typing_module);
 }
 
+#endif
+
+#if PYTHON_VERSION >= 0x300
+// Run a code snippet that defines "patch", and call it with the module to patch.
+static PyObject *runModulePatchCode(PyThreadState *tstate, char const *code, char const *patch_module_name,
+                                    PyObject *module) {
+    PyObject *code_object = Py_CompileString(code, "<exec>", Py_file_input);
+    CHECK_OBJECT(code_object);
+
+    PyObject *patch_module = PyImport_ExecCodeModule((char *)patch_module_name, code_object);
+    CHECK_OBJECT(patch_module);
+    Py_DECREF(code_object);
+
+    PyObject *patch_function = PyObject_GetAttrString(patch_module, "patch");
+    CHECK_OBJECT(patch_function);
+
+    PyObject *result = CALL_FUNCTION_WITH_SINGLE_ARG(tstate, patch_function, module);
+    CHECK_OBJECT(result);
+    Py_DECREF(patch_function);
+
+    NUITKA_MAY_BE_UNUSED bool bool_res = Nuitka_DelModuleString(tstate, patch_module_name);
+    assert(bool_res != false);
+
+    return result;
+}
+
+static bool inspect_module_patched = false;
+
+static void patchInspectModuleObject(PyThreadState *tstate, PyObject *module) {
+    // The loader may have patched it already, before startup asked for it.
+    if (inspect_module_patched) {
+        return;
+    }
+    inspect_module_patched = true;
+
+    module_inspect = module;
+    Py_INCREF(module_inspect);
+
+    // Patch "inspect.getgeneratorstate" unless it is already patched.
+    old_getgeneratorstate = PyObject_GetAttrString(module_inspect, "getgeneratorstate");
+    CHECK_OBJECT(old_getgeneratorstate);
+
+    PyObject *inspect_getgeneratorstate_replacement =
+        PyCFunction_New(&_method_def_inspect_getgeneratorstate_replacement, NULL);
+    CHECK_OBJECT(inspect_getgeneratorstate_replacement);
+
+    PyObject_SetAttrString(module_inspect, "getgeneratorstate", inspect_getgeneratorstate_replacement);
+
+#if PYTHON_VERSION >= 0x350
+    // Patch "inspect.getcoroutinestate" unless it is already patched.
+    old_getcoroutinestate = PyObject_GetAttrString(module_inspect, "getcoroutinestate");
+    CHECK_OBJECT(old_getcoroutinestate);
+
+    if (PyFunction_Check(old_getcoroutinestate)) {
+        PyObject *inspect_getcoroutinestate_replacement =
+            PyCFunction_New(&_method_def_inspect_getcoroutinestate_replacement, NULL);
+        CHECK_OBJECT(inspect_getcoroutinestate_replacement);
+
+        PyObject_SetAttrString(module_inspect, "getcoroutinestate", inspect_getcoroutinestate_replacement);
+    }
+#endif
+
+#if PYTHON_VERSION >= 0x3b0
+    static char const *inspect_enhancement_code = "\n\
+def patch(inspect):\n\
+    _old_get_code_position = inspect._get_code_position\n\
+    def _get_code_position(code, instruction_index):\n\
+        try:\n\
+            return _old_get_code_position(code, instruction_index)\n\
+        except StopIteration:\n\
+            return None, None, None, None\n\
+    inspect._get_code_position = _get_code_position\n\
+";
+
+    PyObject *result = runModulePatchCode(tstate, inspect_enhancement_code, "nuitka_inspect_patch", module_inspect);
+    Py_DECREF(result);
+#endif
+}
+
+#if PYTHON_VERSION >= 0x350
+static bool types_module_patched = false;
+
+static void patchTypesModuleObject(PyThreadState *tstate, PyObject *module) {
+    // The loader may have patched it already, before startup asked for it,
+    // and patching twice would wrap "types.coroutine" around itself.
+    if (types_module_patched) {
+        return;
+    }
+    types_module_patched = true;
+
+    module_types = module;
+    Py_INCREF(module_types);
+
+    old_types_coroutine = PyObject_GetAttrString(module_types, "coroutine");
+    CHECK_OBJECT(old_types_coroutine);
+
+    // Runs before replacing "types.coroutine", so it can keep the original.
+    static char const *types_enhancement_code = "\n\
+def patch(types):\n\
+    _old_types_coroutine = types.coroutine\n\
+    _old_GeneratorWrapper = types._GeneratorWrapper\n\
+    class GeneratorWrapperEnhanced(_old_GeneratorWrapper):\n\
+        def __init__(self, gen):\n\
+            _old_GeneratorWrapper.__init__(self, gen)\n\
+\n\
+            if hasattr(gen, 'gi_code'):\n\
+                if gen.gi_code.co_flags & 0x0020:\n\
+                    self._GeneratorWrapper__isgen = True\n\
+\n\
+    types._GeneratorWrapper = GeneratorWrapperEnhanced\n\
+\n\
+    def _coroutine_wrapped(func):\n\
+        import functools\n\
+        import _collections_abc\n\
+\n\
+        @functools.wraps(func)\n\
+        def wrapped(*args, **kwargs):\n\
+            coro = func(*args, **kwargs)\n\
+            if isinstance(coro, types.CoroutineType):\n\
+                return coro\n\
+            if isinstance(coro, types.GeneratorType):\n\
+                if coro.gi_code.co_flags & 0x100:\n\
+                    return coro\n\
+                return types._GeneratorWrapper(coro)\n\
+            if (isinstance(coro, _collections_abc.Generator) and\n\
+                not isinstance(coro, _collections_abc.Coroutine)):\n\
+                return types._GeneratorWrapper(coro)\n\
+            return coro\n\
+\n\
+        return wrapped\n\
+\n\
+    def _types_coroutine(func):\n\
+        if not callable(func):\n\
+            raise TypeError('types.coroutine() expects a callable')\n\
+\n\
+        if type(func) is types.FunctionType:\n\
+            co_flags = func.__code__.co_flags\n\
+            if co_flags & 0x180:\n\
+                return func\n\
+            if co_flags & 0x20:\n\
+                return _old_types_coroutine(func)\n\
+\n\
+        return _coroutine_wrapped(func)\n\
+\n\
+    return _types_coroutine\n\
+";
+
+    types_coroutine_wrapped = runModulePatchCode(tstate, types_enhancement_code, "nuitka_types_patch", module_types);
+
+    // Patch "types.coroutine" unless it is already patched.
+    if (PyFunction_Check(old_types_coroutine)) {
+        PyObject *types_coroutine_replacement = PyCFunction_New(&_method_def_types_coroutine_replacement, NULL);
+        CHECK_OBJECT(types_coroutine_replacement);
+
+        PyObject_SetAttrString(module_types, "coroutine", types_coroutine_replacement);
+    }
+}
+#endif
+
+void patchLoadedModule(PyThreadState *tstate, char const *name, PyObject *module) {
+    if (inspect_module_patched == false && strcmp(name, "inspect") == 0) {
+        patchInspectModuleObject(tstate, module);
+    }
+#if PYTHON_VERSION >= 0x350
+    else if (types_module_patched == false && strcmp(name, "types") == 0) {
+        patchTypesModuleObject(tstate, module);
+    }
+#endif
+}
+
+// Patch a module now if already imported, or with standalone, when the loader
+// imports it. Otherwise it has to be imported to patch it, because the loader
+// may not see it being imported.
+static void patchModuleWhenLoaded(PyThreadState *tstate, PyObject *module_name,
+                                  void (*patch)(PyThreadState *tstate, PyObject *module)) {
+    PyObject *module = Nuitka_GetModule(tstate, module_name);
+
+#if !_NUITKA_STANDALONE_MODE
+    if (module == NULL) {
+        module = IMPORT_MODULE5(tstate, module_name, Py_None, Py_None, const_tuple_empty, const_int_0);
+
+        if (module == NULL) {
+            PyErr_PrintEx(0);
+            Py_Exit(1);
+        }
+    }
+#endif
+
+    if (module != NULL) {
+        patch(tstate, module);
+        Py_DECREF(module);
+    }
+}
 #endif
 
 /* Replace inspect functions with ones that handle compiles types too. */
@@ -308,138 +506,12 @@ void patchInspectModule(PyThreadState *tstate) {
     }
 #endif
 
-    // TODO: Change this into an import hook that is executed after it is imported.
-    module_inspect = IMPORT_MODULE5(tstate, const_str_plain_inspect, Py_None, Py_None, const_tuple_empty, const_int_0);
-
-    if (module_inspect == NULL) {
-        PyErr_PrintEx(0);
-        Py_Exit(1);
-    }
-    CHECK_OBJECT(module_inspect);
-
-    // Patch "inspect.getgeneratorstate" unless it is already patched.
-    old_getgeneratorstate = PyObject_GetAttrString(module_inspect, "getgeneratorstate");
-    CHECK_OBJECT(old_getgeneratorstate);
-
-    PyObject *inspect_getgeneratorstate_replacement =
-        PyCFunction_New(&_method_def_inspect_getgeneratorstate_replacement, NULL);
-    CHECK_OBJECT(inspect_getgeneratorstate_replacement);
-
-    PyObject_SetAttrString(module_inspect, "getgeneratorstate", inspect_getgeneratorstate_replacement);
-
+    // Importing "inspect" costs a lot of startup time, so programs that never
+    // use it should not pay for it.
+    patchModuleWhenLoaded(tstate, const_str_plain_inspect, patchInspectModuleObject);
 #if PYTHON_VERSION >= 0x350
-    // Patch "inspect.getcoroutinestate" unless it is already patched.
-    old_getcoroutinestate = PyObject_GetAttrString(module_inspect, "getcoroutinestate");
-    CHECK_OBJECT(old_getcoroutinestate);
-
-    if (PyFunction_Check(old_getcoroutinestate)) {
-        PyObject *inspect_getcoroutinestate_replacement =
-            PyCFunction_New(&_method_def_inspect_getcoroutinestate_replacement, NULL);
-        CHECK_OBJECT(inspect_getcoroutinestate_replacement);
-
-        PyObject_SetAttrString(module_inspect, "getcoroutinestate", inspect_getcoroutinestate_replacement);
-    }
-
-    module_types = IMPORT_MODULE5(tstate, const_str_plain_types, Py_None, Py_None, const_tuple_empty, const_int_0);
-
-    if (module_types == NULL) {
-        PyErr_PrintEx(0);
-        Py_Exit(1);
-    }
-    CHECK_OBJECT(module_types);
-
-    // Patch "types.coroutine" unless it is already patched.
-    old_types_coroutine = PyObject_GetAttrString(module_types, "coroutine");
-    CHECK_OBJECT(old_types_coroutine);
-
-    if (PyFunction_Check(old_types_coroutine)) {
-        PyObject *types_coroutine_replacement = PyCFunction_New(&_method_def_types_coroutine_replacement, NULL);
-        CHECK_OBJECT(types_coroutine_replacement);
-
-        PyObject_SetAttrString(module_types, "coroutine", types_coroutine_replacement);
-    }
-
-    static char const *wrapper_enhancement_code = "\n\
-import types\n\
-_old_GeneratorWrapper = types._GeneratorWrapper\n\
-class GeneratorWrapperEnhanced(_old_GeneratorWrapper):\n\
-    def __init__(self, gen):\n\
-        _old_GeneratorWrapper.__init__(self, gen)\n\
-\n\
-        if hasattr(gen, 'gi_code'):\n\
-            if gen.gi_code.co_flags & 0x0020:\n\
-                self._GeneratorWrapper__isgen = True\n\
-\n\
-types._GeneratorWrapper = GeneratorWrapperEnhanced\n\
-\n\
-def _coroutine_wrapped(func):\n\
-    import functools\n\
-    import _collections_abc\n\
-\n\
-    @functools.wraps(func)\n\
-    def wrapped(*args, **kwargs):\n\
-        coro = func(*args, **kwargs)\n\
-        if isinstance(coro, types.CoroutineType):\n\
-            return coro\n\
-        if isinstance(coro, types.GeneratorType):\n\
-            if coro.gi_code.co_flags & 0x100:\n\
-                return coro\n\
-            return types._GeneratorWrapper(coro)\n\
-        if (isinstance(coro, _collections_abc.Generator) and\n\
-            not isinstance(coro, _collections_abc.Coroutine)):\n\
-            return types._GeneratorWrapper(coro)\n\
-        return coro\n\
-\n\
-    return wrapped\n\
-\n\
-def _types_coroutine(func):\n\
-    if not callable(func):\n\
-        raise TypeError('types.coroutine() expects a callable')\n\
-\n\
-    if type(func) is types.FunctionType:\n\
-        co_flags = func.__code__.co_flags\n\
-        if co_flags & 0x180:\n\
-            return func\n\
-        if co_flags & 0x20:\n\
-            return _old_types_coroutine(func)\n\
-\n\
-    return _coroutine_wrapped(func)\n"
-#if PYTHON_VERSION >= 0x3b0
-                                                  "\
-import inspect\n\
-_old_get_code_position = inspect._get_code_position\n\
-def _get_code_position(code, instruction_index):\n\
-    try:\n\
-        return _old_get_code_position(code, instruction_index)\n\
-    except StopIteration:\n\
-        return None, None, None, None\n\
-inspect._get_code_position=_get_code_position\n\
-"
+    patchModuleWhenLoaded(tstate, const_str_plain_types, patchTypesModuleObject);
 #endif
-        ;
-
-    PyObject *wrapper_enhancement_code_object = Py_CompileString(wrapper_enhancement_code, "<exec>", Py_file_input);
-    CHECK_OBJECT(wrapper_enhancement_code_object);
-
-    {
-        NUITKA_MAY_BE_UNUSED PyObject *module =
-            PyImport_ExecCodeModule("nuitka_types_patch", wrapper_enhancement_code_object);
-        CHECK_OBJECT(module);
-
-#if PYTHON_VERSION >= 0x350
-        types_coroutine_wrapped = PyObject_GetAttrString(module, "_types_coroutine");
-        CHECK_OBJECT(types_coroutine_wrapped);
-
-        NUITKA_MAY_BE_UNUSED int res = PyObject_SetAttrString(module, "_old_types_coroutine", old_types_coroutine);
-        assert(res == 0);
-#endif
-
-        NUITKA_MAY_BE_UNUSED bool bool_res = Nuitka_DelModuleString(tstate, "nuitka_types_patch");
-        assert(bool_res != false);
-    }
-
-#endif
-
 #endif
 
 #if PYTHON_VERSION >= 0x3c0
