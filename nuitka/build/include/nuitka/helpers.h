@@ -304,6 +304,9 @@ extern void setupMetaPathBasedLoader(PyThreadState *tstate);
 /* Replace inspect functions with ones that handle compiles types too. */
 #if PYTHON_VERSION >= 0x300
 extern void patchInspectModule(PyThreadState *tstate);
+
+// Patch modules that "patchInspectModule" left for when they are loaded.
+extern void patchLoadedModule(PyThreadState *tstate, char const *name, PyObject *module);
 #endif
 
 // Replace type comparison with one that accepts compiled types too, will work

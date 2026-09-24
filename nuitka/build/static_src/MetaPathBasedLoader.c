@@ -1661,6 +1661,10 @@ static PyObject *_EXECUTE_EMBEDDED_MODULE(PyThreadState *tstate, PyObject *modul
             // after loading, to e.g. set a plug-in path, or do some monkey patching
             // in order to make things compatible.
             loadPostLoadCode(tstate, module_name, name, result, entry);
+
+#if PYTHON_VERSION >= 0x300 && _NUITKA_STANDALONE_MODE
+            patchLoadedModule(tstate, name, result);
+#endif
         }
 
         return result;
