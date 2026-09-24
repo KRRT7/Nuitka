@@ -738,10 +738,14 @@ PyObject *BUILTIN_GETATTR(PyThreadState *tstate, PyObject *object, PyObject *att
 
     if (result == NULL) {
         if (default_value != NULL) {
+            // Only an "AttributeError" means the default, anything else is
+            // raised, as "getattr" does.
             if (HAS_ERROR_OCCURRED(tstate)) {
-                if (EXCEPTION_MATCH_BOOL_SINGLE(tstate, GET_ERROR_OCCURRED(tstate), PyExc_AttributeError)) {
-                    CLEAR_ERROR_OCCURRED(tstate);
+                if (!EXCEPTION_MATCH_BOOL_SINGLE(tstate, GET_ERROR_OCCURRED(tstate), PyExc_AttributeError)) {
+                    return NULL;
                 }
+
+                CLEAR_ERROR_OCCURRED(tstate);
             }
 
             Py_INCREF(default_value);
