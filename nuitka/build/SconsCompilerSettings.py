@@ -50,6 +50,7 @@ from .SconsUtils import (
     getArgumentRequired,
     getExecutablePath,
     getLinkerArch,
+    getLlvmProfileDataFilename,
     getMsvcVersion,
     getMsvcVersionString,
     initScons,
@@ -67,7 +68,8 @@ from .WindowsObjGenerator import generateWindowsCoffObject
 # spell-checker: ignore -flto,-fpartial-inlining,-freorder-functions,-defsym,-fprofile
 # spell-checker: ignore -fwrapv,-Wunused,-ftrack,-fvisibility,-municode
 # spell-checker: ignore -feliminate,noexecstack,implib,bexpall,blibpath
-# spell-checker: ignore LTCG,GENPROFILE,USEPROFILE,CGTHREADS,CCVERSION
+# spell-checker: ignore LTCG,GENPROFILE,USEPROFILE,CGTHREADS,CCVERSION,profdata
+# spell-checker: ignore unprofiled
 
 
 def _detectWindowsSDK(env):
@@ -1803,7 +1805,13 @@ def _enablePgoSettings(env):
         env.progressbar_name = "Profile"
         env.Append(CPPDEFINES=["_NUITKA_PGO_GENERATE"])
 
-        if env.gcc_mode or env.zig_mode:
+        if env.zig_mode:
+            # Linking instrumented code needs the LLVM profile runtime, which
+            # zig does not ship.
+            scons_logger.sysexit(
+                "Error, PGO not supported for 'zig' compiler, it lacks the profile runtime."
+            )
+        elif env.gcc_mode:
             env.Append(CCFLAGS=["-fprofile-generate"])
             env.Append(LINKFLAGS=["-fprofile-generate"])
         elif env.msvc_mode:
@@ -1821,7 +1829,24 @@ def _enablePgoSettings(env):
 
         env.Append(CPPDEFINES=["_NUITKA_PGO_USE"])
 
-        if env.gcc_mode or env.zig_mode:
+        if env.clang_mode and not env.msvc_mode:
+            # LLVM needs the profile merged from the raw ones of the training
+            # run. Code the training did not reach, e.g. error paths, is
+            # expected to be without profile, so do not warn about it.
+            profile_use = "-fprofile-use=%s" % getLlvmProfileDataFilename(
+                env.source_dir
+            )
+
+            env.Append(
+                CCFLAGS=[
+                    profile_use,
+                    "-Wno-profile-instr-unprofiled",
+                    "-Wno-profile-instr-out-of-date",
+                    "-Wno-backend-plugin",
+                ]
+            )
+            env.Append(LINKFLAGS=[profile_use])
+        elif env.gcc_mode:
             env.Append(CCFLAGS=["-fprofile-use"])
             env.Append(LINKFLAGS=["-fprofile-use"])
         elif env.msvc_mode:
