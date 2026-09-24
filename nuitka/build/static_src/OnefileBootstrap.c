@@ -50,6 +50,7 @@
 
 #if !defined(_WIN32)
 #include <dirent.h>
+#include <limits.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -1319,6 +1320,92 @@ native_command_line_argument_t const *getOriginalArgv0(void) {
 }
 #endif
 
+#if defined(_NUITKA_ONEFILE_CANNED_OUTPUTS) && !defined(_WIN32)
+struct NuitkaCannedOutput {
+    int argc;
+    char const *const *argv;
+    char const *text;
+};
+
+#include "onefile_canned_outputs.h"
+
+// Write all of "data", reporting a failure, e.g. a closed pipe, rather than
+// dying from the signal, as Python does.
+static bool writeCannedOutput(char const *data, size_t size) {
+    while (size > 0) {
+        ssize_t written = write(STDOUT_FILENO, data, size);
+
+        if (written < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+
+            return false;
+        }
+
+        data += written;
+        size -= (size_t)written;
+    }
+
+    return true;
+}
+
+// Answer a command line from "--onefile-canned-output" without unpacking or
+// starting Python. Returns if there is nothing to answer, or if the answer
+// names the unpack directory while that does not exist yet, so the program
+// runs as usual.
+static void answerCannedOutput(int argc, char **argv, char const *unpack_dir) {
+    static char const placeholder[] = "{ONEFILE_DIR}";
+
+    for (struct NuitkaCannedOutput const *entry = canned_outputs; entry->argc >= 0; entry++) {
+        if (entry->argc != argc - 1) {
+            continue;
+        }
+
+        bool matches = true;
+
+        for (int i = 0; i < entry->argc; i++) {
+            if (strcmp(entry->argv[i], argv[i + 1]) != 0) {
+                matches = false;
+                break;
+            }
+        }
+
+        if (!matches) {
+            continue;
+        }
+
+        char resolved[PATH_MAX];
+
+        if (strstr(entry->text, placeholder) != NULL && realpath(unpack_dir, resolved) == NULL) {
+            return;
+        }
+
+        signal(SIGPIPE, SIG_IGN);
+
+        char const *text = entry->text;
+        bool written = true;
+
+        for (;;) {
+            char const *found = strstr(text, placeholder);
+            size_t size = found == NULL ? strlen(text) : (size_t)(found - text);
+
+            written = written && writeCannedOutput(text, size);
+
+            if (found == NULL) {
+                break;
+            }
+
+            written = written && writeCannedOutput(resolved, strlen(resolved));
+            text = found + sizeof(placeholder) - 1;
+        }
+
+        // Python exits with 120 when it cannot flush its standard output.
+        exit(written ? 0 : 120);
+    }
+}
+#endif
+
 #ifdef _NUITKA_WINMAIN_ENTRY_POINT
 int __stdcall wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpCmdLine, int nCmdShow) {
     int argc = __argc;
@@ -1434,6 +1521,12 @@ int main(int argc, char **argv) {
 
 #if defined(_WIN32)
     makeAbsolutePath(payload_path, sizeof(payload_path) / sizeof(filename_char_t));
+#endif
+
+#if defined(_NUITKA_ONEFILE_CANNED_OUTPUTS) && !defined(_WIN32)
+    if (bool_res && process_role == NULL) {
+        answerCannedOutput(argc, argv, payload_path);
+    }
 #endif
 
     // _putws(payload_path);

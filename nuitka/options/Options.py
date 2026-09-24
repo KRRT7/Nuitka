@@ -2625,6 +2625,11 @@ def getOnefileTempDirSpec():
     return result
 
 
+def getOnefileCannedOutputFilename():
+    """*str* or None = ``--onefile-canned-output``"""
+    return options.onefile_canned_output
+
+
 def getOnefileChildGraceTime():
     """*int* = ``--onefile-child-grace-time``"""
     if options.onefile_child_grace_time is None:

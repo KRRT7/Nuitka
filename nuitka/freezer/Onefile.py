@@ -18,6 +18,7 @@ from nuitka.build.SconsInterface import (
 from nuitka.build.SconsUtils import getSconsReportValue
 from nuitka.options.Options import (
     getJobLimit,
+    getOnefileCannedOutputFilename,
     getOnefileTempDirSpec,
     getProgressBar,
     getWindowsSplashScreen,
@@ -48,6 +49,7 @@ from nuitka.PythonVersions import (
 )
 from nuitka.States import states
 from nuitka.Tracing import onefile_logger
+from nuitka.utils.CStrings import encodePythonStringToC
 from nuitka.utils.Execution import withEnvironmentVarsOverridden
 from nuitka.utils.FileOperations import (
     areSamePaths,
@@ -55,10 +57,11 @@ from nuitka.utils.FileOperations import (
     getFileContentsHash,
     getFileSize,
     makeContainingPath,
+    putTextFileContents,
     removeDirectory,
 )
 from nuitka.utils.InstalledPythons import findInstalledPython
-from nuitka.utils.Json import writeJsonToFilename
+from nuitka.utils.Json import loadJsonFromFilename, writeJsonToFilename
 from nuitka.utils.SharedLibraries import cleanupHeaderForAndroid
 from nuitka.utils.Signing import addMacOSCodeSignature
 from nuitka.utils.Utils import (
@@ -118,6 +121,9 @@ def _runOnefileScons(
         scons_options["onefile_windows_static_runtime"] = asBoolStr(True)
 
     env_values["_NUITKA_ONEFILE_TEMP_SPEC"] = getOnefileTempDirSpec()
+
+    if _writeCannedOutputs(source_dir):
+        env_values["_NUITKA_ONEFILE_CANNED_OUTPUTS"] = "1"
     env_values["_NUITKA_ONEFILE_ARCHIVE_BOOL"] = "1" if onefile_archive else "0"
     env_values["_NUITKA_ONEFILE_HAS_PAYLOAD_BOOL"] = "1" if hasOnefilePayload() else "0"
     env_values["_NUITKA_ONEFILE_PAYLOAD_SIZE_INT"] = str(onefile_payload_size)
@@ -156,6 +162,98 @@ def _runOnefileScons(
     # Exit if compilation failed.
     if not result:
         onefile_logger.sysexit("Error, onefile bootstrap binary build failed.")
+
+
+def _loadCannedOutputs(filename):
+    """The ``--onefile-canned-output`` entries, as (args, stdout) pairs."""
+
+    try:
+        spec = loadJsonFromFilename(filename)
+    except OSError as e:
+        return onefile_logger.sysexit(
+            "Error, cannot read '--onefile-canned-output' file '%s': %s" % (filename, e)
+        )
+
+    entries = []
+
+    if not isinstance(spec, list):
+        spec = None
+
+    for entry in spec or ():
+        args = entry.get("args") if isinstance(entry, dict) else None
+        stdout = entry.get("stdout") if isinstance(entry, dict) else None
+
+        if (
+            not isinstance(args, list)
+            or not all(isinstance(arg, str) for arg in args)
+            or not isinstance(stdout, str)
+        ):
+            spec = None
+            break
+
+        entries.append((args, stdout))
+
+    if spec is None:
+        return onefile_logger.sysexit("""\
+Error, '--onefile-canned-output' file '%s' must be a list of objects with \
+"args", a list of strings, and "stdout", a string.""" % filename)
+
+    return entries
+
+
+def _writeCannedOutputs(source_dir):
+    """Write the canned outputs header for the bootstrap, if there are any."""
+
+    filename = getOnefileCannedOutputFilename()
+
+    if filename is None:
+        return False
+
+    if isWin32Windows():
+        onefile_logger.warning(
+            "The '--onefile-canned-output' option is not supported on Windows, ignoring it."
+        )
+        return False
+
+    entries = _loadCannedOutputs(filename)
+
+    lines = [
+        "// Generated from '%s', see '--onefile-canned-output'."
+        % os.path.basename(filename)
+    ]
+
+    for index, (args, _stdout) in enumerate(entries):
+        if args:
+            lines.append(
+                "static char const *const canned_output_args_%d[] = {%s};"
+                % (
+                    index,
+                    ", ".join(
+                        encodePythonStringToC(arg.encode("utf8")) for arg in args
+                    ),
+                )
+            )
+
+    lines.append("static struct NuitkaCannedOutput const canned_outputs[] = {")
+
+    for index, (args, stdout) in enumerate(entries):
+        lines.append(
+            "    {%d, %s, %s},"
+            % (
+                len(args),
+                ("canned_output_args_%d" % index) if args else "NULL",
+                encodePythonStringToC(stdout.encode("utf8")),
+            )
+        )
+
+    lines.append("    {-1, NULL, NULL}")
+    lines.append("};")
+
+    putTextFileContents(
+        os.path.join(source_dir, "onefile_canned_outputs.h"), "\n".join(lines) + "\n"
+    )
+
+    return True
 
 
 _compressor_python = None
