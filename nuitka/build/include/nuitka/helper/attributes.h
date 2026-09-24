@@ -64,6 +64,39 @@ static inline bool hasTypeGenericGetAttr(PyTypeObject *type) {
 #endif
 }
 
+#if PYTHON_VERSION >= 0x3c0 && !defined(Py_GIL_DISABLED) && !_NUITKA_EXPERIMENTAL_DISABLE_ATTR_OPT
+#define _NUITKA_ATTRIBUTE_CACHE 1
+
+// Per call site memory of an attribute lookup, valid only while the type
+// keeps its version tag, which any change to the type or its bases resets.
+struct Nuitka_AttributeCache {
+    PyTypeObject *type;
+    unsigned int version;
+    // Offset of a "__slots__" member, or 0 when "value" is the result.
+    Py_ssize_t offset;
+    PyObject *value;
+};
+
+extern PyObject *LOOKUP_ATTRIBUTE_CACHE_FILL(PyThreadState *tstate, PyObject *source, PyObject *attr_name,
+                                             struct Nuitka_AttributeCache *cache);
+
+static inline PyObject *LOOKUP_ATTRIBUTE_CACHED(PyThreadState *tstate, PyObject *source, PyObject *attr_name,
+                                                struct Nuitka_AttributeCache *cache) {
+    PyTypeObject *type = Py_TYPE(source);
+
+    if (likely(cache->type == type && cache->version == type->tp_version_tag)) {
+        PyObject *result = cache->offset != 0 ? *(PyObject **)((char *)source + cache->offset) : cache->value;
+
+        if (likely(result != NULL)) {
+            Py_INCREF(result);
+            return result;
+        }
+    }
+
+    return LOOKUP_ATTRIBUTE_CACHE_FILL(tstate, source, attr_name, cache);
+}
+#endif
+
 // In case of DLL usage, this avoids looking up the symbol from it.
 extern setattrofunc PyObject_GenericSetAttr_resolved;
 

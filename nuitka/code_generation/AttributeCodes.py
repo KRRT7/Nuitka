@@ -6,6 +6,8 @@
 Attribute lookup, setting.
 """
 
+from nuitka.options.Options import isExperimental
+from nuitka.PythonVersions import python_version
 from nuitka.States import states
 
 from .CodeHelpers import (
@@ -98,6 +100,31 @@ def getAttributeLookupCode(
         emit("%s = LOOKUP_ATTRIBUTE_DICT_SLOT(tstate, %s);" % (to_name, source_name))
     elif attribute_name == "__class__":
         emit("%s = LOOKUP_ATTRIBUTE_CLASS_SLOT(tstate, %s);" % (to_name, source_name))
+    elif python_version >= 0x3C0 and not isExperimental("disable-attr-cache"):
+        cache_name = "%s_%s" % (
+            context.getEntryPoint().getCodeName(),
+            context.getUniqueCodeName("attribute_cache"),
+        )
+        context.addDeclaration(
+            cache_name,
+            "#ifdef _NUITKA_ATTRIBUTE_CACHE\n"
+            "static struct Nuitka_AttributeCache %s;\n"
+            "#endif" % cache_name,
+        )
+        emit(
+            """\
+#ifdef _NUITKA_ATTRIBUTE_CACHE
+%(to_name)s = LOOKUP_ATTRIBUTE_CACHED(tstate, %(source_name)s, %(attribute_name)s, &%(cache_name)s);
+#else
+%(to_name)s = LOOKUP_ATTRIBUTE(tstate, %(source_name)s, %(attribute_name)s);
+#endif"""
+            % {
+                "to_name": to_name,
+                "source_name": source_name,
+                "attribute_name": context.getConstantCode(attribute_name),
+                "cache_name": cache_name,
+            }
+        )
     else:
         emit(
             "%s = LOOKUP_ATTRIBUTE(tstate, %s, %s);"

@@ -250,6 +250,42 @@ PyObject *LOOKUP_ATTRIBUTE(PyThreadState *tstate, PyObject *source, PyObject *at
 #endif
 }
 
+#ifdef _NUITKA_ATTRIBUTE_CACHE
+PyObject *LOOKUP_ATTRIBUTE_CACHE_FILL(PyThreadState *tstate, PyObject *source, PyObject *attr_name,
+                                      struct Nuitka_AttributeCache *cache) {
+    PyTypeObject *type = Py_TYPE(source);
+
+    // Only results that need no call. A "__slots__" member is a data
+    // descriptor, which an instance dictionary cannot shadow, but a plain
+    // value of the type is only safe without one.
+    if (type->tp_getattro == PyObject_GenericGetAttr_resolved && type->tp_dict != NULL) {
+        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        unsigned int version = type->tp_version_tag;
+
+        if (descr != NULL && version != 0) {
+            if (Py_TYPE(descr) == &PyMemberDescr_Type) {
+                PyMemberDef *member = ((PyMemberDescrObject *)descr)->d_member;
+
+                if (member->type == Py_T_OBJECT_EX && (member->flags & Py_AUDIT_READ) == 0 && member->offset > 0) {
+                    cache->type = type;
+                    cache->version = version;
+                    cache->offset = member->offset;
+                    cache->value = NULL;
+                }
+            } else if (Py_TYPE(descr)->tp_descr_get == NULL && hasTypeGenericGetAttr(type)) {
+                // The type dictionary holds it for as long as the version is valid.
+                cache->type = type;
+                cache->version = version;
+                cache->offset = 0;
+                cache->value = descr;
+            }
+        }
+    }
+
+    return LOOKUP_ATTRIBUTE(tstate, source, attr_name);
+}
+#endif
+
 PyObject *LOOKUP_ATTRIBUTE_DICT_SLOT(PyThreadState *tstate, PyObject *source) {
     CHECK_OBJECT(source);
 
