@@ -529,6 +529,21 @@ changes the default tempdir spec to be in the cache directory.
 
 
 onefile_group.add_option(
+    "--onefile-canned-output",
+    action="store",
+    dest="onefile_canned_output",
+    metavar="SPEC_FILENAME",
+    default=None,
+    help="""\
+A JSON file listing command lines the onefile binary answers itself,
+without unpacking or starting Python, e.g. "--version". It is a list of
+objects with "args", the exact arguments after the program name, and
+"stdout", the text to print. In it, "{ONEFILE_DIR}" stands for the
+resolved unpack directory; while that does not exist yet, the program
+runs as usual. Not supported on Windows. Default empty.""",
+)
+
+onefile_group.add_option(
     "--onefile-child-grace-time",
     action="store",
     dest="onefile_child_grace_time",
