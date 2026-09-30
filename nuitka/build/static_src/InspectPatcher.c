@@ -645,7 +645,18 @@ PyTracebackObject *MAKE_TRACEBACK(struct Nuitka_FrameObject *frame, int lineno) 
     return result;
 }
 
+static destructor original_PyTraceBack_tp_dealloc = NULL;
+
 static void Nuitka_tb_dealloc(PyTracebackObject *tb) {
+    // The traceback type is shared by every interpreter in the process, but
+    // the free list below is the main interpreter's, and has no lock. A
+    // traceback another interpreter frees was allocated by that interpreter,
+    // under its own lock, so it must be freed the way CPython frees it.
+    if (unlikely(_PyInterpreterState_GET() != PyInterpreterState_Main())) {
+        original_PyTraceBack_tp_dealloc((PyObject *)tb);
+        return;
+    }
+
     // Need to use official method as it checks for recursion.
     Nuitka_GC_UnTrack(tb);
 
@@ -671,7 +682,12 @@ static void Nuitka_tb_dealloc(PyTracebackObject *tb) {
 #endif
 }
 
-void patchTracebackDealloc(void) { PyTraceBack_Type.tp_dealloc = (destructor)Nuitka_tb_dealloc; }
+void patchTracebackDealloc(void) {
+    if (original_PyTraceBack_tp_dealloc == NULL) {
+        original_PyTraceBack_tp_dealloc = PyTraceBack_Type.tp_dealloc;
+        PyTraceBack_Type.tp_dealloc = (destructor)Nuitka_tb_dealloc;
+    }
+}
 
 //     Part of "Nuitka", an optimizing Python compiler that is compatible and
 //     integrates with CPython, but also works on its own.
