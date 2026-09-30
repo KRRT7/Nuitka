@@ -302,6 +302,78 @@ static PyObject *our_dict_tp_richcompare(PyObject *a, PyObject *b, int op) {
     return result;
 }
 
+// Constants of these types are told apart by rules of our own, e.g. bit
+// patterns for floats and element identity for containers, that their own hash
+// and comparison do not follow. The caches used to swap those rules into the
+// type's slots for the lookup, but the slots of builtin types are shared by
+// every interpreter in the process, and one running meanwhile hashed and
+// compared its own objects with them. The rules travel in the key instead.
+typedef struct {
+    PyObject_HEAD PyObject *value;
+    hashfunc hash;
+    richcmpfunc richcompare;
+} Nuitka_ConstantKey;
+
+static PyTypeObject Nuitka_ConstantKey_Type;
+
+static Py_hash_t Nuitka_ConstantKey_tp_hash(Nuitka_ConstantKey *key) {
+    hashfunc hash = key->hash != NULL ? key->hash : Py_TYPE(key->value)->tp_hash;
+
+    return hash(key->value);
+}
+
+static PyObject *Nuitka_ConstantKey_tp_richcompare(Nuitka_ConstantKey *a, PyObject *b, int op) {
+    assert(op == Py_EQ);
+
+    if (Py_TYPE(b) != &Nuitka_ConstantKey_Type) {
+        Py_INCREF_IMMORTAL(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
+
+    Nuitka_ConstantKey *other = (Nuitka_ConstantKey *)b;
+
+    // One cache can hold values of more than one type, e.g. floats and
+    // complex values, which the rules would otherwise compare as if alike.
+    if (Py_TYPE(a->value) != Py_TYPE(other->value) || a->richcompare != other->richcompare) {
+        Py_INCREF_IMMORTAL(Py_False);
+        return Py_False;
+    }
+
+    return a->richcompare(a->value, other->value, op);
+}
+
+static void Nuitka_ConstantKey_tp_dealloc(Nuitka_ConstantKey *key) {
+    Py_DECREF(key->value);
+    PyObject_Del(key);
+}
+
+static PyTypeObject Nuitka_ConstantKey_Type = {
+    // The metatype is set by "PyType_Ready", as it is not a constant everywhere.
+    PyVarObject_HEAD_INIT(NULL, 0) "compiled_constant_key", // tp_name
+    sizeof(Nuitka_ConstantKey),                                      // tp_basicsize
+    0,                                                               // tp_itemsize
+    (destructor)Nuitka_ConstantKey_tp_dealloc,                       // tp_dealloc
+    0,                                                               // tp_print / tp_vectorcall_offset
+    0,                                                               // tp_getattr
+    0,                                                               // tp_setattr
+    0,                                                               // tp_as_async
+    0,                                                               // tp_repr
+    0,                                                               // tp_as_number
+    0,                                                               // tp_as_sequence
+    0,                                                               // tp_as_mapping
+    (hashfunc)Nuitka_ConstantKey_tp_hash,                            // tp_hash
+    0,                                                               // tp_call
+    0,                                                               // tp_str
+    0,                                                               // tp_getattro
+    0,                                                               // tp_setattro
+    0,                                                               // tp_as_buffer
+    Py_TPFLAGS_DEFAULT,                                              // tp_flags
+    0,                                                               // tp_doc
+    0,                                                               // tp_traverse
+    0,                                                               // tp_clear
+    (richcmpfunc)Nuitka_ConstantKey_tp_richcompare,                  // tp_richcompare
+};
+
 // For creation of small long singleton long values as required by Python3.
 #if PYTHON_VERSION < 0x3b0
 #if PYTHON_VERSION >= 0x390
@@ -344,6 +416,8 @@ static void initCaches(void) {
     set_cache = PyDict_New();
 
     frozenset_cache = PyDict_New();
+
+    PyType_Ready(&Nuitka_ConstantKey_Type);
 
 #if PYTHON_VERSION < 0x3b0
 #if PYTHON_VERSION >= 0x390
@@ -394,20 +468,23 @@ static void _finalizeUnpackedConstantObject(void **output, PyObject *value) {
 
 static void insertToDictCacheForcedHash(PyObject *dict, PyObject **value, hashfunc tp_hash,
                                         richcmpfunc tp_richcompare) {
-    hashfunc old_hash = Py_TYPE(*value)->tp_hash;
-    richcmpfunc old_richcmpfunc = Py_TYPE(*value)->tp_richcompare;
-
     // Hash is optional, e.g. for floats we can spare us doing our own hash,
     // but we do equality
-    if (tp_hash != NULL) {
-        Py_TYPE(*value)->tp_hash = tp_hash;
+    Nuitka_ConstantKey *key = PyObject_New(Nuitka_ConstantKey, &Nuitka_ConstantKey_Type);
+    key->value = *value;
+    Py_INCREF(*value);
+    key->hash = tp_hash;
+    key->richcompare = tp_richcompare;
+
+    PyObject *item = PyDict_GetItem(dict, (PyObject *)key);
+
+    if (item != NULL) {
+        *value = item;
+    } else {
+        PyDict_SetItem(dict, (PyObject *)key, *value);
     }
-    Py_TYPE(*value)->tp_richcompare = tp_richcompare;
 
-    insertToDictCache(dict, value);
-
-    Py_TYPE(*value)->tp_hash = old_hash;
-    Py_TYPE(*value)->tp_richcompare = old_richcmpfunc;
+    Py_DECREF(key);
 }
 
 static uint16_t unpackValueUint16(unsigned char const **data) {
