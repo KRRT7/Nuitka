@@ -1609,6 +1609,16 @@ def getShallFollowInNoCase():
     return sum([_splitShellPattern(x) for x in options.follow_not_modules], [])
 
 
+def getSubinterpreterBytecodeModules():
+    """*list*, items of ``--subinterpreter-bytecode=``"""
+    return tuple(
+        module_name.strip()
+        for value in options.subinterpreter_bytecode
+        for module_name in value.split(",")
+        if module_name.strip()
+    )
+
+
 def getShallFollowModules():
     """*list*, items of ``--follow-import-to=`` amended with what ``--include-module`` and ``--include-package`` got"""
     return sum(

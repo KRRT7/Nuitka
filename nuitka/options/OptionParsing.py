@@ -380,6 +380,21 @@ it creates, and make it available for import by the code. Default empty.""",
 )
 
 include_group.add_option(
+    "--subinterpreter-bytecode",
+    action="append",
+    dest="subinterpreter_bytecode",
+    metavar="MODULE",
+    default=[],
+    help="""\
+Make an included module importable by subinterpreters too, e.g. those of an
+"InterpreterPoolExecutor". A new interpreter imports from the standard import
+system only, which cannot see compiled modules, so these are also embedded as
+bytecode, which such interpreters import instead. The program itself still
+uses the compiled module. Give as a Python namespace; can be given multiple
+times and takes comma separated values. Default empty.""",
+)
+
+include_group.add_option(
     "--include-plugin-directory",
     action="append",
     dest="include_extra",

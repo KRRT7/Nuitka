@@ -1064,6 +1064,12 @@ def decideCompilationMode(is_top, module_name, module_filename, for_pgo):
     if is_stdlib and module_name in detectEarlyImports():
         return "bytecode"
 
+    # An "InterpreterPoolExecutor" runs each job by handing "do_call" of this
+    # module to "Interpreter.call", which only shares Python functions with the
+    # interpreter it calls into: compiled, the pool can run nothing.
+    if is_stdlib and module_name == "concurrent.futures.interpreter":
+        return "bytecode"
+
     result = decideCompilation(module_name)
 
     # Cannot change mode of "__main__" to bytecode, that is not going to work

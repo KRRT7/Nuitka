@@ -489,6 +489,10 @@ def createBuildDefinitionsFile():
         1 if env.frozen_modules else 0
     )
 
+    env.build_definitions["_NUITKA_SUBINTERPRETER_BYTECODE"] = (
+        1 if env.subinterpreter_bytecode else 0
+    )
+
     if env.forced_stdout_path is not None:
         if env.forced_stdout_path == "{NONE}":
             env.build_definitions["NUITKA_FORCED_STDOUT_NONE_BOOL"] = 1

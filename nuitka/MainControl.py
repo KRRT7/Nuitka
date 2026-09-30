@@ -72,6 +72,7 @@ from nuitka.optimizations.ValueTraces import setupValueTraceFromOptions
 from nuitka.options.Options import (
     assumeYesForDownloads,
     getDebuggerName,
+    getSubinterpreterBytecodeModules,
     getFileReferenceMode,
     getForcedStderrPath,
     getForcedStdoutPath,
@@ -975,10 +976,16 @@ def runSconsBackend():
     if shallTreatUninstalledPython():
         scons_options["uninstalled_python"] = asBoolStr(True)
 
-    if ModuleRegistry.getUncompiledTechnicalModules():
+    if ModuleRegistry.getUncompiledTechnicalModules() or (
+        getSubinterpreterBytecodeModules()
+    ):
         scons_options["frozen_modules"] = str(
             len(ModuleRegistry.getUncompiledTechnicalModules())
+            + len(getSubinterpreterBytecodeModules())
         )
+
+    if getSubinterpreterBytecodeModules():
+        scons_options["subinterpreter_bytecode"] = asBoolStr(True)
 
     if hasPythonFlagNoWarnings():
         scons_options["no_python_warnings"] = asBoolStr(True)

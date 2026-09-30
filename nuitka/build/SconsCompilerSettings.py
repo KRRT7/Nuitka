@@ -1250,6 +1250,9 @@ def createNuitkaSconsEnvironment(needs_source_dir=True):
     # Amount of frozen modules.
     frozen_modules = getArgumentInt("frozen_modules", 0)
 
+    # Frozen modules stay installed for subinterpreters.
+    subinterpreter_bytecode = getArgumentBool("subinterpreter_bytecode", False)
+
     # Windows runtime DLL inclusion.
     onefile_windows_static_runtime = getArgumentBool(
         "onefile_windows_static_runtime", False
@@ -1323,6 +1326,7 @@ def createNuitkaSconsEnvironment(needs_source_dir=True):
     env.pgo_mode = pgo_mode
     env.job_count = job_count
     env.frozen_modules = frozen_modules
+    env.subinterpreter_bytecode = subinterpreter_bytecode
     env.uninstalled_python = uninstalled_python
     env.onefile_windows_static_runtime = onefile_windows_static_runtime
     env.cf_protection = cf_protection

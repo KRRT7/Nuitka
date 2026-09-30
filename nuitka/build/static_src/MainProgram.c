@@ -148,6 +148,33 @@ static void prepareFrozenModules(void) {
 }
 #endif
 
+#if _NUITKA_SUBINTERPRETER_BYTECODE
+// The frozen table stays installed for subinterpreters, and holds bytecode of
+// modules that are compiled for this interpreter. Our loader is registered
+// behind the frozen importer, which would then answer for them, so it is moved
+// ahead of it, still behind the builtin importer.
+static void moveMetaPathBasedLoaderAheadOfFrozenImporter(void) {
+    PyObject *meta_path = PySys_GetObject("meta_path");
+
+    if (meta_path == NULL || !PyList_Check(meta_path)) {
+        return;
+    }
+
+    for (Py_ssize_t i = 2; i < PyList_GET_SIZE(meta_path); i++) {
+        PyObject *finder = PyList_GET_ITEM(meta_path, i);
+
+        if (strcmp(Py_TYPE(finder)->tp_name, "nuitka_module_loader") == 0) {
+            Py_INCREF(finder);
+            PySequence_DelItem(meta_path, i);
+            PyList_Insert(meta_path, 1, finder);
+            Py_DECREF(finder);
+
+            return;
+        }
+    }
+}
+#endif
+
 #include "nuitka/environment_variables.h"
 
 #if _NUITKA_STANDALONE_MODE
@@ -2082,7 +2109,7 @@ static int Nuitka_Main(int argc, native_command_line_argument_t **argv) {
     setEarlyFrozenModulesFileAttribute(tstate);
 #endif
 
-#if NUITKA_HAS_FROZEN_MODULES_BOOL
+#if NUITKA_HAS_FROZEN_MODULES_BOOL && !_NUITKA_SUBINTERPRETER_BYTECODE
     NUITKA_PRINT_TRACE("main(): Removing early frozen module table again.");
     PyImport_FrozenModules = old_frozen;
 #endif
@@ -2098,6 +2125,10 @@ static int Nuitka_Main(int argc, native_command_line_argument_t **argv) {
 
     /* Enable meta path based loader. */
     setupMetaPathBasedLoader(tstate);
+
+#if _NUITKA_SUBINTERPRETER_BYTECODE
+    moveMetaPathBasedLoaderAheadOfFrozenImporter();
+#endif
 
 #if PYTHON_VERSION < 0x3d0
     /* Initialize warnings module. */

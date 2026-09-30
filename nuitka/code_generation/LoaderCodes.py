@@ -24,6 +24,7 @@ from nuitka.importing.Recursion import getExcludedModuleNames
 from nuitka.ModuleRegistry import getDoneModules, getUncompiledTechnicalModules
 from nuitka.options.Options import (
     getFileReferenceMode,
+    getSubinterpreterBytecodeModules,
     hasNonDeploymentIndicator,
     isShowInclusion,
     isStandaloneMode,
@@ -38,6 +39,7 @@ from nuitka.utils.CStrings import (
     encodePythonUnicodeToC,
 )
 from nuitka.utils.ModuleNames import (
+    ModuleName,
     makeTriggerModuleName,
     post_module_load_trigger_name,
     pre_module_load_trigger_name,
@@ -250,12 +252,7 @@ def getMetaPathLoaderBodyCode(bytecode_accessor):
 
     frozen_defs = []
 
-    # Only the non-technical ones need to be there.
-    for uncompiled_module in getUncompiledTechnicalModules():
-        module_name = uncompiled_module.getFullName()
-        code_data = uncompiled_module.getByteCode()
-        is_package = uncompiled_module.isUncompiledPythonPackage()
-
+    for module_name, code_data, is_package in getFrozenModuleBytecodes():
         size = len(code_data)
 
         # Packages are indicated with negative size.
@@ -264,7 +261,7 @@ def getMetaPathLoaderBodyCode(bytecode_accessor):
 
         accessor_code = bytecode_accessor.getBlobDataCode(
             data=code_data,
-            name="bytecode of module '%s'" % uncompiled_module.getFullName(),
+            name="bytecode of module '%s'" % module_name,
         )
 
         frozen_defs.append(
@@ -321,6 +318,86 @@ def getMetaPathLoaderBodyCode(bytecode_accessor):
         "bytecode_count": bytecode_accessor.getConstantsCount(),
         "frozen_modules": indented(frozen_defs),
     }
+
+
+def getFrozenModuleBytecodes():
+    """Name, bytecode and package flag of each frozen module to embed.
+
+    The technical ones, which "Py_Initialize" imports before the meta path
+    loader exists, and those "--subinterpreter-bytecode" names. A subinterpreter
+    imports every module through the standard import system: these it finds
+    in the frozen table, which stays installed for them.
+    """
+    result = []
+    seen = set()
+
+    for uncompiled_module in getUncompiledTechnicalModules():
+        module_name = uncompiled_module.getFullName()
+        seen.add(module_name)
+        result.append(
+            (
+                module_name,
+                uncompiled_module.getByteCode(),
+                uncompiled_module.isUncompiledPythonPackage(),
+            )
+        )
+
+    requested = getSubinterpreterBytecodeModules()
+
+    if not requested:
+        return result
+
+    from nuitka.optimizations.BytecodeDemotion import demoteSourceCodeToBytecode
+
+    # Technical modules only cover the start of an interpreter; one started
+    # later imports whatever its code needs, uncompiled or compiled.
+    modules_by_name = dict(
+        (module.getFullName(), module) for module in _getLoaderModuleOrder()
+    )
+
+    for requested_name in requested:
+        module = modules_by_name.get(ModuleName(requested_name))
+
+        if module is None:
+            # Frozen into CPython itself or built into it: every interpreter
+            # has those already.
+            import _imp  # Only for subinterpreters, i.e. Python 3.12 or higher.
+
+            if requested_name in sys.builtin_module_names or _imp.is_frozen(
+                requested_name
+            ):
+                continue
+
+            inclusion_logger.warning(
+                "Module '%s' for '--subinterpreter-bytecode' is not included, ignoring it."
+                % requested_name
+            )
+            continue
+
+        module_name = module.getFullName()
+
+        if module_name in seen:
+            continue
+
+        if module.isUncompiledPythonModule():
+            code_data = module.getByteCode()
+            is_package = module.isUncompiledPythonPackage()
+        elif module.isCompiledPythonModule() and module.getSourceCode() is not None:
+            code_data = demoteSourceCodeToBytecode(
+                module_name=module_name,
+                source_code=module.getSourceCode(),
+                filename=module.getCompileTimeFilename(),
+            )
+            is_package = module.isCompiledPythonPackage()
+        else:
+            # Extension modules load as files, and namespace packages have no
+            # code; a subinterpreter finds both on its path.
+            continue
+
+        seen.add(module_name)
+        result.append((module_name, code_data, is_package))
+
+    return result
 
 
 perfect_supported = set()
