@@ -16,11 +16,13 @@
 #include <windows.h>
 #endif
 
+#include "nuitka/prelude.h"
+
+// After the prelude: MonolithPy's mp_embed.h, which Python.h includes, has
+// to come before the system headers to rename what it replaces.
 #if defined(__APPLE__)
 #include <unistd.h>
 #endif
-
-#include "nuitka/prelude.h"
 
 #if _NUITKA_ONEFILE_MODE && !defined(_WIN32)
 #include <errno.h>
