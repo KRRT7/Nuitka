@@ -665,6 +665,36 @@ PyObject *BUILTIN_SUPER2(PyThreadState *tstate, PyDictObject *module_dict, PyObj
     CHECK_OBJECT(type);
     CHECK_OBJECT_X(object);
 
+#ifdef Py_GIL_DISABLED
+    // Another thread may rebind "super" and release the value read.
+    PyObject *super_value;
+
+    int found = PyDict_GetItemRef((PyObject *)module_dict, const_str_plain_super, &super_value);
+
+    if (unlikely(found < 0)) {
+        return NULL;
+    }
+
+    if (found == 0) {
+        NUITKA_ASSIGN_BUILTIN(super);
+
+        super_value = NUITKA_ACCESS_BUILTIN(super);
+        Py_INCREF(super_value);
+    }
+
+    PyObject *result;
+
+    if (object != NULL) {
+        PyObject *args[] = {type, object};
+
+        result = CALL_FUNCTION_WITH_ARGS2(tstate, super_value, args);
+    } else {
+        result = CALL_FUNCTION_WITH_SINGLE_ARG(tstate, super_value, type);
+    }
+
+    Py_DECREF(super_value);
+    return result;
+#else
     PyObject *super_value = GET_STRING_DICT_VALUE(module_dict, (Nuitka_StringObject *)const_str_plain_super);
 
     if (super_value == NULL) {
@@ -680,6 +710,7 @@ PyObject *BUILTIN_SUPER2(PyThreadState *tstate, PyDictObject *module_dict, PyObj
     } else {
         return CALL_FUNCTION_WITH_SINGLE_ARG(tstate, super_value, type);
     }
+#endif
 }
 
 PyObject *BUILTIN_SUPER0(PyThreadState *tstate, PyDictObject *module_dict, PyObject *type, PyObject *object) {

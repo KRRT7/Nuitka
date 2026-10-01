@@ -213,10 +213,11 @@ static PyObject *_Nuitka_Frame_GetLocalsDict(struct Nuitka_FrameObject *nuitka_f
                 assert(Nuitka_CellOrPyCell_Check((PyObject *)value));
                 CHECK_OBJECT(value);
 
-                PyObject *cell_value = Nuitka_CellOrPyCell_GET((PyObject *)value);
+                PyObject *cell_value = Nuitka_CellOrPyCell_GET_REF((PyObject *)value);
 
                 if (cell_value != NULL) {
                     DICT_SET_ITEM(result, *var_names, cell_value);
+                    Py_DECREF(cell_value);
                 }
             }
 
@@ -918,6 +919,8 @@ static struct Nuitka_FrameObject *_MAKE_COMPILED_FRAME(PyCodeObject *code, PyObj
     locals_owner->f_code = code;
 #elif PYTHON_VERSION < 0x3e0
     locals_owner->f_executable = (PyObject *)code;
+#elif defined(Py_GIL_DISABLED)
+    locals_owner->f_executable = PyStackRef_FromPyObjectNew((PyObject *)code);
 #else
     // TODO: Why is our code object not immortal?
     locals_owner->f_executable = _PyStackRef_FromPyObjectNew((PyObject *)code);
@@ -1266,6 +1269,32 @@ PyCodeObject *USE_CODE_OBJECT(PyThreadState *tstate, PyObject *code_object, PyOb
     CHECK_OBJECT(module_filename_obj);
 
     PyCodeObject *co = (PyCodeObject *)code_object;
+
+#ifdef Py_GIL_DISABLED
+    // Completed once, by whichever thread calls first: the qualname is made
+    // from the partial one, so two threads doing it would repeat the name.
+    // The filename is published last, and completes it for readers checking
+    // without the lock.
+    if (_Py_atomic_load_ptr_acquire(&co->co_filename) == const_str_empty) {
+        Py_BEGIN_CRITICAL_SECTION(co);
+
+        if (co->co_filename == const_str_empty) {
+#if PYTHON_VERSION >= 0x3b0
+            if (co->co_qualname != co->co_name) {
+                PyObject *w = UNICODE_CONCAT(tstate, co->co_qualname, const_str_dot);
+                _Py_atomic_store_ptr_release(&co->co_qualname, UNICODE_CONCAT(tstate, w, co->co_name));
+                Py_DECREF(w);
+            }
+#endif
+            _Py_atomic_store_ptr_release(&co->co_filename, Py_NewRef(module_filename_obj));
+        }
+
+        Py_END_CRITICAL_SECTION();
+    }
+
+    return co;
+#endif
+
     PyObject *old = co->co_filename;
 
     if (old == const_str_empty) {

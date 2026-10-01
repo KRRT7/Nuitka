@@ -711,7 +711,12 @@ def getModuleLinkerLibs():
 
 
 def isPythonWithGil():
-    return python_version < 0x3D0 or sys.flags.gil
+    # The build decides, not whether this process runs with the GIL: under a
+    # free-threaded build with "PYTHON_GIL=1" the compiled code still runs
+    # without it wherever that is not set.
+    import sysconfig
+
+    return python_version < 0x3D0 or not sysconfig.get_config_var("Py_GIL_DISABLED")
 
 
 def getSitePackageCandidateNames():

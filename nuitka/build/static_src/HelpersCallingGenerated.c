@@ -277,13 +277,12 @@ PyObject *CALL_FUNCTION_NO_ARGS(PyThreadState *tstate, PyObject *called) {
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -291,8 +290,9 @@ PyObject *CALL_FUNCTION_NO_ARGS(PyThreadState *tstate, PyObject *called) {
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -311,11 +311,10 @@ PyObject *CALL_FUNCTION_NO_ARGS(PyThreadState *tstate, PyObject *called) {
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj);
                         } else {
                             result = CALL_FUNCTION_NO_ARGS(tstate, init_method);
-
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -726,13 +725,12 @@ PyObject *CALL_FUNCTION_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *called,
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -740,8 +738,9 @@ PyObject *CALL_FUNCTION_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *called,
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -760,11 +759,10 @@ PyObject *CALL_FUNCTION_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *called,
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 1);
                         } else {
                             result = CALL_FUNCTION_WITH_SINGLE_ARG(tstate, init_method, args[0]);
-
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -1174,13 +1172,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS1(PyThreadState *tstate, PyObject *called, 
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -1188,8 +1185,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS1(PyThreadState *tstate, PyObject *called, 
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -1208,11 +1206,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS1(PyThreadState *tstate, PyObject *called, 
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 1);
                         } else {
                             result = CALL_FUNCTION_WITH_SINGLE_ARG(tstate, init_method, args[0]);
-
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -1608,13 +1605,12 @@ PyObject *CALL_FUNCTION_WITH_ARGS2(PyThreadState *tstate, PyObject *called, PyOb
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -1622,8 +1618,9 @@ PyObject *CALL_FUNCTION_WITH_ARGS2(PyThreadState *tstate, PyObject *called, PyOb
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -1642,10 +1639,10 @@ PyObject *CALL_FUNCTION_WITH_ARGS2(PyThreadState *tstate, PyObject *called, PyOb
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 2);
                         } else {
                             result = CALL_FUNCTION_WITH_ARGS2(tstate, init_method, args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -2037,13 +2034,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS2(PyThreadState *tstate, PyObject *called, 
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -2051,8 +2047,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS2(PyThreadState *tstate, PyObject *called, 
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -2071,10 +2068,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS2(PyThreadState *tstate, PyObject *called, 
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 2);
                         } else {
                             result = CALL_FUNCTION_WITH_POS_ARGS2(tstate, init_method, pos_args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -2470,13 +2467,12 @@ PyObject *CALL_FUNCTION_WITH_ARGS3(PyThreadState *tstate, PyObject *called, PyOb
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -2484,8 +2480,9 @@ PyObject *CALL_FUNCTION_WITH_ARGS3(PyThreadState *tstate, PyObject *called, PyOb
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -2504,10 +2501,10 @@ PyObject *CALL_FUNCTION_WITH_ARGS3(PyThreadState *tstate, PyObject *called, PyOb
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 3);
                         } else {
                             result = CALL_FUNCTION_WITH_ARGS3(tstate, init_method, args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -2899,13 +2896,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS3(PyThreadState *tstate, PyObject *called, 
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -2913,8 +2909,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS3(PyThreadState *tstate, PyObject *called, 
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -2933,10 +2930,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS3(PyThreadState *tstate, PyObject *called, 
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 3);
                         } else {
                             result = CALL_FUNCTION_WITH_POS_ARGS3(tstate, init_method, pos_args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -3332,13 +3329,12 @@ PyObject *CALL_FUNCTION_WITH_ARGS4(PyThreadState *tstate, PyObject *called, PyOb
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -3346,8 +3342,9 @@ PyObject *CALL_FUNCTION_WITH_ARGS4(PyThreadState *tstate, PyObject *called, PyOb
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -3366,10 +3363,10 @@ PyObject *CALL_FUNCTION_WITH_ARGS4(PyThreadState *tstate, PyObject *called, PyOb
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 4);
                         } else {
                             result = CALL_FUNCTION_WITH_ARGS4(tstate, init_method, args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -3761,13 +3758,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS4(PyThreadState *tstate, PyObject *called, 
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -3775,8 +3771,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS4(PyThreadState *tstate, PyObject *called, 
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -3795,10 +3792,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS4(PyThreadState *tstate, PyObject *called, 
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 4);
                         } else {
                             result = CALL_FUNCTION_WITH_POS_ARGS4(tstate, init_method, pos_args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -4194,13 +4191,12 @@ PyObject *CALL_FUNCTION_WITH_ARGS5(PyThreadState *tstate, PyObject *called, PyOb
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -4208,8 +4204,9 @@ PyObject *CALL_FUNCTION_WITH_ARGS5(PyThreadState *tstate, PyObject *called, PyOb
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -4228,10 +4225,10 @@ PyObject *CALL_FUNCTION_WITH_ARGS5(PyThreadState *tstate, PyObject *called, PyOb
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 5);
                         } else {
                             result = CALL_FUNCTION_WITH_ARGS5(tstate, init_method, args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -4623,13 +4620,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS5(PyThreadState *tstate, PyObject *called, 
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -4637,8 +4633,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS5(PyThreadState *tstate, PyObject *called, 
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -4657,10 +4654,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS5(PyThreadState *tstate, PyObject *called, 
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 5);
                         } else {
                             result = CALL_FUNCTION_WITH_POS_ARGS5(tstate, init_method, pos_args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -5056,13 +5053,12 @@ PyObject *CALL_FUNCTION_WITH_ARGS6(PyThreadState *tstate, PyObject *called, PyOb
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -5070,8 +5066,9 @@ PyObject *CALL_FUNCTION_WITH_ARGS6(PyThreadState *tstate, PyObject *called, PyOb
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -5090,10 +5087,10 @@ PyObject *CALL_FUNCTION_WITH_ARGS6(PyThreadState *tstate, PyObject *called, PyOb
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 6);
                         } else {
                             result = CALL_FUNCTION_WITH_ARGS6(tstate, init_method, args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -5485,13 +5482,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS6(PyThreadState *tstate, PyObject *called, 
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -5499,8 +5495,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS6(PyThreadState *tstate, PyObject *called, 
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -5519,10 +5516,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS6(PyThreadState *tstate, PyObject *called, 
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 6);
                         } else {
                             result = CALL_FUNCTION_WITH_POS_ARGS6(tstate, init_method, pos_args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -5918,13 +5915,12 @@ PyObject *CALL_FUNCTION_WITH_ARGS7(PyThreadState *tstate, PyObject *called, PyOb
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -5932,8 +5928,9 @@ PyObject *CALL_FUNCTION_WITH_ARGS7(PyThreadState *tstate, PyObject *called, PyOb
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -5952,10 +5949,10 @@ PyObject *CALL_FUNCTION_WITH_ARGS7(PyThreadState *tstate, PyObject *called, PyOb
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 7);
                         } else {
                             result = CALL_FUNCTION_WITH_ARGS7(tstate, init_method, args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -6347,13 +6344,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS7(PyThreadState *tstate, PyObject *called, 
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -6361,8 +6357,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS7(PyThreadState *tstate, PyObject *called, 
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -6381,10 +6378,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS7(PyThreadState *tstate, PyObject *called, 
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 7);
                         } else {
                             result = CALL_FUNCTION_WITH_POS_ARGS7(tstate, init_method, pos_args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -6780,13 +6777,12 @@ PyObject *CALL_FUNCTION_WITH_ARGS8(PyThreadState *tstate, PyObject *called, PyOb
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -6794,8 +6790,9 @@ PyObject *CALL_FUNCTION_WITH_ARGS8(PyThreadState *tstate, PyObject *called, PyOb
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -6814,10 +6811,10 @@ PyObject *CALL_FUNCTION_WITH_ARGS8(PyThreadState *tstate, PyObject *called, PyOb
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 8);
                         } else {
                             result = CALL_FUNCTION_WITH_ARGS8(tstate, init_method, args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -7209,13 +7206,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS8(PyThreadState *tstate, PyObject *called, 
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -7223,8 +7219,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS8(PyThreadState *tstate, PyObject *called, 
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -7243,10 +7240,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS8(PyThreadState *tstate, PyObject *called, 
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 8);
                         } else {
                             result = CALL_FUNCTION_WITH_POS_ARGS8(tstate, init_method, pos_args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -7642,13 +7639,12 @@ PyObject *CALL_FUNCTION_WITH_ARGS9(PyThreadState *tstate, PyObject *called, PyOb
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -7656,8 +7652,9 @@ PyObject *CALL_FUNCTION_WITH_ARGS9(PyThreadState *tstate, PyObject *called, PyOb
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -7676,10 +7673,10 @@ PyObject *CALL_FUNCTION_WITH_ARGS9(PyThreadState *tstate, PyObject *called, PyOb
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 9);
                         } else {
                             result = CALL_FUNCTION_WITH_ARGS9(tstate, init_method, args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -8071,13 +8068,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS9(PyThreadState *tstate, PyObject *called, 
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -8085,8 +8081,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS9(PyThreadState *tstate, PyObject *called, 
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -8105,10 +8102,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS9(PyThreadState *tstate, PyObject *called, 
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 9);
                         } else {
                             result = CALL_FUNCTION_WITH_POS_ARGS9(tstate, init_method, pos_args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -8504,13 +8501,12 @@ PyObject *CALL_FUNCTION_WITH_ARGS10(PyThreadState *tstate, PyObject *called, PyO
                         Py_XDECREF(pos_args);
                         pos_args = NULL;
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -8518,8 +8514,9 @@ PyObject *CALL_FUNCTION_WITH_ARGS10(PyThreadState *tstate, PyObject *called, PyO
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -8538,10 +8535,10 @@ PyObject *CALL_FUNCTION_WITH_ARGS10(PyThreadState *tstate, PyObject *called, PyO
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 10);
                         } else {
                             result = CALL_FUNCTION_WITH_ARGS10(tstate, init_method, args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -8933,13 +8930,12 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS10(PyThreadState *tstate, PyObject *called,
                 if (NuitkaType_HasFeatureClass(type) && type->tp_init != NULL) {
                     if (type->tp_init == default_tp_init_wrapper) {
 
-                        PyObject *init_method = Nuitka_TypeLookup(type, const_str_plain___init__);
+                        PyObject *init_method = Nuitka_TypeLookupRef(type, const_str_plain___init__);
 
                         // Not really allowed, since we wouldn't have the default wrapper set.
                         assert(init_method != NULL);
 
                         bool is_compiled_function = false;
-                        bool init_method_needs_release = false;
 
                         if (likely(init_method != NULL)) {
                             descrgetfunc func = Py_TYPE(init_method)->tp_descr_get;
@@ -8947,8 +8943,9 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS10(PyThreadState *tstate, PyObject *called,
                             if (func == Nuitka_Function_Type.tp_descr_get) {
                                 is_compiled_function = true;
                             } else if (func != NULL) {
-                                init_method = func(init_method, obj, (PyObject *)(type));
-                                init_method_needs_release = true;
+                                PyObject *bound = func(init_method, obj, (PyObject *)(type));
+                                Py_DECREF(init_method);
+                                init_method = bound;
                             }
                         }
 
@@ -8967,10 +8964,10 @@ PyObject *CALL_FUNCTION_WITH_POS_ARGS10(PyThreadState *tstate, PyObject *called,
                                 tstate, (struct Nuitka_FunctionObject const *)init_method, obj, args, 10);
                         } else {
                             result = CALL_FUNCTION_WITH_POS_ARGS10(tstate, init_method, pos_args);
-                            if (init_method_needs_release) {
-                                Py_DECREF(init_method);
-                            }
                         }
+
+                        // Looked up with a reference, and bound if not compiled.
+                        Py_DECREF(init_method);
 
                         if (unlikely(result == NULL)) {
                             Py_DECREF(obj);
@@ -12150,12 +12147,10 @@ PyObject *CALL_METHOD_NO_ARGS(PyThreadState *tstate, PyObject *source, PyObject 
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -12390,12 +12385,10 @@ PyObject *CALL_METHOD_WITH_SINGLE_ARG(PyThreadState *tstate, PyObject *source, P
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -12630,12 +12623,10 @@ PyObject *CALL_METHOD_WITH_ARGS2(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -12871,12 +12862,10 @@ PyObject *CALL_METHOD_WITH_ARGS3(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -13113,12 +13102,10 @@ PyObject *CALL_METHOD_WITH_ARGS4(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -13356,12 +13343,10 @@ PyObject *CALL_METHOD_WITH_ARGS5(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -13600,12 +13585,10 @@ PyObject *CALL_METHOD_WITH_ARGS6(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -13845,12 +13828,10 @@ PyObject *CALL_METHOD_WITH_ARGS7(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -14091,12 +14072,10 @@ PyObject *CALL_METHOD_WITH_ARGS8(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -14338,12 +14317,10 @@ PyObject *CALL_METHOD_WITH_ARGS9(PyThreadState *tstate, PyObject *source, PyObje
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -14586,12 +14563,10 @@ PyObject *CALL_METHOD_WITH_ARGS10(PyThreadState *tstate, PyObject *source, PyObj
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 

@@ -247,7 +247,7 @@ exit_result_ok_cfloat:
     {{ target.getAssignFromFloatExpressionCode(result, "cfloat_result") }}
 {% else %}
     {# TODO: Check the reference we were handed down. #}
-    if (Py_REFCNT({{ operand1 }}) == 1) {
+    if (Nuitka_IsUniquelyReferenced({{ operand1 }})) {
         PyFloat_SET_DOUBLE({{ operand1 }}, cfloat_result);
     } else {
         // We got an object handed, that we have to release.

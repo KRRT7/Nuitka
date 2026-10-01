@@ -121,14 +121,16 @@ def _getVariableDictUpdateCode(
 
     access_code = SourceCodeCollector()
 
+    value_name = VariableDeclaration(
+        c_type="PyObject *",
+        code_name="value",
+        init_value=None,
+        heap_name=None,
+        struct_name=None,
+    )
+
     getNonModuleVariableReferenceCode(
-        to_name=VariableDeclaration(
-            c_type="PyObject *",
-            code_name="value",
-            init_value=None,
-            heap_name=None,
-            struct_name=None,
-        ),
+        to_name=value_name,
         variable=variable,
         variable_trace=variable_trace,
         needs_check=False,
@@ -136,6 +138,14 @@ def _getVariableDictUpdateCode(
         emit=access_code,
         context=context,
     )
+
+    # A closure variable is read with a reference without the GIL, which is
+    # released once stored.
+    if context.needsCleanup(value_name):
+        context.removeCleanupTempName(value_name)
+        release_code = "    Py_DECREF(value);\n"
+    else:
+        release_code = ""
 
     if is_dict:
         if initial:
@@ -150,6 +160,7 @@ def _getVariableDictUpdateCode(
                 "var_name": context.getConstantCode(constant=variable.getName()),
                 "test_code": test_code,
                 "access_code": indented(access_code),
+                "release_code": release_code,
             }
         )
     else:
@@ -168,6 +179,7 @@ def _getVariableDictUpdateCode(
                 "test_code": test_code,
                 "access_code": access_code,
                 "tmp_name": res_name,
+                "release_code": release_code,
             }
         )
 

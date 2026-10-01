@@ -154,22 +154,21 @@ static int Nuitka_Cell_tp_clear(struct Nuitka_CellObject *cell) {
 }
 
 static PyObject *Nuitka_Cell_get_contents(PyObject *self, void *data) {
-    struct Nuitka_CellObject *cell = (struct Nuitka_CellObject *)self;
-    if (unlikely(cell->ob_ref == NULL)) {
+    PyObject *result = Nuitka_CellOrPyCell_GET_REF(self);
+
+    if (unlikely(result == NULL)) {
         PyThreadState *tstate = PyThreadState_GET();
 
         SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_ValueError, "Cell is empty");
         return NULL;
     }
 
-    Py_INCREF(cell->ob_ref);
-    return cell->ob_ref;
+    return result;
 }
 
 #if PYTHON_VERSION >= 0x370
 static int Nuitka_Cell_set_contents(PyObject *self, PyObject *value, void *data) {
-    struct Nuitka_CellObject *cell = (struct Nuitka_CellObject *)self;
-    PyObject *old = cell->ob_ref;
+    PyObject *old = Nuitka_CellOrPyCell_GET(self);
 
     if (old != NULL && value == NULL) {
         PyThreadState *tstate = PyThreadState_GET();
@@ -179,8 +178,8 @@ static int Nuitka_Cell_set_contents(PyObject *self, PyObject *value, void *data)
         return -1;
     }
 
-    cell->ob_ref = value;
     Py_XINCREF(value);
+    old = Nuitka_CellOrPyCell_EXCHANGE(self, value);
     Py_XDECREF(old);
 
     return 0;

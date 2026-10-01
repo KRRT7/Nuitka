@@ -1201,7 +1201,7 @@ static inline bool _INPLACE_OPERATION_MULT_FLOAT_FLOAT(PyObject **operand1, PyOb
     goto exit_result_ok_cfloat;
 
 exit_result_ok_cfloat:
-    if (Py_REFCNT(*operand1) == 1) {
+    if (Nuitka_IsUniquelyReferenced(*operand1)) {
         PyFloat_SET_DOUBLE(*operand1, cfloat_result);
     } else {
         // We got an object handed, that we have to release.
@@ -1433,7 +1433,7 @@ static inline bool _INPLACE_OPERATION_MULT_OBJECT_FLOAT(PyObject **operand1, PyO
         goto exit_result_ok_cfloat;
 
     exit_result_ok_cfloat:
-        if (Py_REFCNT(*operand1) == 1) {
+        if (Nuitka_IsUniquelyReferenced(*operand1)) {
             PyFloat_SET_DOUBLE(*operand1, cfloat_result);
         } else {
             // We got an object handed, that we have to release.
@@ -1670,7 +1670,7 @@ static inline bool _INPLACE_OPERATION_MULT_FLOAT_OBJECT(PyObject **operand1, PyO
         goto exit_result_ok_cfloat;
 
     exit_result_ok_cfloat:
-        if (Py_REFCNT(*operand1) == 1) {
+        if (Nuitka_IsUniquelyReferenced(*operand1)) {
             PyFloat_SET_DOUBLE(*operand1, cfloat_result);
         } else {
             // We got an object handed, that we have to release.
@@ -2266,7 +2266,7 @@ static inline bool _INPLACE_OPERATION_MULT_FLOAT_CFLOAT(PyObject **operand1, dou
     goto exit_result_ok_cfloat;
 
 exit_result_ok_cfloat:
-    if (Py_REFCNT(*operand1) == 1) {
+    if (Nuitka_IsUniquelyReferenced(*operand1)) {
         PyFloat_SET_DOUBLE(*operand1, cfloat_result);
     } else {
         // We got an object handed, that we have to release.

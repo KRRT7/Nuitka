@@ -434,6 +434,28 @@ NUITKA_MAY_BE_UNUSED static PyObject *Nuitka_TypeLookup(PyTypeObject *type, PyOb
 
 #endif
 
+// Whether no one else can see an object, so that an in-place operation may
+// change it. Without the GIL a reference count of one is not enough: another
+// thread may be taking a reference without a lock at the same time.
+#if defined(Py_GIL_DISABLED) && PYTHON_VERSION >= 0x3e0
+#define Nuitka_IsUniquelyReferenced(op) _PyObject_IsUniquelyReferenced((PyObject *)(op))
+#else
+#define Nuitka_IsUniquelyReferenced(op) (Py_REFCNT(op) == 1)
+#endif
+
+// The type lookup with a reference of our own. The borrowed one is only safe
+// with the GIL: without it, another thread may replace the attribute and
+// release the value before it is used.
+NUITKA_MAY_BE_UNUSED static PyObject *Nuitka_TypeLookupRef(PyTypeObject *type, PyObject *name) {
+#if defined(Py_GIL_DISABLED)
+    return _PyType_LookupRef(type, name);
+#else
+    PyObject *result = Nuitka_TypeLookup(type, name);
+    Py_XINCREF(result);
+    return result;
+#endif
+}
+
 /* With the idea to reduce the amount of exported symbols in the DLLs, make it
  * clear that the module "init" function should of course be exported, but not
  * for executable, where we call it ourselves from the main code.
@@ -576,6 +598,21 @@ typedef signed int sdigit;
 
 // A long value that represents a signed digit on the helper interface.
 typedef long nuitka_digit;
+
+#if defined(Py_GIL_DISABLED)
+// Without the GIL, CPython locks a list or dictionary for each of its
+// operations, which our fast paths working on the items directly do not do:
+// use CPython's.
+#ifndef _NUITKA_EXPERIMENTAL_DISABLE_DICT_OPT
+#define _NUITKA_EXPERIMENTAL_DISABLE_DICT_OPT 1
+#endif
+#ifndef _NUITKA_EXPERIMENTAL_DISABLE_LIST_OPT
+#define _NUITKA_EXPERIMENTAL_DISABLE_LIST_OPT 1
+#endif
+#ifndef _NUITKA_EXPERIMENTAL_DISABLE_SUBSCRIPT_OPT
+#define _NUITKA_EXPERIMENTAL_DISABLE_SUBSCRIPT_OPT 1
+#endif
+#endif
 
 #include "nuitka/helpers.h"
 

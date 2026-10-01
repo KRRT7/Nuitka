@@ -662,7 +662,26 @@ static void Nuitka_Py_ScheduleGC(PyThreadState *tstate) {
 
 // This is called during object creation and might trigger garbage collection
 void Nuitka_PyObject_GC_Link(PyObject *op) {
-#if PYTHON_VERSION < 0x3d0
+#if defined(Py_GIL_DISABLED) && PYTHON_VERSION >= 0x3e0
+    // The free-threaded collector has no generations and no GC head: an
+    // allocation only counts towards the next collection. As CPython's
+    // "record_allocation", counted per thread and added to the young count
+    // every 512. Whether that calls for a collection -- which also asks
+    // about process memory, out of reach here -- CPython decides on its own
+    // next flush, so none is scheduled from compiled code.
+    (void)op;
+
+    PyThreadState *tstate = _PyThreadState_GET();
+    struct _gc_thread_state *gc = &((_PyThreadStateImpl *)tstate)->gc;
+
+    gc->alloc_count++;
+
+    if (gc->alloc_count >= 512) {
+        GCState *gcstate = &tstate->interp->gc;
+        _Py_atomic_add_int(&gcstate->young.count, (int)gc->alloc_count);
+        gc->alloc_count = 0;
+    }
+#elif PYTHON_VERSION < 0x3d0
     PyGC_Head *g = AS_GC(op);
 
     PyThreadState *tstate = _PyThreadState_GET();
@@ -858,8 +877,12 @@ static bool _Nuitka_qsbr_poll(struct _qsbr_thread_state *qsbr, uint64_t goal) {
 }
 
 static void _NuitkaMem_free_work_item(uintptr_t ptr) {
+    // The queues are shared with CPython, whose "_PyObject_XDecRefDelayed"
+    // tags an object to release, e.g. a replaced instance dictionary, still
+    // alive and maybe referenced: it is released, never freed as memory.
     if (ptr & 0x01) {
-        PyObject_Free((char *)(ptr - 1));
+        assert(!_PyInterpreterState_GET()->stoptheworld.world_stopped);
+        Py_DECREF((PyObject *)(ptr - 1));
     } else {
         NuitkaMem_Free((void *)ptr);
     }
@@ -873,14 +896,17 @@ static void _Nuitka_process_queue(struct llist_node *head, struct _qsbr_thread_s
     while (!llist_empty(head)) {
         struct _mem_work_chunk *buf = work_queue_first(head);
 
-        while (buf->rd_idx < buf->wr_idx) {
+        if (buf->rd_idx < buf->wr_idx) {
             struct _mem_work_item *item = &buf->array[buf->rd_idx];
             if (!_Nuitka_qsbr_poll(qsbr, item->qsbr_goal)) {
                 return;
             }
 
-            _NuitkaMem_free_work_item(item->ptr);
+            // Taken off first, as CPython does: releasing an object may run
+            // arbitrary code that processes this queue again.
             buf->rd_idx++;
+            _NuitkaMem_free_work_item(item->ptr);
+            continue;
         }
 
         assert(buf->rd_idx == buf->wr_idx);
@@ -977,7 +1003,13 @@ void _NuitkaMem_ProcessDelayed(PyThreadState *tstate) {
 
 static void _NuitkaMem_FreeDelayed2(uintptr_t ptr) {
     // Free immediately if possible.
+#if PYTHON_VERSION >= 0x3e0
+    PyInterpreterState *interp = _PyInterpreterState_GET();
+
+    if (_PyInterpreterState_GetFinalizing(interp) != NULL || interp->stoptheworld.world_stopped) {
+#else
     if (_PyRuntime.stoptheworld.world_stopped) {
+#endif
         _NuitkaMem_free_work_item(ptr);
         return;
     }
@@ -998,9 +1030,24 @@ static void _NuitkaMem_FreeDelayed2(uintptr_t ptr) {
 
     if (buf == NULL) {
         buf = NuitkaMem_Calloc(1, sizeof(*buf));
+
+        if (buf != NULL) {
+            llist_insert_tail(head, &buf->node);
+        }
     }
 
-    assert(buf != NULL && buf->wr_idx < WORK_ITEMS_PER_CHUNK);
+    if (unlikely(buf == NULL)) {
+        // No memory to queue it: free it now, with no other thread running
+        // that could still be reading it, as CPython does.
+        assert(!(ptr & 0x01));
+
+        _PyEval_StopTheWorld(tstate->base.interp);
+        NuitkaMem_Free((void *)ptr);
+        _PyEval_StartTheWorld(tstate->base.interp);
+        return;
+    }
+
+    assert(buf->wr_idx < WORK_ITEMS_PER_CHUNK);
     uint64_t seq = Nuitka_qsbr_deferred_advance(tstate->qsbr);
     buf->array[buf->wr_idx].ptr = ptr;
     buf->array[buf->wr_idx].qsbr_goal = seq;

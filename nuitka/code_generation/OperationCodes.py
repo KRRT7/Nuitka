@@ -9,6 +9,7 @@ in-place assignments, which have other operation variants.
 """
 
 from nuitka.nodes.shapes.StandardShapes import tshape_unknown
+from nuitka.PythonVersions import isPythonWithGil
 
 from .BinaryOperationHelperDefinitions import (
     getCodeNameForBinaryOperation,
@@ -228,8 +229,13 @@ def _getBinaryOperationCode(
 
         res_name = context.getBoolResName()
 
-        # For module variable C type to reference later.
-        if left.isExpressionVariableRef() and left.getVariable().isModuleVariable():
+        # For module variable C type to reference later, which only the
+        # in-place store with the GIL does.
+        if (
+            left.isExpressionVariableRef()
+            and left.getVariable().isModuleVariable()
+            and isPythonWithGil()
+        ):
             emit("%s = %s;" % (context.getInplaceLeftName(), left_name))
 
         if not left.isExpressionVariableRefOrTempVariableRef():
@@ -238,9 +244,19 @@ def _getBinaryOperationCode(
 
         emit("%s = %s(&%s, %s);" % (res_name, helper_function, left_name, right_name))
 
+        # A module variable read with a reference of its own, without the GIL,
+        # now holds the result: released only if the operation failed, which
+        # the error exit does for every name still to clean up.
+        left_holds_result = (
+            left.isExpressionVariableRefOrTempVariableRef()
+            and context.needsCleanup(left_name)
+        )
+
         getErrorExitBoolCode(
             condition="%s == false" % res_name,
-            release_names=(left_name, right_name),
+            release_names=(
+                (right_name,) if left_holds_result else (left_name, right_name)
+            ),
             needs_check=needs_check,
             emit=emit,
             context=context,
@@ -249,6 +265,10 @@ def _getBinaryOperationCode(
         emit("%s = %s;" % (to_name, left_name))
 
         if not left.isExpressionVariableRefOrTempVariableRef():
+            context.addCleanupTempName(to_name)
+        elif left_holds_result:
+            # The operation replaced our reference with its result.
+            context.removeCleanupTempName(left_name)
             context.addCleanupTempName(to_name)
     else:
         if needs_argument_swap:

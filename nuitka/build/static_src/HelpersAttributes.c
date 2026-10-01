@@ -113,12 +113,10 @@ PyObject *LOOKUP_ATTRIBUTE(PyThreadState *tstate, PyObject *source, PyObject *at
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -301,12 +299,10 @@ PyObject *LOOKUP_ATTRIBUTE_DICT_SLOT(PyThreadState *tstate, PyObject *source) {
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, const_str_plain___dict__);
+        PyObject *descr = Nuitka_TypeLookupRef(type, const_str_plain___dict__);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -418,12 +414,10 @@ PyObject *LOOKUP_ATTRIBUTE_CLASS_SLOT(PyThreadState *tstate, PyObject *source) {
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, const_str_plain___class__);
+        PyObject *descr = Nuitka_TypeLookupRef(type, const_str_plain___class__);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -583,12 +577,10 @@ bool HAS_ATTR_BOOL(PyThreadState *tstate, PyObject *source, PyObject *attr_name)
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 
@@ -751,12 +743,10 @@ int HAS_ATTR_BOOL2(PyThreadState *tstate, PyObject *source, PyObject *attr_name)
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            // Hold a refcount, Nuitka_TypeLookup does not give any.
-            Py_INCREF(descr);
 
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
@@ -955,11 +945,9 @@ static bool SET_ATTRIBUTE_GENERIC(PyThreadState *tstate, PyTypeObject *type, PyO
         }
     }
 
-    PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+    PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
 
     if (descr != NULL) {
-        Py_INCREF(descr);
-
         if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
             descrsetfunc func = Py_TYPE(descr)->tp_descr_set;
 
@@ -1209,16 +1197,16 @@ PyObject *LOOKUP_SPECIAL(PyThreadState *tstate, PyObject *source, PyObject *attr
     // TODO: There is heavy optimization in CPython to avoid it. Potentially
     // that's worth it to imitate that.
 
-    PyObject *result = Nuitka_TypeLookup(Py_TYPE(source), attr_name);
+    PyObject *result = Nuitka_TypeLookupRef(Py_TYPE(source), attr_name);
 
     if (likely(result)) {
         descrgetfunc func = Py_TYPE(result)->tp_descr_get;
 
         if (func == NULL) {
-            Py_INCREF(result);
             return result;
         } else {
             PyObject *func_result = func(result, source, (PyObject *)(Py_TYPE(source)));
+            Py_DECREF(result);
 
             if (unlikely(func_result == NULL)) {
                 return NULL;

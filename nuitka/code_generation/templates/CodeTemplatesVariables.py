@@ -59,17 +59,15 @@ template_write_local_clear_ref1 = """\
 
 template_write_shared_unclear_ref0 = """\
 {
-    PyObject *old = Nuitka_Cell_GET(%(identifier)s);
-    Nuitka_Cell_SET(%(identifier)s, %(tmp_name)s);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, %(tmp_name)s);
     Py_XDECREF(old);
 }
 """
 
 template_write_shared_unclear_ref1 = """\
 {
-    PyObject *old = Nuitka_Cell_GET(%(identifier)s);
-    Nuitka_Cell_SET(%(identifier)s, %(tmp_name)s);
     Py_INCREF(%(tmp_name)s);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, %(tmp_name)s);
     Py_XDECREF(old);
 }
 """
@@ -93,8 +91,7 @@ Py_XDECREF(%(identifier)s);
 
 template_del_shared_tolerant = """\
 {
-    PyObject *old = Nuitka_Cell_GET(%(identifier)s);
-    Nuitka_Cell_SET(%(identifier)s, NULL);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, NULL);
     Py_XDECREF(old);
 }
 """
@@ -109,8 +106,7 @@ if (likely(%(result)s)) {
 
 template_del_shared_intolerant = """\
 {
-    PyObject *old = Nuitka_Cell_GET(%(identifier)s);
-    Nuitka_Cell_SET(%(identifier)s, NULL);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, NULL);
     Py_XDECREF(old);
 
     %(result)s = old != NULL;
@@ -125,8 +121,7 @@ Py_DECREF(%(identifier)s);
 
 template_del_shared_known = """\
 {
-    PyObject *old = Nuitka_Cell_GET(%(identifier)s);
-    Nuitka_Cell_SET(%(identifier)s, NULL);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, NULL);
 
     CHECK_OBJECT(old);
     Py_DECREF(old);
@@ -219,7 +214,7 @@ if (%(test_code)s) {
 %(access_code)s
 
     UPDATE_STRING_DICT0((PyDictObject *)%(dict_name)s, (Nuitka_StringObject *)%(var_name)s, value);
-} else {
+%(release_code)s} else {
     if (DICT_REMOVE_ITEM(%(dict_name)s, %(var_name)s) == false) {
         CLEAR_ERROR_OCCURRED(tstate);
     }
@@ -236,7 +231,7 @@ if (%(test_code)s) {
         %(var_name)s,
         value
     );
-
+%(release_code)s
     assert(res == true);
 }
 """
@@ -252,7 +247,7 @@ if (%(test_code)s) {
         %(var_name)s,
         value
     );
-} else {
+%(release_code)s} else {
     PyObject *test_value = LOOKUP_SUBSCRIPT(
         tstate,
         %(mapping_name)s,
@@ -284,7 +279,7 @@ if (%(test_code)s) {
         %(var_name)s,
         value
     );
-} else {
+%(release_code)s} else {
     %(tmp_name)s = true;
 }
 """
@@ -365,39 +360,50 @@ static PyObject *%(accessor_function_name)s(PyThreadState *tstate) {
 }
 """
 
+# Without the GIL, a value read out of the module dictionary may be replaced
+# and released by another thread at any moment, so it is returned with a
+# reference taken the way CPython reads globals, and released by the caller.
+template_module_variable_accessor_function_ref = """\
+static PyObject *%(accessor_function_name)s(PyThreadState *tstate) {
+    PyObject *result;
+
+    if (PyDict_GetItemRef((PyObject *)moduledict_%(module_identifier)s, %(var_name)s, &result) == 0) {
+        PyDict_GetItemRef((PyObject *)dict_builtin, %(var_name)s, &result);
+    }
+
+    return result;
+}
+"""
+
 template_write_py_cell_inplace = """\
 PyCell_SET((PyObject *)%(identifier)s, %(tmp_name)s);
 """
 
 template_write_py_cell_unclear_ref0 = """\
 {
-    PyObject *old = PyCell_GET((PyObject *)%(identifier)s);
-    PyCell_SET((PyObject *)%(identifier)s, %(tmp_name)s);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, %(tmp_name)s);
     Py_XDECREF(old);
 }
 """
 
 template_write_py_cell_unclear_ref1 = """\
 {
-    PyObject *old = PyCell_GET((PyObject *)%(identifier)s);
-    PyCell_SET((PyObject *)%(identifier)s, %(tmp_name)s);
     Py_INCREF(%(tmp_name)s);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, %(tmp_name)s);
     Py_XDECREF(old);
 }
 """
 
 template_del_py_cell_tolerant = """\
 {
-    PyObject *old = PyCell_GET((PyObject *)%(identifier)s);
-    PyCell_SET((PyObject *)%(identifier)s, NULL);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, NULL);
     Py_XDECREF(old);
 }
 """
 
 template_del_py_cell_intolerant = """\
 {
-    PyObject *old = PyCell_GET((PyObject *)%(identifier)s);
-    PyCell_SET((PyObject *)%(identifier)s, NULL);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, NULL);
     Py_XDECREF(old);
 
     %(result)s = old != NULL;
@@ -406,8 +412,7 @@ template_del_py_cell_intolerant = """\
 
 template_del_py_cell_known = """\
 {
-    PyObject *old = PyCell_GET((PyObject *)%(identifier)s);
-    PyCell_SET((PyObject *)%(identifier)s, NULL);
+    PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)%(identifier)s, NULL);
 
     CHECK_OBJECT(old);
     Py_DECREF(old);

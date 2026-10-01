@@ -20,6 +20,12 @@ static PyObject *LIST_CONCAT(PyThreadState *tstate, PyObject *operand1, PyObject
     CHECK_OBJECT(operand2);
     assert(PyList_CheckExact(operand2));
 
+#ifdef Py_GIL_DISABLED
+    // Sized once and copied item by item, a list another thread appends to
+    // would overflow the result: CPython's concatenation locks both.
+    return PyList_Type.tp_as_sequence->sq_concat(operand1, operand2);
+#endif
+
     Py_ssize_t size = Py_SIZE(operand1) + Py_SIZE(operand2);
 
     PyListObject *result = (PyListObject *)MAKE_LIST_EMPTY(tstate, size);

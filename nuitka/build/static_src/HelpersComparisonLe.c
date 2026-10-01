@@ -10267,6 +10267,14 @@ static PyObject *COMPARE_LE_OBJECT_LIST_LIST(PyObject *operand1, PyObject *opera
 
     PyListObject *a = (PyListObject *)operand1;
     PyListObject *b = (PyListObject *)operand2;
+#ifdef Py_GIL_DISABLED
+    // Without the GIL another thread may change either list while its
+    // items are compared: CPython's comparison holds both.
+    {
+        PyObject *r = PyList_Type.tp_richcompare(operand1, operand2, Py_LE);
+        return r;
+    }
+#endif
 
     bool found = false;
     nuitka_bool res = NUITKA_BOOL_TRUE;
@@ -10905,6 +10913,19 @@ static nuitka_bool COMPARE_LE_NBOOL_LIST_LIST(PyObject *operand1, PyObject *oper
 
     PyListObject *a = (PyListObject *)operand1;
     PyListObject *b = (PyListObject *)operand2;
+#ifdef Py_GIL_DISABLED
+    // Without the GIL another thread may change either list while its
+    // items are compared: CPython's comparison holds both.
+    {
+        PyObject *r = PyList_Type.tp_richcompare(operand1, operand2, Py_LE);
+        if (unlikely(r == NULL)) {
+            return NUITKA_BOOL_EXCEPTION;
+        }
+        int truth = CHECK_IF_TRUE(r);
+        Py_DECREF(r);
+        return truth == -1 ? NUITKA_BOOL_EXCEPTION : (truth ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE);
+    }
+#endif
 
     bool found = false;
     nuitka_bool res = NUITKA_BOOL_TRUE;

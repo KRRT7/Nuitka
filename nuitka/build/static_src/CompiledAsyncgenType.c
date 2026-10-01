@@ -1192,8 +1192,14 @@ PyObject *Nuitka_Asyncgen_New(asyncgen_code code, PyObject *module, PyObject *na
     result->m_exc_state = Nuitka_ExceptionStackItem_Empty;
 #endif
 
+#ifdef Py_GIL_DISABLED
+    // Numbered from several threads at once.
+    static Py_ssize_t Nuitka_Asyncgen_counter = 0;
+    result->m_counter = (long)_Py_atomic_add_ssize(&Nuitka_Asyncgen_counter, 1);
+#else
     static long Nuitka_Asyncgen_counter = 0;
     result->m_counter = Nuitka_Asyncgen_counter++;
+#endif
 
     Nuitka_GC_Track(result);
     return (PyObject *)result;

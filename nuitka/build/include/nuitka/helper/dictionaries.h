@@ -309,6 +309,13 @@ extern uint64_t nuitka_dict_version_tag_counter;
 NUITKA_MAY_BE_UNUSED static void UPDATE_STRING_DICT0(PyDictObject *dict, Nuitka_StringObject *key, PyObject *value) {
     CHECK_OBJECT(value);
 
+#ifdef Py_GIL_DISABLED
+    // Replacing the entry in place and releasing the old value races with
+    // other threads reading or writing it: let the dictionary do it.
+    DICT_SET_ITEM((PyObject *)dict, (PyObject *)key, value);
+    return;
+#endif
+
     Nuitka_DictEntryHandle entry = GET_STRING_DICT_ENTRY(dict, key);
 
 #if PYTHON_VERSION >= 0x360
@@ -341,6 +348,7 @@ NUITKA_MAY_BE_UNUSED static void UPDATE_STRING_DICT0(PyDictObject *dict, Nuitka_
     }
 }
 
+#ifndef Py_GIL_DISABLED
 NUITKA_MAY_BE_UNUSED static void UPDATE_STRING_DICT_INPLACE(PyDictObject *dict, Nuitka_StringObject *key,
                                                             PyObject *value) {
     CHECK_OBJECT(value);
@@ -380,10 +388,17 @@ NUITKA_MAY_BE_UNUSED static void UPDATE_STRING_DICT_INPLACE(PyDictObject *dict, 
         CHECK_OBJECT(value);
     }
 }
+#endif
 
 NUITKA_MAY_BE_UNUSED static void UPDATE_STRING_DICT1(PyDictObject *dict, Nuitka_StringObject *key, PyObject *value) {
     CHECK_OBJECT(key);
     CHECK_OBJECT(value);
+
+#ifdef Py_GIL_DISABLED
+    DICT_SET_ITEM((PyObject *)dict, (PyObject *)key, value);
+    Py_DECREF(value);
+    return;
+#endif
 
     Nuitka_DictEntryHandle entry = GET_STRING_DICT_ENTRY(dict, key);
 

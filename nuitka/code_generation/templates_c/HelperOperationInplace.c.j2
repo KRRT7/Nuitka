@@ -100,7 +100,7 @@ static inline bool _INPLACE_OPERATION_{{op_code}}_{{left.getHelperCodeName()}}_{
 {% endif %}
 
 {% if operator == "+" and (left.mayBothHaveType(right, "str") or left.mayBothHaveType(right, "unicode") or left.hasOneOrBothType(right, "bytes")) %}
-    if (Py_REFCNT(*operand1) == 1) {
+    if (Nuitka_IsUniquelyReferenced(*operand1)) {
         // We more or less own the operand, so we might reuse its storage and
         // execute stuff in-place.
 {% if operator == "+" and left.mayBothHaveType(right, "str") %}

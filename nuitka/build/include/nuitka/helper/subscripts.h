@@ -17,7 +17,7 @@
 extern PyObject *STRING_FROM_CHAR(unsigned char c);
 
 #if PYTHON_VERSION >= 0x3b0
-static void formatNotSubscriptableTypeError(PyObject *type) {
+NUITKA_MAY_BE_UNUSED static void formatNotSubscriptableTypeError(PyObject *type) {
     SET_CURRENT_EXCEPTION_TYPE0_FORMAT1(PyExc_TypeError, "type '%s' is not subscriptable",
                                         ((PyTypeObject *)type)->tp_name);
 }

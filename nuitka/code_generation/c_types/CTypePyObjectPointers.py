@@ -37,6 +37,7 @@ from nuitka.code_generation.templates.CodeTemplatesVariables import (
     template_write_shared_unclear_ref1,
 )
 from nuitka.Constants import getConstantValueGuide, isMutable
+from nuitka.PythonVersions import isPythonWithGil
 
 from .CTypeBases import CTypeBase
 
@@ -491,7 +492,9 @@ class CTypeCellObject(CTypeBase):
     def emitVariableAssignCode(
         cls, value_name, needs_release, tmp_name, ref_count, inplace, emit, context
     ):
-        if inplace:
+        # Without the GIL the in-place operation took a reference of our
+        # own, and its result is stored like any other value.
+        if inplace and isPythonWithGil():
             # Releasing is not an issue here, local variable reference never
             # gave a reference, and the in-place code deals with possible
             # replacement/release.
@@ -539,7 +542,7 @@ class CTypeCellObject(CTypeBase):
     @classmethod
     def emitAssignmentCodeFromBoolCondition(cls, to_name, condition, emit):
         emit(
-            "%(to_name)s->ob_ref = (%(condition)s) ? Py_True : Py_False;"
+            "Nuitka_Cell_SET(%(to_name)s, (%(condition)s) ? Py_True : Py_False);"
             % {"to_name": to_name, "condition": condition}
         )
 
@@ -616,7 +619,7 @@ class CTypePyCellObject(CTypeCellObject):
     def emitVariableAssignCode(
         cls, value_name, needs_release, tmp_name, ref_count, inplace, emit, context
     ):
-        if inplace:
+        if inplace and isPythonWithGil():
             template = template_write_py_cell_inplace
 
         else:

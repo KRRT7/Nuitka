@@ -359,6 +359,26 @@ NUITKA_MAY_BE_UNUSED static void NuitkaMem_Free(void *ptr) { python_mem_free(pyt
 #endif
 #endif
 
+// Our version of "_PyObject_MallocWithType": without the GIL, objects go to
+// the mimalloc heap for their kind. The collector finds objects by walking the
+// GC heaps, and each heap keeps freed blocks' links clear of the reference
+// counts that lock-free readers may still touch, which differ in place for
+// objects with a pre-header.
+NUITKA_MAY_BE_UNUSED static void *NuitkaObject_MallocWithType(PyTypeObject *type, size_t size) {
+#if defined(Py_GIL_DISABLED) && PYTHON_VERSION >= 0x3e0
+    _PyThreadStateImpl *tstate = (_PyThreadStateImpl *)_PyThreadState_GET();
+    struct _mimalloc_thread_state *m = &tstate->mimalloc;
+
+    m->current_object_heap = _PyObject_GetAllocationHeap(tstate, type);
+    void *result = NuitkaObject_Malloc(size);
+    m->current_object_heap = &m->heaps[_Py_MIMALLOC_HEAP_OBJECT];
+
+    return result;
+#else
+    return NuitkaObject_Malloc(size);
+#endif
+}
+
 #ifdef Py_REF_DEBUG
 static inline void Nuitka_Py_IncRefTotal(PyThreadState *tstate) {
 #if PYTHON_VERSION < 0x3c0
@@ -511,7 +531,30 @@ static inline void _Py_SET_TYPE(PyObject *ob, PyTypeObject *type) { ob->ob_type 
 // it expensive to call.
 #if PYTHON_VERSION >= 0x390
 static inline void Nuitka_Py_NewReferenceNoTotal(PyObject *op) {
+#if defined(Py_GIL_DISABLED)
+    // As CPython's "new_reference", each field once: a thread holding a stale
+    // pointer to this memory may try to take a reference without a lock, and
+    // reads these fields, atomically, so a sanitizer build writes them so.
+#if PYTHON_VERSION >= 0x3e0
+    op->ob_flags = 0;
+#else
+    op->_padding = 0;
+#endif
+    op->ob_mutex = (PyMutex){0};
+#ifdef _Py_THREAD_SANITIZER
+    _Py_atomic_store_uintptr_relaxed(&op->ob_tid, _Py_ThreadId());
+    _Py_atomic_store_uint8_relaxed(&op->ob_gc_bits, 0);
+    _Py_atomic_store_uint32_relaxed(&op->ob_ref_local, 1);
+    _Py_atomic_store_ssize_relaxed(&op->ob_ref_shared, 0);
+#else
+    op->ob_tid = _Py_ThreadId();
+    op->ob_gc_bits = 0;
+    op->ob_ref_local = 1;
+    op->ob_ref_shared = 0;
+#endif
+#else
     Py_SET_REFCNT(op, 1);
+#endif
 
 #if PYTHON_VERSION >= 0x3e0 && defined(Py_REF_DEBUG)
     _PyReftracerTrack(op, PyRefTracer_CREATE);
@@ -532,17 +575,6 @@ static inline void Nuitka_Py_NewReference(PyObject *op) {
     op->ob_refcnt = 1;
 #endif
 #endif
-#else
-    op->ob_tid = _Py_ThreadId();
-#if PYTHON_VERSION >= 0x3e0
-    op->ob_flags = 0;
-#else
-    op->_padding = 0;
-#endif
-    op->ob_mutex = (PyMutex){0};
-    op->ob_gc_bits = 0;
-    op->ob_ref_local = 1;
-    op->ob_ref_shared = 0;
 #endif
 
     Nuitka_Py_NewReferenceNoTotal(op);
@@ -717,17 +749,20 @@ static PyObject *Nuitka_PyType_AllocNoTrackVar(PyTypeObject *type, Py_ssize_t ni
     inline_values_size = Nuitka_PyType_InlineValuesSize(type);
 #endif
 
-    char *alloc = (char *)NuitkaObject_Malloc(size + pre_size + inline_values_size);
+    char *alloc = (char *)NuitkaObject_MallocWithType(type, size + pre_size + inline_values_size);
     assert(alloc);
     PyObject *obj = (PyObject *)(alloc + pre_size);
 
 #ifdef Py_GIL_DISABLED
+    // Only objects with a managed dictionary or weak references have a
+    // pre-header here, but every one of these is a GC object, counted
+    // towards the next collection as CPython's own allocations are.
     if (pre_size) {
         ((PyObject **)alloc)[0] = NULL;
         ((PyObject **)alloc)[1] = NULL;
-
-        Nuitka_PyObject_GC_Link(obj);
     }
+
+    Nuitka_PyObject_GC_Link(obj);
 #else
     assert(pre_size != 0);
     ((PyObject **)alloc)[0] = NULL;
@@ -738,7 +773,14 @@ static PyObject *Nuitka_PyType_AllocNoTrackVar(PyTypeObject *type, Py_ssize_t ni
 
     // We might be able to avoid this, but it's unclear what e.g. the sentinel
     // is supposed to be.
+#ifdef Py_GIL_DISABLED
+    // Not the object header, as CPython's "_PyType_AllocNoTrack": a thread
+    // with a stale pointer to this memory may read it, and it is written by
+    // the initialization below.
+    memset((char *)obj + sizeof(PyObject), 0, size - sizeof(PyObject));
+#else
     memset(obj, 0, size);
+#endif
 
     // This is the "var" branch, we already know we are variable size here.
     assert(type->tp_itemsize != 0);
@@ -774,17 +816,20 @@ static PyObject *Nuitka_PyType_AllocNoTrack(PyTypeObject *type) {
     size += Nuitka_PyType_InlineValuesSize(type);
 #endif
 
-    char *alloc = (char *)NuitkaObject_Malloc(size + pre_size);
+    char *alloc = (char *)NuitkaObject_MallocWithType(type, size + pre_size);
     assert(alloc);
     PyObject *obj = (PyObject *)(alloc + pre_size);
 
 #ifdef Py_GIL_DISABLED
+    // Only objects with a managed dictionary or weak references have a
+    // pre-header here, but every one of these is a GC object, counted
+    // towards the next collection as CPython's own allocations are.
     if (pre_size) {
         ((PyObject **)alloc)[0] = NULL;
         ((PyObject **)alloc)[1] = NULL;
-
-        Nuitka_PyObject_GC_Link(obj);
     }
+
+    Nuitka_PyObject_GC_Link(obj);
 #else
     assert(pre_size != 0);
     ((PyObject **)alloc)[0] = NULL;
@@ -903,7 +948,7 @@ static void inline Py_SET_REFCNT_IMMORTAL(PyObject *object) {
     object->ob_ref_local = _Py_IMMORTAL_INITIAL_REFCNT;
     object->ob_ref_shared = 0;
 #if PYTHON_VERSION >= 0x3e0
-    _Py_atomic_or_uint8(&op->ob_gc_bits, _PyGC_BITS_DEFERRED);
+    _Py_atomic_or_uint8(&object->ob_gc_bits, _PyGC_BITS_DEFERRED);
 #endif
 
 #else

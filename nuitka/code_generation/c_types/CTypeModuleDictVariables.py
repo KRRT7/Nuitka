@@ -14,6 +14,7 @@ from nuitka.code_generation.templates.CodeTemplatesVariables import (
     template_del_global_unclear,
     template_read_mvar_unclear,
 )
+from nuitka.PythonVersions import isPythonWithGil
 
 from .CTypeBases import CTypeBase
 
@@ -23,7 +24,10 @@ class CTypeModuleDictVariable(CTypeBase):
     def emitVariableAssignCode(
         cls, value_name, needs_release, tmp_name, ref_count, inplace, emit, context
     ):
-        if inplace:
+        # The in-place store hands the dictionary back the reference it lent
+        # the operation. Without the GIL nothing is lent: the operation took a
+        # reference of our own, and its result is stored like any other value.
+        if inplace and isPythonWithGil():
             orig_name = context.getInplaceLeftName()
 
             emit(
@@ -57,6 +61,10 @@ if (%(orig_name)s != %(tmp_name)s) {
 
     @classmethod
     def emitValueAccessCode(cls, value_name, emit, context):
+        # A borrowed read, only safe with the GIL; module variables are read
+        # through their accessor, see "getModuleVariableReferenceCode".
+        assert isPythonWithGil(), value_name
+
         tmp_name = context.allocateTempName("mvar_value")
 
         emit(

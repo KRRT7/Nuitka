@@ -227,7 +227,7 @@ static void _NuitkaUnicode_FastCopyCharacters(PyObject *to, Py_ssize_t to_start,
 }
 
 static int _NuitkaUnicode_modifiable(PyObject *unicode) {
-    if (Py_REFCNT(unicode) != 1)
+    if (!Nuitka_IsUniquelyReferenced(unicode))
         return 0;
     if (_PyUnicode_HASH(unicode) != -1)
         return 0;

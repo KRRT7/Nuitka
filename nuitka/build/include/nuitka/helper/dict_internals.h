@@ -43,6 +43,9 @@ static PyDictObject *_Nuitka_AllocatePyDictObject(PyThreadState *tstate);
 #endif
 #if PYTHON_VERSION >= 0x360
 static PyDictKeysObject *_Nuitka_AllocatePyDictKeysObject(PyThreadState *tstate, Py_ssize_t keys_size);
+#endif
+// Defined only for the dictionary fast paths, as is its use.
+#if PYTHON_VERSION >= 0x360 && !_NUITKA_EXPERIMENTAL_DISABLE_DICT_OPT
 static Py_ssize_t _Nuitka_Py_PyDict_KeysSize(PyDictKeysObject *keys);
 #endif
 static PyDictValues *_Nuitka_PyDict_new_values(Py_ssize_t size);

@@ -129,6 +129,10 @@ PyObject *LIST_COPY(PyThreadState *tstate, PyObject *list) {
     CHECK_OBJECT(list);
     assert(PyList_CheckExact(list));
 
+#ifdef Py_GIL_DISABLED
+    return PyList_GetSlice(list, 0, PY_SSIZE_T_MAX);
+#endif
+
     Py_ssize_t size = PyList_GET_SIZE(list);
     PyObject *result = MAKE_LIST_EMPTY(tstate, size);
 
@@ -145,7 +149,7 @@ PyObject *LIST_COPY(PyThreadState *tstate, PyObject *list) {
     return result;
 }
 
-static bool LIST_RESIZE(PyListObject *list, Py_ssize_t new_size) {
+NUITKA_MAY_BE_UNUSED static bool LIST_RESIZE(PyListObject *list, Py_ssize_t new_size) {
     CHECK_OBJECT(list);
     assert(new_size >= 0);
 
@@ -171,7 +175,7 @@ static bool LIST_RESIZE(PyListObject *list, Py_ssize_t new_size) {
 
     if (array == NULL) {
         PyErr_NoMemory();
-        return -1;
+        return false;
     }
     PyObject **old_items = list->ob_item;
     if (list->ob_item != NULL) {
@@ -480,7 +484,16 @@ bool LIST_REMOVE(PyObject *target, PyObject *item) {
 
     CHECK_OBJECT(item);
 
-#if _NUITKA_EXPERIMENTAL_DISABLE_LIST_OPT && 0
+#if defined(Py_GIL_DISABLED)
+    PyObject *result = PyObject_CallMethod(target, "remove", "(O)", item);
+
+    if (unlikely(result == NULL)) {
+        return false;
+    }
+
+    Py_DECREF(result);
+    return true;
+#elif _NUITKA_EXPERIMENTAL_DISABLE_LIST_OPT && 0
     // TODO: This is not exposed, would need to delete as slice instead.
     int res = PyList_Remove(target, item);
     return res == 0;
@@ -518,6 +531,11 @@ bool LIST_REMOVE(PyObject *target, PyObject *item) {
 void LIST_CLEAR(PyObject *target) {
     CHECK_OBJECT(target);
     assert(PyList_CheckExact(target));
+
+#ifdef Py_GIL_DISABLED
+    PyList_Clear(target);
+    return;
+#endif
 
     PyListObject *list = (PyListObject *)target;
 
@@ -560,6 +578,10 @@ PyObject *LIST_COUNT(PyObject *list, PyObject *item) {
     CHECK_OBJECT(list);
     assert(PyList_CheckExact(list));
 
+#ifdef Py_GIL_DISABLED
+    return PyObject_CallMethod(list, "count", "(O)", item);
+#endif
+
     Py_ssize_t count = 0;
 
     for (Py_ssize_t i = 0; i < Py_SIZE(list); i++) {
@@ -594,6 +616,10 @@ PyObject *LIST_COUNT(PyObject *list, PyObject *item) {
 
 static PyObject *_LIST_INDEX_COMMON(PyThreadState *tstate, PyListObject *list, PyObject *item, Py_ssize_t start,
                                     Py_ssize_t stop) {
+#ifdef Py_GIL_DISABLED
+    return PyObject_CallMethod((PyObject *)list, "index", "Onn", item, start, stop);
+#endif
+
     // Negative values for start/stop are handled here.
     if (start < 0) {
         start += Py_SIZE(list);
@@ -714,8 +740,7 @@ PyObject *LIST_INDEX4(PyThreadState *tstate, PyObject *list, PyObject *item, PyO
     PyObject *stop_index = Nuitka_Number_IndexAsLong(stop);
 
     if (unlikely(stop_index == NULL)) {
-        Py_DECREF(start_index);
-
+        // The start index was released above already.
         CLEAR_ERROR_OCCURRED(tstate);
 
         SET_CURRENT_EXCEPTION_TYPE0_STR(tstate, PyExc_TypeError,
@@ -778,6 +803,13 @@ void LIST_INSERT_CONST(PyObject *list, Py_ssize_t index, PyObject *item) {
     assert(PyList_CheckExact(list));
     CHECK_OBJECT(item);
 
+#ifdef Py_GIL_DISABLED
+    if (unlikely(PyList_Insert(list, index, item) != 0)) {
+        abort();
+    }
+    return;
+#endif
+
     PyListObject *list_object = (PyListObject *)list;
 
     Py_ssize_t n = Py_SIZE(list_object);
@@ -829,6 +861,11 @@ static void _Nuitka_ReverseObjectsSlice(PyObject **lo, PyObject **hi) {
 void LIST_REVERSE(PyObject *list) {
     CHECK_OBJECT(list);
     assert(PyList_CheckExact(list));
+
+#ifdef Py_GIL_DISABLED
+    PyList_Reverse(list);
+    return;
+#endif
 
     PyListObject *list_object = (PyListObject *)list;
 

@@ -8,7 +8,7 @@ of frames for different uses.
 """
 
 from nuitka.options.Options import isExperimental
-from nuitka.PythonVersions import python_version
+from nuitka.PythonVersions import isPythonWithGil, python_version
 from nuitka.utils.Jinja2 import renderTemplateFromString
 
 from .CodeHelpers import _generateStatementSequenceCode
@@ -245,12 +245,18 @@ def getFrameGuardHeavyCode(
     no_exception_exit = context.allocateLabel("frame_no_exception")
 
     frame_identifier = context.getFrameHandle()
-    if frame_node.getGuardMode() == "full":
+    # A cached frame is reused by whichever call finds it unused, which
+    # without the GIL two threads can do at once: frames are made per call.
+    if frame_node.getGuardMode() == "full" and isPythonWithGil():
         frame_cache_identifier = context.variable_storage.addFrameCacheDeclaration(
             frame_identifier.code_name
         )
     else:
         frame_cache_identifier = None
+
+    # A module frame is made once and kept; any other one made per call is
+    # released as it is left.
+    release_frame = frame_cache_identifier is None and frame_node.getGuardMode() == "full"
 
     frame_init_code = ""
     frame_exit_code = ""
@@ -389,6 +395,7 @@ Nuitka_Frame_ClearLocals(%(frame_identifier)s);
             frame_exit_code=frame_exit_code,
             context_identifier=context_identifier,
             is_python3=python_version >= 0x300,
+            release_frame=release_frame,
         )
     )
 
@@ -401,6 +408,7 @@ Nuitka_Frame_ClearLocals(%(frame_identifier)s);
                 frame_return_exit=frame_return_exit,
                 needs_preserve=needs_preserve,
                 frame_exit_code=frame_exit_code,
+                release_frame=release_frame,
             )
         )
 
@@ -424,6 +432,7 @@ Nuitka_Frame_ClearLocals(%(frame_identifier)s);
                 needs_preserve=needs_preserve,
                 exception_state_name=exception_state_name,
                 exception_lineno=exception_lineno,
+                release_frame=release_frame,
             )
         )
 
@@ -453,8 +462,10 @@ def getFrameGuardGeneratorCode(
     no_exception_exit = context.allocateLabel("frame_no_exception")
 
     frame_identifier = context.getFrameHandle()
-    frame_cache_identifier = context.variable_storage.addFrameCacheDeclaration(
-        frame_identifier.code_name
+    frame_cache_identifier = (
+        context.variable_storage.addFrameCacheDeclaration(frame_identifier.code_name)
+        if isPythonWithGil()
+        else None
     )
 
     # TODO: Wire the FrameLocalsProxy to generator/coroutine/asyncgen frames by

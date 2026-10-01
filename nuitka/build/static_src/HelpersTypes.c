@@ -58,7 +58,7 @@ static PyObject *lookupSpecialNoError(PyObject *source, PyObject *attr_name) {
         }
     }
 
-    PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+    PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
 
     if (descr == NULL) {
         return NULL;
@@ -67,10 +67,11 @@ static PyObject *lookupSpecialNoError(PyObject *source, PyObject *attr_name) {
     descrgetfunc func = Py_TYPE(descr)->tp_descr_get;
 
     if (func == NULL) {
-        Py_INCREF(descr);
         return descr;
     } else {
-        return func(descr, source, (PyObject *)type);
+        PyObject *result = func(descr, source, (PyObject *)type);
+        Py_DECREF(descr);
+        return result;
     }
 }
 #endif
@@ -782,15 +783,15 @@ int Nuitka_Object_IsSubclass(PyThreadState *tstate, PyObject *derived, PyObject 
     }
 
     // TODO: For many of our uses, we know it.
-    PyObject *checker = Nuitka_TypeLookup((PyTypeObject *)cls, const_str_plain___subclasscheck__);
+    PyObject *checker = Nuitka_TypeLookupRef((PyTypeObject *)cls, const_str_plain___subclasscheck__);
 
     if (checker != NULL) {
         descrgetfunc f = Py_TYPE(checker)->tp_descr_get;
 
-        if (f == NULL) {
-            Py_INCREF(checker);
-        } else {
-            checker = f(checker, cls, (PyObject *)(Py_TYPE(cls)));
+        if (f != NULL) {
+            PyObject *bound = f(checker, cls, (PyObject *)(Py_TYPE(cls)));
+            Py_DECREF(checker);
+            checker = bound;
         }
     }
 

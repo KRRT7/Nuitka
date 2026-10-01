@@ -235,8 +235,9 @@ def generateLocalsDictVariableRefOrFallbackCode(to_name, expression, emit, conte
                 }
             )
 
-            if needs_ref:
-                context.addCleanupTempName(value_name)
+            # With a fallback that took a reference, e.g. a module variable
+            # read without the GIL, the value is released already, and the
+            # dictionary read takes one too.
         else:
             if needs_ref:
                 template = template_read_locals_mapping_with_fallback_ref

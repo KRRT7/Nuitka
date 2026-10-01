@@ -53,7 +53,11 @@ pushFrameStackGeneratorCompiledFrame(tstate, {{frame_identifier}});
 {% else %}
 pushFrameStackCompiledFrame(tstate, {{frame_identifier}});
 {% endif %}
+{% if context_identifier and not frame_cache_identifier %}
+assert(Py_REFCNT({{frame_identifier}}) == 1); // The generator's only
+{% else %}
 assert(Py_REFCNT({{frame_identifier}}) == 2);
+{% endif %}
 
 {% if context_identifier and is_python3 %}
 // Store currently existing exception as the one to publish again when we
@@ -80,6 +84,9 @@ RESTORE_FRAME_EXCEPTION(tstate, {{frame_identifier}});
 {% endif %}
 // Put the previous frame back on top.
 popFrameStack(tstate);
+{% if release_frame %}
+Py_DECREF({{frame_identifier}});
+{% endif %}
 {% endif %}
 
 goto {{no_exception_exit}};
@@ -96,6 +103,9 @@ RESTORE_FRAME_EXCEPTION(tstate, {{frame_identifier}});
 {% endif %}
 // Put the previous frame back on top.
 popFrameStack(tstate);
+{% if release_frame %}
+Py_DECREF({{frame_identifier}});
+{% endif %}
 
 goto {{return_exit}};
 """
@@ -145,6 +155,10 @@ assertFrameObject({{frame_identifier}});
 
 // Put the previous frame back on top.
 popFrameStack(tstate);
+{% if release_frame %}
+// A traceback holds its own reference, if one was made.
+Py_DECREF({{frame_identifier}});
+{% endif %}
 
 // Return the error.
 goto {{parent_exception_exit}};
@@ -184,6 +198,7 @@ if (!EXCEPTION_STATE_MATCH_GENERATOR(tstate, &{{exception_state_name}})) {
 
 {{attach_locals}}
 
+{% if frame_cache_identifier %}
     // Release cached frame if used for exception.
     if ({{frame_identifier}} == {{frame_cache_identifier}}) {
 #if _DEBUG_REFCOUNTS
@@ -194,6 +209,7 @@ if (!EXCEPTION_STATE_MATCH_GENERATOR(tstate, &{{exception_state_name}})) {
         Py_DECREF({{frame_cache_identifier}});
         {{frame_cache_identifier}} = NULL;
     }
+{% endif %}
 
     assertFrameObject({{frame_identifier}});
 }

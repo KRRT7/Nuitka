@@ -1355,10 +1355,12 @@ PyObject *Nuitka_Function_GetFunctionState(struct Nuitka_FunctionObject *functio
             PyObject *cell = PyTuple_GET_ITEM(closure, i);
             assert(Nuitka_CellOrPyCell_Check(cell));
 
-            PyObject *cell_value = Nuitka_CellOrPyCell_GET(cell);
+            PyObject *cell_value = Nuitka_CellOrPyCell_GET_REF(cell);
             CHECK_OBJECT(cell_value);
 
-            PyTuple_SET_ITEM0(closure, i, cell_value);
+            // The fresh tuple held the cell, the function still does.
+            PyTuple_SET_ITEM(closure, i, cell_value);
+            Py_DECREF(cell);
         }
     }
 
@@ -1667,8 +1669,14 @@ Nuitka_Function_New(function_impl_code c_code, PyObject *name, PyObject *qualnam
     result->m_dict = NULL;
     result->m_weakrefs = NULL;
 
+#ifdef Py_GIL_DISABLED
+    // Numbered from several threads at once.
+    static Py_ssize_t Nuitka_Function_counter = 0;
+    result->m_counter = (long)_Py_atomic_add_ssize(&Nuitka_Function_counter, 1);
+#else
     static long Nuitka_Function_counter = 0;
     result->m_counter = Nuitka_Function_counter++;
+#endif
 
 #if PYTHON_VERSION >= 0x380 && !defined(_NUITKA_EXPERIMENTAL_DISABLE_VECTORCALL_SLOT)
     result->m_vectorcall = (vectorcallfunc)Nuitka_Function_tp_vectorcall;

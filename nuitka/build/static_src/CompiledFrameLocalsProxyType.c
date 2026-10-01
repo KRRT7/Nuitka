@@ -75,6 +75,9 @@ static PyObject *_Nuitka_FrameLocalsProxy_to_dict(Nuitka_FrameLocalsProxyObject 
             offset = Nuitka_FrameLocals_AlignUp(offset, Nuitka_FrameLocals_Align(type));
             void *slot = (char *)frame->m_locals_ptr + offset;
             PyObject *value = NULL;
+            // A cell's value is read with a reference, as other threads may
+            // replace it, and released once added.
+            PyObject *cell_value = NULL;
             switch (type) {
             case NUITKA_TYPE_DESCRIPTION_OBJECT:
             case NUITKA_TYPE_DESCRIPTION_OBJECT_PTR:
@@ -83,7 +86,7 @@ static PyObject *_Nuitka_FrameLocalsProxy_to_dict(Nuitka_FrameLocalsProxyObject 
             case NUITKA_TYPE_DESCRIPTION_CELL: {
                 struct Nuitka_CellObject *cell = *(struct Nuitka_CellObject **)slot;
                 if (cell != NULL) {
-                    value = Nuitka_CellOrPyCell_GET((PyObject *)cell);
+                    value = cell_value = Nuitka_CellOrPyCell_GET_REF((PyObject *)cell);
                 }
                 break;
             }
@@ -108,10 +111,12 @@ static PyObject *_Nuitka_FrameLocalsProxy_to_dict(Nuitka_FrameLocalsProxyObject 
             if (value != NULL) {
                 PyObject *name = *var_names;
                 if (!DICT_SET_ITEM(result, name, value)) {
+                    Py_XDECREF(cell_value);
                     Py_DECREF(result);
                     return NULL;
                 }
             }
+            Py_XDECREF(cell_value);
             var_names++;
             offset += Nuitka_FrameLocals_Size(type);
         }
@@ -264,9 +269,8 @@ static PyObject *_Nuitka_FrameLocalsProxy_subscript(PyObject *self, PyObject *ke
         }
         case NUITKA_TYPE_DESCRIPTION_CELL: {
             struct Nuitka_CellObject *cell = *(struct Nuitka_CellObject **)slot;
-            PyObject *value = Nuitka_CellOrPyCell_GET((PyObject *)cell);
+            PyObject *value = Nuitka_CellOrPyCell_GET_REF((PyObject *)cell);
             CHECK_OBJECT(value);
-            Py_INCREF(value);
             return value;
         }
         case NUITKA_TYPE_DESCRIPTION_NILONG: {
@@ -350,9 +354,8 @@ static int _Nuitka_FrameLocalsProxy_ass_subscript(PyObject *self, PyObject *key,
                 return 0;
             }
 
-            PyObject *old = Nuitka_CellOrPyCell_GET((PyObject *)cell);
-            Nuitka_CellOrPyCell_SET((PyObject *)cell, value);
             Py_INCREF(value);
+            PyObject *old = Nuitka_CellOrPyCell_EXCHANGE((PyObject *)cell, value);
             Py_XDECREF(old);
             return 0;
         }

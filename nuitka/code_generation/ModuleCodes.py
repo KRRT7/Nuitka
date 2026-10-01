@@ -12,7 +12,7 @@ from nuitka.options.Options import (
     shallMakeModule,
     shallUseDirectConstantBlobs,
 )
-from nuitka.PythonVersions import python_version
+from nuitka.PythonVersions import isPythonWithGil, python_version
 from nuitka.Version import getNuitkaVersion, getNuitkaVersionYear
 
 from .CodeHelpers import (
@@ -33,6 +33,7 @@ from .templates.CodeTemplatesModules import (
 )
 from .templates.CodeTemplatesVariables import (
     template_module_variable_accessor_function,
+    template_module_variable_accessor_function_ref,
 )
 from .VariableCodes import (
     getModuleVariableAccessorCodeName,
@@ -180,7 +181,11 @@ def getModuleCode(
         context.getModuleVariableAccessors().items()
     ):
         module_variable_accessor_codes.append(
-            template_module_variable_accessor_function
+            (
+                template_module_variable_accessor_function
+                if isPythonWithGil()
+                else template_module_variable_accessor_function_ref
+            )
             % {
                 "accessor_function_name": getModuleVariableAccessorCodeName(
                     module_identifier, module_variable_name

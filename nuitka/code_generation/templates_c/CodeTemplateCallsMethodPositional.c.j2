@@ -33,12 +33,10 @@ PyObject *CALL_METHOD_WITH_ARGS{{args_count}}(PyThreadState *tstate, PyObject *s
             }
         }
 
-        PyObject *descr = Nuitka_TypeLookup(type, attr_name);
+        PyObject *descr = Nuitka_TypeLookupRef(type, attr_name);
         descrgetfunc func = NULL;
 
         if (descr != NULL) {
-            Py_INCREF(descr);
-
             if (NuitkaType_HasFeatureClass(Py_TYPE(descr))) {
                 func = Py_TYPE(descr)->tp_descr_get;
 

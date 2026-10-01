@@ -94,9 +94,16 @@ static inline void ASSERT_DICT_LOCKED(PyObject *op) { _Py_CRITICAL_SECTION_ASSER
 #define LOAD_KEYS_NENTRIES(keys) _Py_atomic_load_ssize_relaxed(&keys->dk_nentries)
 
 static inline void Nuitka_Py_dictkeys_incref(PyDictKeysObject *dk) {
+#if PYTHON_VERSION >= 0x3e0
+    // Immortal keys carry a negative count from 3.14, as in CPython.
+    if (FT_ATOMIC_LOAD_SSIZE_RELAXED(dk->dk_refcnt) < 0) {
+        return;
+    }
+#else
     if (FT_ATOMIC_LOAD_SSIZE_RELAXED(dk->dk_refcnt) == _Py_IMMORTAL_REFCNT) {
         return;
     }
+#endif
 #ifdef Py_REF_DEBUG
     _Py_IncRefTotal(_PyThreadState_GET());
 #endif
@@ -104,9 +111,16 @@ static inline void Nuitka_Py_dictkeys_incref(PyDictKeysObject *dk) {
 }
 
 static inline void Nuitka_Py_dictkeys_decref(PyInterpreterState *interp, PyDictKeysObject *dk, bool use_qsbr) {
+#if PYTHON_VERSION >= 0x3e0
+    // Immortal keys carry a negative count from 3.14, as in CPython.
+    if (FT_ATOMIC_LOAD_SSIZE_RELAXED(dk->dk_refcnt) < 0) {
+        return;
+    }
+#else
     if (FT_ATOMIC_LOAD_SSIZE_RELAXED(dk->dk_refcnt) == _Py_IMMORTAL_REFCNT) {
         return;
     }
+#endif
     assert(FT_ATOMIC_LOAD_SSIZE(dk->dk_refcnt) > 0);
 #ifdef Py_REF_DEBUG
     _Py_DecRefTotal(_PyThreadState_GET());
@@ -250,6 +264,10 @@ PyObject *DICT_GET_ITEM0(PyThreadState *tstate, PyObject *dict, PyObject *key) {
     }
 
     CHECK_OBJECT(result);
+#ifdef Py_GIL_DISABLED
+    // Borrowed, as CPython's "PyDict_GetItem" hands it out without the GIL.
+    Py_DECREF(result);
+#endif
     return result;
 #endif
 }
@@ -339,7 +357,10 @@ PyObject *DICT_GET_ITEM1(PyThreadState *tstate, PyObject *dict, PyObject *key) {
     }
 
     CHECK_OBJECT(result);
+#ifndef Py_GIL_DISABLED
+    // The free-threaded lookup returned a reference of our own already.
     Py_INCREF(result);
+#endif
     return result;
 #endif
 }
@@ -482,7 +503,10 @@ PyObject *DICT_GET_ITEM_WITH_ERROR(PyThreadState *tstate, PyObject *dict, PyObje
     }
 
     CHECK_OBJECT(result);
+#ifndef Py_GIL_DISABLED
+    // The free-threaded lookup returned a reference of our own already.
     Py_INCREF(result);
+#endif
     return result;
 #endif
 }
@@ -571,6 +595,10 @@ PyObject *DICT_GET_ITEM_WITH_HASH_ERROR0(PyThreadState *tstate, PyObject *dict, 
     }
 
     CHECK_OBJECT(result);
+#ifdef Py_GIL_DISABLED
+    // Borrowed, as CPython's "PyDict_GetItem" hands it out without the GIL.
+    Py_DECREF(result);
+#endif
     return result;
 #endif
 }
@@ -663,7 +691,10 @@ PyObject *DICT_GET_ITEM_WITH_HASH_ERROR1(PyThreadState *tstate, PyObject *dict, 
     }
 
     CHECK_OBJECT(result);
+#ifndef Py_GIL_DISABLED
+    // The free-threaded lookup returned a reference of our own already.
     Py_INCREF(result);
+#endif
     return result;
 #endif
 }
@@ -754,6 +785,9 @@ int DICT_HAS_ITEM(PyThreadState *tstate, PyObject *dict, PyObject *key) {
     if (unlikely(result == NULL)) {
         return 0;
     }
+#ifdef Py_GIL_DISABLED
+    Py_DECREF(result);
+#endif
 #endif
     return 1;
 #endif
@@ -1072,7 +1106,7 @@ static PyDictObject *_Nuitka_AllocatePyDictObjectFresh(void) {
     size_t pre_size = _PyType_PreHeaderSize(&PyDict_Type);
     size_t size = _PyObject_SIZE(&PyDict_Type);
 
-    char *alloc = (char *)NuitkaObject_Malloc(size + pre_size);
+    char *alloc = (char *)NuitkaObject_MallocWithType(&PyDict_Type, size + pre_size);
     assert(alloc != NULL);
 
     ((PyObject **)alloc)[0] = NULL;
@@ -1145,7 +1179,8 @@ static PyDictObject *_Nuitka_AllocatePyDictObject(PyThreadState *tstate) {
 #endif
 
 #if PYTHON_VERSION >= 0x360
-static PyDictKeysObject *_Nuitka_AllocatePyDictKeysObject(PyThreadState *tstate, Py_ssize_t keys_size) {
+NUITKA_MAY_BE_UNUSED static PyDictKeysObject *_Nuitka_AllocatePyDictKeysObject(PyThreadState *tstate,
+                                                                                 Py_ssize_t keys_size) {
     // CPython names, spell-checker: ignore numfree,dictkeys
     PyDictKeysObject *dk;
 
@@ -1235,7 +1270,7 @@ static inline PyDictValues *_Nuitka_PyDict_new_values(Py_ssize_t size) {
 
 #if PYTHON_VERSION >= 0x3d0
 
-static PyDictValues *_Nuitka_PyDict_copy_values(PyDictValues *values) {
+NUITKA_MAY_BE_UNUSED static PyDictValues *_Nuitka_PyDict_copy_values(PyDictValues *values) {
     PyDictValues *new_values = _Nuitka_PyDict_new_values(values->capacity);
     if (unlikely(new_values == NULL)) {
         return NULL;
@@ -1312,7 +1347,15 @@ static inline Py_ssize_t Nuitka_Py_dictkeys_get_index(const PyDictKeysObject *ke
 // 3.13+
 #if PYTHON_VERSION >= 0x3d0
 
-static inline Py_ALWAYS_INLINE Py_ssize_t Nuitka_Py_dictkeys_do_lookup(
+// Forced inlining only when optimizing, as CPython's debug builds do: the
+// comparisons are passed by pointer, which unoptimized builds cannot inline.
+#ifdef __NUITKA_NO_ASSERT__
+#define NUITKA_DICT_ALWAYS_INLINE Py_ALWAYS_INLINE
+#else
+#define NUITKA_DICT_ALWAYS_INLINE
+#endif
+
+static inline NUITKA_DICT_ALWAYS_INLINE Py_ssize_t Nuitka_Py_dictkeys_do_lookup(
     PyDictObject *mp, PyDictKeysObject *dk, PyObject *key, Py_hash_t hash,
     int (*check_lookup)(PyDictObject *, PyDictKeysObject *, void *, Py_ssize_t ix, PyObject *key, Py_hash_t)) {
     void *ep0 = _DK_ENTRIES(dk);
@@ -1433,7 +1476,7 @@ Py_ssize_t _Py_HOT_FUNCTION Nuitka_Py_unicodekeys_lookup_unicode(PyDictKeysObjec
 
 #ifdef Py_GIL_DISABLED
 
-static inline Py_ALWAYS_INLINE int
+static inline NUITKA_DICT_ALWAYS_INLINE int
 Nuitka_Py_dictkeys_compare_unicode_generic_threadsafe(PyDictObject *mp, PyDictKeysObject *dk, void *ep0, Py_ssize_t ix,
                                                       PyObject *key, Py_hash_t hash) {
     PyDictUnicodeEntry *ep = &((PyDictUnicodeEntry *)ep0)[ix];
@@ -1472,7 +1515,7 @@ static Py_ssize_t Nuitka_Py_unicodekeys_lookup_generic_threadsafe(PyDictObject *
     return Nuitka_Py_dictkeys_do_lookup(mp, dk, key, hash, Nuitka_Py_dictkeys_compare_unicode_generic_threadsafe);
 }
 
-static inline Py_ALWAYS_INLINE int
+static inline NUITKA_DICT_ALWAYS_INLINE int
 Nuitka_Py_dictkeys_compare_unicode_unicode_threadsafe(PyDictObject *mp, PyDictKeysObject *dk, void *ep0, Py_ssize_t ix,
                                                       PyObject *key, Py_hash_t hash) {
     PyDictUnicodeEntry *ep = &((PyDictUnicodeEntry *)ep0)[ix];
@@ -1503,7 +1546,7 @@ static Py_ssize_t _Py_HOT_FUNCTION Nuitka_Py_unicodekeys_lookup_unicode_threadsa
     return Nuitka_Py_dictkeys_do_lookup(NULL, dk, key, hash, Nuitka_Py_dictkeys_compare_unicode_unicode_threadsafe);
 }
 
-static inline Py_ALWAYS_INLINE int Nuitka_Py_dictkeys_compare_generic_threadsafe(PyDictObject *mp, PyDictKeysObject *dk,
+static inline NUITKA_DICT_ALWAYS_INLINE int Nuitka_Py_dictkeys_compare_generic_threadsafe(PyDictObject *mp, PyDictKeysObject *dk,
                                                                                  void *ep0, Py_ssize_t ix,
                                                                                  PyObject *key, Py_hash_t hash) {
     PyDictKeyEntry *ep = &((PyDictKeyEntry *)ep0)[ix];

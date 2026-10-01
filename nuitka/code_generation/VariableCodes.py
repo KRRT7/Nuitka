@@ -7,7 +7,7 @@ from nuitka.nodes.shapes.BuiltinTypeShapes import (
     tshape_bool,
     tshape_int_or_long,
 )
-from nuitka.PythonVersions import python_version
+from nuitka.PythonVersions import isPythonWithGil, python_version
 from nuitka.utils.CStrings import encodePythonIdentifierToC
 
 from .c_types.CTypeNuitkaBooleans import CTypeNuitkaBoolEnum
@@ -153,6 +153,42 @@ if (unlikely(%(value_name)s == NULL)) {
             needs_check=needs_check,
         )
 
+        # Without the GIL the accessor returns a reference of our own.
+        if not isPythonWithGil():
+            context.addCleanupTempName(value_name)
+
+
+def _getCellVariableReferenceCode(
+    to_name,
+    variable,
+    variable_declaration,
+    needs_check,
+    conversion_check,
+    emit,
+    context,
+):
+    # Without the GIL, another thread sharing the cell may replace its value
+    # and release it at any time: it is read with a reference of our own.
+    with withObjectCodeTemporaryAssignment2(
+        to_name, "cell_value", conversion_check, emit, context
+    ) as value_name:
+        emit(
+            "%s = Nuitka_CellOrPyCell_GET_REF((PyObject *)%s);"
+            % (value_name, variable_declaration)
+        )
+
+        if needs_check:
+            getLocalVariableReferenceErrorCode(
+                variable=variable,
+                condition="%s == NULL" % value_name,
+                emit=emit,
+                context=context,
+            )
+        else:
+            getAssertionCode(check="%s != NULL" % value_name, emit=emit)
+
+        context.addCleanupTempName(value_name)
+
 
 def getNonModuleVariableReferenceCode(
     to_name, variable, variable_trace, needs_check, conversion_check, emit, context
@@ -163,6 +199,20 @@ def getNonModuleVariableReferenceCode(
         variable_declaration = getLocalVariableDeclaration(
             context, variable, variable_trace
         )
+
+        if not isPythonWithGil() and issubclass(
+            variable_declaration.getCType(), CTypeCellObject
+        ):
+            _getCellVariableReferenceCode(
+                to_name=to_name,
+                variable=variable,
+                variable_declaration=variable_declaration,
+                needs_check=needs_check,
+                conversion_check=conversion_check,
+                emit=emit,
+                context=context,
+            )
+            return
 
         value_name = variable_declaration.getCType().emitValueAccessCode(
             value_name=variable_declaration, emit=emit, context=context
@@ -220,6 +270,11 @@ def generateVariableReferenceCode(to_name, expression, emit, context):
                         use_caching = True
             else:
                 use_caching = True
+
+        # A cached lookup pairs a value with the dict version it was read at,
+        # which without the GIL another thread can update between the two.
+        if not isPythonWithGil():
+            use_caching = False
 
         getModuleVariableReferenceCode(
             to_name=to_name,

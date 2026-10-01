@@ -304,13 +304,14 @@ static PyObject *Nuitka_Method_tp_descr_get(struct Nuitka_MethodObject *method, 
 #endif
 
 static PyObject *Nuitka_Method_tp_getattro(struct Nuitka_MethodObject *method, PyObject *name) {
-    PyObject *descr = Nuitka_TypeLookup(&Nuitka_Method_Type, name);
+    PyObject *descr = Nuitka_TypeLookupRef(&Nuitka_Method_Type, name);
 
     if (descr != NULL) {
         if (NuitkaType_HasFeatureClass(Py_TYPE(descr)) && (Py_TYPE(descr)->tp_descr_get != NULL)) {
-            return Py_TYPE(descr)->tp_descr_get(descr, (PyObject *)method, (PyObject *)Py_TYPE(method));
+            PyObject *result = Py_TYPE(descr)->tp_descr_get(descr, (PyObject *)method, (PyObject *)Py_TYPE(method));
+            Py_DECREF(descr);
+            return result;
         } else {
-            Py_INCREF(descr);
             return descr;
         }
     }

@@ -10287,6 +10287,14 @@ static PyObject *COMPARE_NE_OBJECT_LIST_LIST(PyObject *operand1, PyObject *opera
 
     PyListObject *a = (PyListObject *)operand1;
     PyListObject *b = (PyListObject *)operand2;
+#ifdef Py_GIL_DISABLED
+    // Without the GIL another thread may change either list while its
+    // items are compared: CPython's comparison holds both.
+    {
+        PyObject *r = PyList_Type.tp_richcompare(operand1, operand2, Py_NE);
+        return r;
+    }
+#endif
 
     if (Py_SIZE(a) != Py_SIZE(b)) {
         bool r = true;
@@ -10934,6 +10942,19 @@ static nuitka_bool COMPARE_NE_NBOOL_LIST_LIST(PyObject *operand1, PyObject *oper
 
     PyListObject *a = (PyListObject *)operand1;
     PyListObject *b = (PyListObject *)operand2;
+#ifdef Py_GIL_DISABLED
+    // Without the GIL another thread may change either list while its
+    // items are compared: CPython's comparison holds both.
+    {
+        PyObject *r = PyList_Type.tp_richcompare(operand1, operand2, Py_NE);
+        if (unlikely(r == NULL)) {
+            return NUITKA_BOOL_EXCEPTION;
+        }
+        int truth = CHECK_IF_TRUE(r);
+        Py_DECREF(r);
+        return truth == -1 ? NUITKA_BOOL_EXCEPTION : (truth ? NUITKA_BOOL_TRUE : NUITKA_BOOL_FALSE);
+    }
+#endif
 
     if (Py_SIZE(a) != Py_SIZE(b)) {
         bool r = true;

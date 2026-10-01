@@ -13,7 +13,9 @@
 #include "nuitka/prelude.h"
 #endif
 
-#ifdef _NUITKA_EXPERIMENTAL_DISABLE_FREELIST_ALL
+// Free lists of our own are plain static lists, which without the GIL two
+// threads can pop the same object from: free-threaded builds go without.
+#if defined(_NUITKA_EXPERIMENTAL_DISABLE_FREELIST_ALL) || defined(Py_GIL_DISABLED)
 static const bool use_freelists = false;
 #else
 static const bool use_freelists = true;
