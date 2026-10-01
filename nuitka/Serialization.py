@@ -226,6 +226,8 @@ class GlobalConstantAccessor(object):
                 return "(PyObject *)&PyEnum_Type"
             elif constant is frozenset:
                 return "(PyObject *)&PyFrozenSet_Type"
+            elif python_version >= 0x3F0 and constant is frozendict:
+                return "(PyObject *)&PyFrozenDict_Type"
             elif python_version >= 0x270 and constant is memoryview:
                 return "(PyObject *)&PyMemoryView_Type"
             elif python_version < 0x300 and constant is basestring:
