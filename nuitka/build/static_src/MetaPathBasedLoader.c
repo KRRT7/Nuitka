@@ -86,6 +86,11 @@ bool Nuitka_LoaderEntryCompareName(struct Nuitka_MetaPathBasedLoaderEntry const 
         return entry->m_compare_name(name, entry->m_name);
     }
 
+    // A name stored as it is needs no copy to compare.
+    if (entry->m_get_name == NULL) {
+        return strcmp(name, entry->m_name) == 0;
+    }
+
     char name_buffer[NUITKA_LOADER_NAME_MAX_LEN];
     Nuitka_LoaderEntryName(entry, name_buffer, sizeof(name_buffer));
 
@@ -365,7 +370,91 @@ static bool compareToEntryName(char const *name, struct Nuitka_MetaPathBasedLoad
     return Nuitka_LoaderEntryCompareName(entry, name);
 }
 
+#if !_NUITKA_MODULE_MODE
+// Every import asks "findEntry" several times, and the table holds every
+// module the program can import, over a thousand for a large one, which a scan
+// compares one name at a time. An index from name hash to table position,
+// built once at registration, finds the entries of a name directly. Module
+// mode renames entries at runtime, and an entry comparing names its own way
+// cannot be hashed; those keep the scan.
+static int *loader_entry_index = NULL;
+static uint32_t loader_entry_index_mask = 0;
+
+static uint32_t hashLoaderEntryName(char const *name) {
+    // FNV-1a.
+    uint32_t hash = 2166136261u;
+
+    for (unsigned char const *c = (unsigned char const *)name; *c != 0; c++) {
+        hash ^= *c;
+        hash *= 16777619u;
+    }
+
+    return hash;
+}
+
+static void buildLoaderEntryIndex(void) {
+    for (int i = 0; i < loader_entry_count; i++) {
+        if (loader_entries[i]->m_compare_name != NULL) {
+            return;
+        }
+    }
+
+    // At most half full, so a probe ends at an empty slot soon.
+    uint32_t size = 16;
+    while (size < (uint32_t)loader_entry_count * 2) {
+        size <<= 1;
+    }
+
+    int *index = (int *)malloc(size * sizeof(int));
+    if (index == NULL) {
+        return;
+    }
+
+    for (uint32_t slot = 0; slot < size; slot++) {
+        index[slot] = -1;
+    }
+
+    char name_buffer[NUITKA_LOADER_NAME_MAX_LEN];
+
+    // In table order, so entries of one name lie along their probe sequence in
+    // table order too.
+    for (int i = 0; i < loader_entry_count; i++) {
+        Nuitka_LoaderEntryName(loader_entries[i], name_buffer, sizeof(name_buffer));
+
+        uint32_t slot = hashLoaderEntryName(name_buffer) & (size - 1);
+        while (index[slot] != -1) {
+            slot = (slot + 1) & (size - 1);
+        }
+        index[slot] = i;
+    }
+
+    loader_entry_index_mask = size - 1;
+    loader_entry_index = index;
+}
+#endif
+
 static struct Nuitka_MetaPathBasedLoaderEntry *findEntry(char const *name, bool internal) {
+#if !_NUITKA_MODULE_MODE
+    if (loader_entry_index != NULL) {
+        // The first entry of the name along the probe sequence that may be
+        // used is the one the scan below finds first.
+        for (uint32_t slot = hashLoaderEntryName(name) & loader_entry_index_mask; loader_entry_index[slot] != -1;
+             slot = (slot + 1) & loader_entry_index_mask) {
+            struct Nuitka_MetaPathBasedLoaderEntry *entry = loader_entries[loader_entry_index[slot]];
+
+            if (compareToEntryName(name, entry)) {
+                if (!internal && (entry->flags & NUITKA_INTERNAL_MODULE_FLAG)) {
+                    continue;
+                }
+
+                return entry;
+            }
+        }
+
+        return NULL;
+    }
+#endif
+
     for (int i = 0; i < loader_entry_count; i++) {
         if (compareToEntryName(name, loader_entries[i])) {
             if (!internal && (loader_entries[i]->flags & NUITKA_INTERNAL_MODULE_FLAG)) {
@@ -2764,6 +2853,11 @@ void registerMetaPathBasedLoader(struct Nuitka_MetaPathBasedLoaderEntry **_loade
 
     loader_entries = _loader_entries;
     loader_entry_count = entry_count;
+
+#if !_NUITKA_MODULE_MODE
+    // Here, before any import can run on another thread.
+    buildLoaderEntryIndex();
+#endif
 
 #if _NUITKA_MODULE_MODE && PYTHON_VERSION < 0x3c0
     if (_Py_PackageContext != NULL) {
