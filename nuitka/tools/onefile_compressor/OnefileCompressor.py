@@ -46,10 +46,16 @@ def getCompressorFunction(expect_compression, low_memory, job_limit):
         try:
             from compression import zstd
 
+            # A zstd built without multithreading, as MonolithPy's is, accepts
+            # no workers at all and rejects any other count.
+            zstd_threads = min(
+                effective_threads, zstd.CompressionParameter.nb_workers.bounds()[1]
+            )
+
             @contextmanager
             def useCompressedFile(output_file):
                 options = {
-                    zstd.CompressionParameter.nb_workers: effective_threads,
+                    zstd.CompressionParameter.nb_workers: zstd_threads,
                     zstd.CompressionParameter.compression_level: getCompressorLevel(
                         low_memory
                     ),
